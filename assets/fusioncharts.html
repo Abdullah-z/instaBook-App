@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>FusionCharts</title>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.widgets.js"></script>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/themes/fusioncharts.theme.fusion.js"></script>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.zoomline.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background-color: transparent;
+      }
+
+      #chart-container {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chart-container">Loading chart…</div>
+    <script>
+      document.addEventListener('message', function (e) {
+        try {
+          const { chartConfig } = JSON.parse(e.data);
+
+          // Defensive check
+          if (!chartConfig) {
+            throw new Error('chartConfig missing in message');
+          }
+
+          new FusionCharts({
+            ...chartConfig,
+            renderAt: 'chart-container',
+          }).render();
+        } catch (err) {
+          document.getElementById('chart-container').innerText = 'Chart Error: ' + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
