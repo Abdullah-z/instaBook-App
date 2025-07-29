@@ -163,18 +163,24 @@ const CommentsScreen = ({ route }: any) => {
           <CommentDisplay
             key={c._id}
             comment={c}
-            replies={getNestedReplies(c._id)} // ✅ recursive reply tree
+            replies={getNestedReplies(c._id)}
             onReply={(comment) => {
               setIsReplying(true);
               setReplyingID(comment._id);
+              setEditingID(null); // cancel editing
+              setCommentText('');
             }}
             onDelete={handleDelete}
             onEdit={(comment) => {
               setEditingID(comment._id);
+              setReplyingID(null); // cancel reply
               setCommentText(comment.content);
-              setReplyingID(null);
-              setReplyTo(null);
             }}
+            editingID={editingID}
+            replyingID={replyingID}
+            commentText={commentText}
+            setCommentText={setCommentText}
+            onSubmit={handleSend}
           />
         ))}
       </ScrollView>

@@ -1,19 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import moment from 'moment';
 import { CommentType } from '../types/types';
+import InputComment from './InputComment';
 
 interface Props {
   comment: CommentType;
   replies?: CommentType[];
   onReply: (c: CommentType) => void;
   onDelete: (c: CommentType) => void;
-  onEdit: (comment: CommentType) => void; // ✅ FIXED — now receives full comment
+  onEdit: (c: CommentType) => void;
+
+  editingID: string | null;
+  replyingID: string | null;
+  commentText: string;
+  setCommentText: (t: string) => void;
+  onSubmit: () => void;
 }
 
-const CommentDisplay: React.FC<Props> = ({ comment, replies = [], onReply, onDelete, onEdit }) => {
+const CommentDisplay: React.FC<Props> = ({
+  comment,
+  replies = [],
+  onReply,
+  onDelete,
+  onEdit,
+  editingID,
+  replyingID,
+  commentText,
+  setCommentText,
+  onSubmit,
+}) => {
   const [showCount, setShowCount] = useState(1);
-
   const visibleReplies = replies.slice(replies.length - showCount);
 
   return (
@@ -41,7 +58,19 @@ const CommentDisplay: React.FC<Props> = ({ comment, replies = [], onReply, onDel
         </TouchableOpacity>
       </View>
 
-      {/* Replies (1-level only, not nested) */}
+      {/* ✍️ Inline Input for Edit or Reply */}
+      {(editingID === comment._id || replyingID === comment._id) && (
+        <View style={{ marginTop: 8 }}>
+          <InputComment
+            value={commentText}
+            onChange={setCommentText}
+            onSubmit={onSubmit}
+            placeholder={editingID === comment._id ? 'Edit comment...' : 'Reply...'}
+          />
+        </View>
+      )}
+
+      {/* Replies */}
       {visibleReplies.length > 0 && (
         <View style={styles.replies}>
           {visibleReplies.map((reply) => (
@@ -65,6 +94,18 @@ const CommentDisplay: React.FC<Props> = ({ comment, replies = [], onReply, onDel
                   <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* ✍️ Inline Input for Reply/Edit on Replies */}
+              {(editingID === reply._id || replyingID === reply._id) && (
+                <View style={{ marginTop: 8 }}>
+                  <InputComment
+                    value={commentText}
+                    onChange={setCommentText}
+                    onSubmit={onSubmit}
+                    placeholder={editingID === reply._id ? 'Edit reply...' : 'Reply...'}
+                  />
+                </View>
+              )}
             </View>
           ))}
 
@@ -114,11 +155,6 @@ const styles = StyleSheet.create({
   content: {
     marginTop: 6,
     fontSize: 14,
-  },
-  editInput: {
-    borderBottomWidth: 1,
-    borderColor: 'gray',
-    padding: 4,
   },
   actions: {
     flexDirection: 'row',
