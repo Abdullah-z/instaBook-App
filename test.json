@@ -1,0 +1,127 @@
+{
+    "post": {
+        "images": [
+            {
+                "public_id": "hhoysf2yhiehb9bmnxd7",
+                "url": "http://res.cloudinary.com/dcxgup2xo/image/upload/v1688909840b5b47b55cca9c0a1"
+            ],
+            "story": "",
+            "website": "",
+            "followers": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098",
+                "63e00c58b655e70288af4031"
+            ],
+            "following": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098"
+            ],
+            "_id": "63bd65b55b9a7559acd7533e",
+            "fullname": "Abdullah Zafar",
+            "username": "abdullah",
+            "email": "abdullah@gmail.com",
+            "createdAt": "2023-01-10T13:18:45.481Z",
+            "updatedAt": "2025-07-29T12:41:34.424Z",
+            "__v": 0
+        },
+        "content": "Hh",
+        "postId": "64aab839d294c4452074ffe1",
+        "createdAt": "2025-07-29T14:30:11.211Z",
+        "updatedAt": "2025-07-29T14:30:11.211Z",
+        "__v": 0
+    },
+    {
+        "likes": [],
+        "_id": "6888dafeb163b9264da81aa5",
+        "user": {
+            "avatar": "https://res.cloudinary.com/dcxgup2xo/image/upload/v1675764141/nvqdblkqzey96qmh0vr6.jpg",
+            "role": "user",
+            "gender": "male",
+            "mobile": "03216982708",
+            "address": "335 E Block C Marghzar Colony Multan Road Lahore, 335 E Block C Marghzar Colony Multan Road Lahore",
+            "saved": [
+                "63cfb240b5b47b55cca9c0a1"
+            ],
+            "story": "",
+            "website": "",
+            "followers": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098",
+                "63e00c58b655e70288af4031"
+            ],
+            "following": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098"
+            ],
+            "_id": "63bd65b55b9a7559acd7533e",
+            "fullname": "Abdullah Zafar",
+            "username": "abdullah",
+            "email": "abdullah@gmail.com",
+            "createdAt": "2023-01-10T13:18:45.481Z",
+            "updatedAt": "2025-07-29T12:41:34.424Z",
+            "__v": 0
+        },
+        "content": "F",
+        "reply": "6888daf2b163b9264da81a8b",
+        "postId": "64aab839d294c4452074ffe1",
+        "createdAt": "2025-07-29T14:30:22.983Z",
+        "updatedAt": "2025-07-29T14:30:22.983Z",
+        "__v": 0
+    },
+    {
+        "likes": [],
+        "_id": "6888db09b163b9264da81abf",
+        "user": {
+            "avatar": "https://res.cloudinary.com/dcxgup2xo/image/upload/v1675764141/nvqdblkqzey96qmh0vr6.jpg",
+            "role": "user",
+            "gender": "male",
+            "mobile": "03216982708",
+            "address": "335 E Block C Marghzar Colony Multan Road Lahore, 335 E Block C Marghzar Colony Multan Road Lahore",
+            "saved": [
+                "63cfb240b5b47b55cca9c0a1"
+            ],
+            "story": "",
+            "website": "",
+            "followers": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098",
+                "63e00c58b655e70288af4031"
+            ],
+            "following": [
+                "63be5f79e20a910d9c43ae94",
+                "63c53ecf88ac7656c803d098"
+            ],
+            "_id": "63bd65b55b9a7559acd7533e",
+            "fullname": "Abdullah Zafar",
+            "username": "abdullah",
+            "email": "abdullah@gmail.com",
+            "createdAt": "2023-01-10T13:18:45.481Z",
+            "updatedAt": "2025-07-29T12:41:34.424Z",
+            "__v": 0
+        },
+        "content": "Q",
+        "reply": "6888dafeb163b9264da81aa5",
+        "postId": "64aab839d294c4452074ffe1",
+        "createdAt": "2025-07-29T14:30:33.696Z",
+        "updatedAt": "2025-07-29T14:30:33.696Z",
+        "__v": 0
+    }
+],
+"reports": [],
+"_id": "64aab839d294c4452074ffe1",
+"content": "Tesla",
+"user": {
+    "avatar": "https://res.cloudinary.com/dcxgup2xo/image/upload/v1673871349/fnvfnjasclzato8bxuv0.jpg",
+    "followers": [
+        "63be5f79e20a910d9c43ae94",
+        "63bd65b55b9a7559acd7533e"
+    ],
+    "_id": "63c53ecf88ac7656c803d098",
+    "fullname": "Elon Musk",
+    "username": "elonmusk"
+},
+"createdAt": "2023-07-09T13:38:01.170Z",
+"updatedAt": "2025-07-29T14:30:33.475Z",
+"__v": 0
+}
+}

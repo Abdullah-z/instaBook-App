@@ -6,12 +6,17 @@ import Chart from '../components/Chart';
 import Donut from '../components/Donut';
 import Radar from '../components/Radar';
 import PerformanceChart from '../components/PerformanceChart';
+import HeatmapChart from '../components/HeatmapChart';
+import { ScrollView } from 'react-native-gesture-handler';
+import TreeMap from '../components/TreeMap';
+import Notifications from '../screens/Notifications';
+import Recents from '../screens/Recents';
 
 const AlbumsRoute = () => <Albums />;
 
-const RecentsRoute = () => <Donut />;
+const RecentsRoute = () => <Recents />;
 
-const NotificationsRoute = () => <PerformanceChart />;
+const NotificationsRoute = () => <Notifications />;
 
 const BottomNavigator = () => {
   const [index, setIndex] = React.useState(0);

@@ -19,6 +19,11 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setTheme] = useState<ITheme>(light);
 
   const [themeColor, setThemeColor] = useState('b');
+  const [userData, setUserData] = useState(null);
+  const [userID, setUserID] = useState(null);
+  const [token, setToken] = useState(null);
+  const [avatar, setAvatar] = useState(null);
+  const [fullName, setFullName] = useState(null);
 
   // get isDark mode from storage
   // const getIsDark = useCallback(async () => {
@@ -125,6 +130,16 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     themeColor,
     setThemeColor,
     changeTheme,
+    userData,
+    setUserData,
+    userID,
+    setUserID,
+    token,
+    setToken,
+    avatar,
+    setAvatar,
+    fullName,
+    setFullName,
   };
 
   return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;

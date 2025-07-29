@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>FusionCharts Local</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html,
+      body,
+      #chart-container {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chart-container">Loading...</div>
+    <script>
+      window.addEventListener('message', function (e) {
+        try {
+          const data = JSON.parse(e.data);
+          new FusionCharts({
+            ...data.chartConfig,
+            renderAt: 'chart-container',
+          }).render();
+        } catch (err) {
+          document.getElementById('chart-container').innerText = 'Chart error: ' + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>

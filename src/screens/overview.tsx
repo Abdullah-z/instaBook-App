@@ -21,8 +21,14 @@ import {
 import { useData } from '../hooks';
 import { ScrollView, Switch } from 'react-native-gesture-handler';
 import React from 'react';
+import { Dropdown } from 'react-native-paper-dropdown';
 type OverviewScreenNavigationProps = StackNavigationProp<RootStackParamList, 'Overview'>;
 
+const OPTIONS = [
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' },
+  { label: 'Other', value: 'other' },
+];
 export default function Overview() {
   const navigation = useNavigation<OverviewScreenNavigationProps>();
   const { isDark, setIsDark, setThemeColor } = useData();
@@ -104,6 +110,10 @@ export default function Overview() {
             <Button>Ok</Button>
           </Card.Actions>
         </Card>
+
+        <View style={{ marginVertical: 10 }}>
+          <Dropdown label="Gender" placeholder="Select Gender" options={OPTIONS} />
+        </View>
 
         <Button
           mode="contained"

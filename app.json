@@ -29,7 +29,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.abdullah95.myexpoapp"
+      "package": "com.abdullah95.myexpoapp",
+      "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
