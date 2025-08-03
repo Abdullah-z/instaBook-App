@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import moment from 'moment';
 import { CommentType } from '../types/types';
 import InputComment from './InputComment';
+import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
+import ReplyDisplay from './ReplyDisplay';
 
 interface Props {
   comment: CommentType;
@@ -10,12 +12,12 @@ interface Props {
   onReply: (c: CommentType) => void;
   onDelete: (c: CommentType) => void;
   onEdit: (c: CommentType) => void;
-
   editingID: string | null;
   replyingID: string | null;
   commentText: string;
   setCommentText: (t: string) => void;
   onSubmit: () => void;
+  currentUserId: string;
 }
 
 const CommentDisplay: React.FC<Props> = ({
@@ -29,20 +31,56 @@ const CommentDisplay: React.FC<Props> = ({
   commentText,
   setCommentText,
   onSubmit,
+  currentUserId,
 }) => {
   const [showCount, setShowCount] = useState(1);
   const visibleReplies = replies.slice(replies.length - showCount);
+  const [mainLikes, setMainLikes] = useState(comment.likes || []);
+
+  const hasLiked = (likes: any[]) =>
+    likes.some((u) => (typeof u === 'string' ? u === currentUserId : u._id === currentUserId));
+
+  const handleMainLikeToggle = async () => {
+    const liked = hasLiked(mainLikes);
+    try {
+      if (liked) {
+        await unlikeCommentAPI(comment._id);
+        setMainLikes((prev) =>
+          prev.filter((u) =>
+            typeof u === 'string' ? u !== currentUserId : u._id !== currentUserId
+          )
+        );
+      } else {
+        await likeCommentAPI(comment._id);
+        setMainLikes((prev) => [...prev, { _id: currentUserId }]);
+      }
+    } catch (err) {
+      console.error('❌ Failed to toggle like:', err);
+    }
+  };
+
+  const renderHeader = (c: CommentType, likesArray: any[], onLikeToggle: () => void) => {
+    const liked = hasLiked(likesArray);
+    return (
+      <View style={styles.header}>
+        <Image source={{ uri: c.user.avatar }} style={styles.avatar} />
+        <View style={{ marginLeft: 8, flex: 1 }}>
+          <Text style={styles.username}>{c.user.username}</Text>
+          <Text style={styles.time}>{moment(c.createdAt).fromNow()}</Text>
+        </View>
+        <View style={styles.likeSection}>
+          <TouchableOpacity onPress={onLikeToggle}>
+            <Text style={styles.heart}>{liked ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.likeCount}>{likesArray.length}</Text>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.commentContainer}>
-      {/* Comment Card */}
-      <View style={styles.header}>
-        <Image source={{ uri: comment.user.avatar }} style={styles.avatar} />
-        <View style={{ marginLeft: 8 }}>
-          <Text style={styles.username}>{comment.user.username}</Text>
-          <Text style={styles.time}>{moment(comment.createdAt).fromNow()}</Text>
-        </View>
-      </View>
+      {renderHeader(comment, mainLikes, handleMainLikeToggle)}
 
       <Text style={styles.content}>{comment.content}</Text>
 
@@ -50,15 +88,18 @@ const CommentDisplay: React.FC<Props> = ({
         <TouchableOpacity onPress={() => onReply(comment)}>
           <Text style={styles.actionText}>Reply</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onEdit(comment)}>
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => onDelete(comment)}>
-          <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
-        </TouchableOpacity>
+        {comment.user._id === currentUserId && (
+          <>
+            <TouchableOpacity onPress={() => onEdit(comment)}>
+              <Text style={styles.actionText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onDelete(comment)}>
+              <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
-      {/* ✍️ Inline Input for Edit or Reply */}
       {(editingID === comment._id || replyingID === comment._id) && (
         <View style={{ marginTop: 8 }}>
           <InputComment
@@ -74,39 +115,19 @@ const CommentDisplay: React.FC<Props> = ({
       {visibleReplies.length > 0 && (
         <View style={styles.replies}>
           {visibleReplies.map((reply) => (
-            <View key={reply._id} style={styles.replyCard}>
-              <View style={styles.header}>
-                <Image source={{ uri: reply.user.avatar }} style={styles.avatar} />
-                <View style={{ marginLeft: 8 }}>
-                  <Text style={styles.username}>{reply.user.username}</Text>
-                  <Text style={styles.time}>{moment(reply.createdAt).fromNow()}</Text>
-                </View>
-              </View>
-              <Text style={styles.content}>{reply.content}</Text>
-              <View style={styles.actions}>
-                <TouchableOpacity onPress={() => onReply(reply)}>
-                  <Text style={styles.actionText}>Reply</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => onEdit(reply)}>
-                  <Text style={styles.actionText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => onDelete(reply)}>
-                  <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* ✍️ Inline Input for Reply/Edit on Replies */}
-              {(editingID === reply._id || replyingID === reply._id) && (
-                <View style={{ marginTop: 8 }}>
-                  <InputComment
-                    value={commentText}
-                    onChange={setCommentText}
-                    onSubmit={onSubmit}
-                    placeholder={editingID === reply._id ? 'Edit reply...' : 'Reply...'}
-                  />
-                </View>
-              )}
-            </View>
+            <ReplyDisplay
+              key={reply._id}
+              reply={reply}
+              currentUserId={currentUserId}
+              onReply={onReply}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              editingID={editingID}
+              replyingID={replyingID}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              onSubmit={onSubmit}
+            />
           ))}
 
           {replies.length - showCount > 0 ? (
@@ -125,6 +146,8 @@ const CommentDisplay: React.FC<Props> = ({
     </View>
   );
 };
+
+export default CommentDisplay;
 
 const styles = StyleSheet.create({
   commentContainer: {
@@ -174,6 +197,14 @@ const styles = StyleSheet.create({
   replyCard: {
     marginTop: 10,
   },
+  likeSection: {
+    alignItems: 'center',
+  },
+  heart: {
+    fontSize: 20,
+  },
+  likeCount: {
+    fontSize: 12,
+    color: '#888',
+  },
 });
-
-export default CommentDisplay;

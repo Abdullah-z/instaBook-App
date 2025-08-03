@@ -128,7 +128,7 @@ const PostCard = ({
               <View>
                 <Carousel
                   ref={ref}
-                  width={Dimensions.get('window').width}
+                  width={Dimensions.get('window').width - 20}
                   height={450}
                   data={post.images}
                   onProgressChange={progress}
@@ -139,7 +139,7 @@ const PostCard = ({
                       style={{
                         width: '100%',
                         height: '100%',
-                        resizeMode: 'contain',
+                        resizeMode: 'cover',
                       }}
                     />
                   )}

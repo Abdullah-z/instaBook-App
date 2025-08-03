@@ -3,6 +3,8 @@ import { View, StyleSheet, TextInput } from 'react-native';
 import { Avatar, Text, IconButton, Menu, Card, Button } from 'react-native-paper';
 import moment from 'moment';
 import { AuthContext } from '../auth/AuthContext';
+import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
+import { Ionicons } from '@expo/vector-icons';
 
 interface User {
   _id: string;
@@ -42,6 +44,8 @@ const CommentCard = ({
   const [editContent, setEditContent] = useState(comment.content);
 
   const isAuthor = comment.user._id === user._id;
+  const [liked, setLiked] = useState(comment.likes.includes(user._id));
+  const [likeCount, setLikeCount] = useState(comment.likes.length);
 
   const handleSaveEdit = () => {
     if (editContent.trim() && onEdit) {
@@ -49,11 +53,29 @@ const CommentCard = ({
       setEditing(false);
     }
   };
+  const handleLikeToggle = async () => {
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount((prev) => prev + (newLiked ? 1 : -1));
 
+    try {
+      if (newLiked) {
+        await likeCommentAPI(comment._id);
+      } else {
+        await unlikeCommentAPI(comment._id);
+      }
+    } catch (err) {
+      console.error('❌ Failed to toggle like:', err);
+      setLiked(!newLiked); // revert
+      setLikeCount((prev) => prev + (newLiked ? -1 : 1));
+    }
+  };
   return (
     <Card style={[styles.card, isReply && styles.replyCard]}>
       <View style={styles.row}>
+        {/* Avatar and main content */}
         <Avatar.Image size={36} source={{ uri: comment.user.avatar }} />
+
         <View style={styles.content}>
           <Text style={styles.username}>{comment.user.username}</Text>
 
@@ -79,16 +101,25 @@ const CommentCard = ({
           )}
 
           <View style={styles.actions}>
-            <Text variant="labelSmall" style={styles.timestamp}>
-              {moment(comment.createdAt).fromNow()}
-            </Text>
-            <Text variant="labelSmall" style={styles.reply} onPress={() => onReply?.(comment)}>
+            <Text style={styles.timestamp}>{moment(comment.createdAt).fromNow()}</Text>
+            <Text style={styles.reply} onPress={() => onReply?.(comment)}>
               Reply
             </Text>
           </View>
         </View>
 
-        {/* Show menu if you're the author */}
+        {/* Like Button on the Right */}
+        <View style={styles.likeContainer}>
+          <Ionicons
+            name={liked ? 'heart' : 'heart-outline'}
+            size={22}
+            color={liked ? 'red' : 'gray'}
+            onPress={handleLikeToggle}
+          />
+          <Text style={styles.likeCount}>{likeCount}</Text>
+        </View>
+
+        {/* Author Menu */}
         <Menu
           visible={menuVisible}
           onDismiss={() => setMenuVisible(false)}
@@ -155,5 +186,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginTop: 4,
     gap: 8,
+  },
+  likeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+
+  likeCount: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 2,
   },
 });

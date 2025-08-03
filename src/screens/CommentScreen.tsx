@@ -11,6 +11,8 @@ const CommentsScreen = ({ route }: any) => {
   const { post } = route.params;
   const { user } = useContext(AuthContext);
 
+  console.log('user:', user);
+
   const [comments, setComments] = useState<CommentType[]>([]);
   const [replyComments, setReplyComments] = useState<CommentType[]>([]);
   const [isReplying, setIsReplying] = useState(false);
@@ -37,7 +39,7 @@ const CommentsScreen = ({ route }: any) => {
       const res = await API.get(`/post/${post._id}`);
       const all = res.data.post?.comments || [];
 
-      console.log(JSON.stringify(res.data));
+      console.log('-->', JSON.stringify(res.data));
 
       setComments(all.filter((c: any) => !c.reply));
       setReplyComments(all.filter((c: any) => c.reply));
@@ -167,13 +169,10 @@ const CommentsScreen = ({ route }: any) => {
             onReply={(comment) => {
               setIsReplying(true);
               setReplyingID(comment._id);
-              setEditingID(null); // cancel editing
-              setCommentText('');
             }}
             onDelete={handleDelete}
             onEdit={(comment) => {
               setEditingID(comment._id);
-              setReplyingID(null); // cancel reply
               setCommentText(comment.content);
             }}
             editingID={editingID}
@@ -181,6 +180,7 @@ const CommentsScreen = ({ route }: any) => {
             commentText={commentText}
             setCommentText={setCommentText}
             onSubmit={handleSend}
+            currentUserId={user._id} // ✅ make sure this line is here
           />
         ))}
       </ScrollView>

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken } from '../auth/tokenManager';
 
 const API = axios.create({
-  baseURL: 'http://192.168.10.18:8080/api',
+  baseURL: 'http://192.168.5.47:8080/api',
 });
 
 API.interceptors.request.use(
