@@ -23,3 +23,8 @@ export const unsavePost = async (postId: string) => {
   const res = await API.patch(`/unSavePost/${postId}`);
   return res.data;
 };
+
+export const getSuggestionsAPI = async () => {
+  const res = await API.get(`/suggestionsUser`);
+  return res.data; // should include { users }
+};

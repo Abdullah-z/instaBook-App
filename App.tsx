@@ -16,6 +16,8 @@ import { OrangeDark } from './src/constants/themes/OrangeDark';
 import { RedDark } from './src/constants/themes/RedDark';
 import { PurpleDark } from './src/constants/themes/PurpleDark';
 import { useData } from './src/hooks';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
   return <MainApp />;
@@ -38,9 +40,13 @@ function MainApp() {
   return (
     <AuthProvider>
       <PaperProvider theme={theme}>
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <BottomSheetModalProvider>
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
+          </BottomSheetModalProvider>
+        </GestureHandlerRootView>
       </PaperProvider>
     </AuthProvider>
   );
