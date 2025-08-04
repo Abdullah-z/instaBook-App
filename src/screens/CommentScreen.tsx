@@ -1,5 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import {
+  Keyboard,
+  Platform,
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  TouchableWithoutFeedback,
+} from 'react-native';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
 import API from '../api/axios';
 import { addCommentAPI, deleteCommentAPI, updateCommentAPI } from '../api/commentAPI';
@@ -7,22 +16,30 @@ import CommentDisplay from '../components/CommentDisplay';
 import InputComment from '../components/InputComment';
 import { CommentType } from '../types/types';
 
-const CommentsScreen = ({ route }: any) => {
-  const { post } = route.params;
+const CommentsScreen = ({ post }: { post: any }) => {
   const { user } = useContext(AuthContext);
-
-  console.log('user:', user);
 
   const [comments, setComments] = useState<CommentType[]>([]);
   const [replyComments, setReplyComments] = useState<CommentType[]>([]);
-  const [isReplying, setIsReplying] = useState(false);
-  const [replyingID, setReplyingID] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
-  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyingID, setReplyingID] = useState<string | null>(null);
   const [editingID, setEditingID] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  console.log('editingID', editingID);
-  console.log('commentText', commentText);
+  const fetchComments = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get(`/post/${post._id}`);
+      const all = res.data.post?.comments || [];
+      setComments(all.filter((c: any) => !c.reply));
+      setReplyComments(all.filter((c: any) => c.reply));
+    } catch (err) {
+      console.error('❌ Failed to fetch comments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const findRootCommentID = (id: string): string => {
     let root = id;
@@ -34,79 +51,56 @@ const CommentsScreen = ({ route }: any) => {
     return root;
   };
 
-  const fetchComments = async () => {
-    try {
-      const res = await API.get(`/post/${post._id}`);
-      const all = res.data.post?.comments || [];
-
-      console.log('-->', JSON.stringify(res.data));
-
-      setComments(all.filter((c: any) => !c.reply));
-      setReplyComments(all.filter((c: any) => c.reply));
-    } catch (err) {
-      console.error('❌ Failed to fetch comments:', err);
-    }
+  const getNestedReplies = (parentId: string): CommentType[] => {
+    const buildTree = (commentId: string): CommentType[] => {
+      const children = replyComments.filter((c) => c.reply === commentId);
+      return children.map((child) => ({
+        ...child,
+        children: buildTree(child._id),
+      }));
+    };
+    return buildTree(parentId);
   };
-
-  useEffect(() => {
-    fetchComments();
-  }, []);
 
   const handleSend = async () => {
     if (!commentText.trim()) return;
 
-    // ✍️ If editing, run handleEdit logic
     if (editingID) {
       try {
         await updateCommentAPI(editingID, commentText);
-
         setComments((prev) =>
           prev.map((cm) => (cm._id === editingID ? { ...cm, content: commentText } : cm))
         );
         setReplyComments((prev) =>
           prev.map((cm) => (cm._id === editingID ? { ...cm, content: commentText } : cm))
         );
-
         setEditingID(null);
         setCommentText('');
       } catch (err) {
         console.error('❌ Failed to edit comment:', err);
       }
-
       return;
     }
 
-    // 🆕 New comment or reply
     try {
       const replyId = replyingID ? findRootCommentID(replyingID) : undefined;
       const res = await addCommentAPI(post._id, commentText, replyId);
-      const newCommentData = res?.data?.newComment;
-
-      if (!newCommentData || !newCommentData._id) {
-        console.error('❌ Invalid comment response:', res);
-        return;
-      }
-
-      const newCm = {
-        ...newCommentData,
-        user,
-      };
+      const newComment = { ...res.data.newComment, user };
 
       if (replyId) {
-        setReplyComments((prev) => [...prev, newCm]);
+        setReplyComments((prev) => [...prev, newComment]);
       } else {
-        setComments((prev) => [...prev, newCm]);
+        setComments((prev) => [...prev, newComment]);
       }
 
       setCommentText('');
       setReplyingID(null);
-      setIsReplying(false);
     } catch (err) {
-      console.error('❌ Failed to comment:', err);
+      console.error('❌ Failed to send comment:', err);
     }
   };
 
-  const handleDelete = async (comment: CommentType) => {
+  const handleDelete = (comment: CommentType) => {
     Alert.alert('Delete Comment', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -125,79 +119,95 @@ const CommentsScreen = ({ route }: any) => {
     ]);
   };
 
-  const handleEdit = async () => {
-    if (!commentText.trim() || !editingID) return;
+  useEffect(() => {
+    if (post && post._id) fetchComments();
+  }, [post]);
 
-    try {
-      await updateCommentAPI(editingID, commentText);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
 
-      setComments((prev) =>
-        prev.map((cm) => (cm._id === editingID ? { ...cm, content: commentText } : cm))
-      );
-      setReplyComments((prev) =>
-        prev.map((cm) => (cm._id === editingID ? { ...cm, content: commentText } : cm))
-      );
-
-      setEditingID(null);
-      setCommentText('');
-    } catch (err) {
-      console.error('❌ Failed to edit comment:', err);
-    }
-  };
-
-  // ✅ Get all nested replies under a top-level comment
-  const getNestedReplies = (parentId: string): CommentType[] => {
-    const buildTree = (commentId: string): CommentType[] => {
-      const children = replyComments.filter((c) => c.reply === commentId);
-      return children.map((child) => ({
-        ...child,
-        children: buildTree(child._id), // 👈 recursion
-      }));
+    return () => {
+      show.remove();
+      hide.remove();
     };
-
-    return buildTree(parentId);
-  };
+  }, []);
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView style={{ padding: 12 }}>
-        {comments.map((c) => (
-          <CommentDisplay
-            key={c._id}
-            comment={c}
-            replies={getNestedReplies(c._id)}
-            onReply={(comment) => {
-              setIsReplying(true);
-              setReplyingID(comment._id);
-            }}
-            onDelete={handleDelete}
-            onEdit={(comment) => {
-              setEditingID(comment._id);
-              setCommentText(comment.content);
-            }}
-            editingID={editingID}
-            replyingID={replyingID}
-            commentText={commentText}
-            setCommentText={setCommentText}
-            onSubmit={handleSend}
-            currentUserId={user._id} // ✅ make sure this line is here
-          />
-        ))}
-      </ScrollView>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#888" />
+            <Text style={{ marginTop: 10 }}>Loading comments...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Scrollable Comment List */}
+            <BottomSheetScrollView
+              contentContainerStyle={{
+                padding: 12,
+                // enough room for input
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              <InputComment
+                value={commentText}
+                onChange={setCommentText}
+                onSubmit={handleSend}
+                placeholder="Write a comment..."
+                replyTo={replyingID}
+                onCancelReply={() => setReplyingID(null)}
+              />
+              {comments.map((c) => (
+                <CommentDisplay
+                  key={c._id}
+                  comment={c}
+                  replies={getNestedReplies(c._id)}
+                  onReply={(comment) => setReplyingID(comment._id)}
+                  onDelete={handleDelete}
+                  onEdit={(comment) => {
+                    setEditingID(comment._id);
+                    setCommentText(comment.content);
+                  }}
+                  editingID={editingID}
+                  replyingID={replyingID}
+                  commentText={commentText}
+                  setCommentText={setCommentText}
+                  onSubmit={handleSend}
+                  currentUserId={user._id}
+                />
+              ))}
+            </BottomSheetScrollView>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}>
-        <InputComment
-          value={commentText}
-          onChange={setCommentText}
-          onSubmit={handleSend}
-          placeholder="Write a comment..."
-          replyTo={replyTo}
-          onCancelReply={() => setReplyTo(null)}
-        />
-      </KeyboardAvoidingView>
-    </View>
+            {/* Fixed Input Bar */}
+            {/* <View
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                borderTopWidth: 1,
+                borderColor: '#ddd',
+                paddingHorizontal: 10,
+                paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+                backgroundColor: '#fff',
+              }}>
+              <InputComment
+                value={commentText}
+                onChange={setCommentText}
+                onSubmit={handleSend}
+                placeholder="Write a comment..."
+                replyTo={replyingID}
+                onCancelReply={() => setReplyingID(null)}
+              />
+            </View> */}
+          </>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

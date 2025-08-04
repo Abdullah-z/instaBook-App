@@ -28,3 +28,8 @@ export const getSuggestionsAPI = async () => {
   const res = await API.get(`/suggestionsUser`);
   return res.data; // should include { users }
 };
+
+export const createPostAPI = async (post: { content: string; images: any[] }) => {
+  const res = await API.post('/posts', post); // endpoint must be `/posts`
+  return res.data;
+};
