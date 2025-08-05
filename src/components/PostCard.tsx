@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions } from 'rea
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
-import { Avatar } from 'react-native-paper';
+import { Avatar, Menu, IconButton } from 'react-native-paper';
 import moment from 'moment';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { useSharedValue } from 'react-native-reanimated';
@@ -15,13 +15,17 @@ const PostCard = ({
   post,
   onPostUpdate,
   onOpenComments,
+  onDelete,
 }: {
   post: any;
   onPostUpdate: (updatedPost: any) => void;
   onOpenComments: (post: any) => void;
+  onDelete: (postId: string) => void;
 }) => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+
+  console.log(post?.user);
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(post.likes.length);
   const [isSaved, setIsSaved] = useState(user.saved?.includes(post._id));
@@ -30,6 +34,10 @@ const PostCard = ({
   const images = Array.isArray(post.images) ? post.images : [];
   const progress = useSharedValue(0);
   const ref = useRef<ICarouselInstance>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
 
   const handleLike = async () => {
     const newPost = {
@@ -90,14 +98,40 @@ const PostCard = ({
   return (
     <View style={styles.card}>
       {/* ✅ Avatar + Username */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: post.user._id })}>
-          <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
-        </TouchableOpacity>
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{post.user.username}</Text>
-          <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: post.user._id })}>
+            <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
+          </TouchableOpacity>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{post.user.username}</Text>
+            <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+          </View>
         </View>
+
+        {post?.user?._id === user?._id && (
+          <Menu
+            visible={menuVisible}
+            onDismiss={closeMenu}
+            anchor={<IconButton icon="dots-vertical" onPress={openMenu} />}>
+            <Menu.Item
+              onPress={() => {
+                closeMenu();
+                onDelete(post._id);
+              }}
+              title="Delete"
+              leadingIcon="delete-outline"
+            />
+            <Menu.Item
+              onPress={() => {
+                closeMenu();
+                // implement navigation to Edit screen later
+              }}
+              title="Edit"
+              leadingIcon="pencil-outline"
+            />
+          </Menu>
+        )}
       </View>
 
       {/* ✅ Post content */}
@@ -219,8 +253,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between', // ensure spacing
     marginBottom: 6,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   userInfo: {
     marginLeft: 10,
     justifyContent: 'center',

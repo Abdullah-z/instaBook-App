@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
-import { getPostsAPI, getSuggestionsAPI } from '../api/postAPI';
+import { deletePostAPI, getPostsAPI, getSuggestionsAPI } from '../api/postAPI';
 import PostCard from '../components/PostCard';
 import StatusBox from '../components/StatusBox';
 import BottomSheet, { BottomSheetScrollView, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -40,6 +40,15 @@ const HomeScreen = () => {
     requestAnimationFrame(() => {
       bottomSheetRef.current?.snapToIndex(0);
     });
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deletePostAPI(postId);
+      setVisiblePosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch (err) {
+      console.error('❌ Failed to delete post:', err);
+    }
   };
 
   const loadInitialPosts = async () => {
@@ -112,7 +121,14 @@ const HomeScreen = () => {
       );
     }
 
-    return <PostCard post={item} onPostUpdate={handlePostUpdate} onOpenComments={openComments} />;
+    return (
+      <PostCard
+        post={item}
+        onPostUpdate={handlePostUpdate}
+        onOpenComments={openComments}
+        onDelete={handleDeletePost}
+      />
+    );
   };
 
   return (

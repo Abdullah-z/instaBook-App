@@ -9,6 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Text,
+  ActivityIndicator,
 } from 'react-native';
 import { createPostAPI } from '../api/postAPI';
 import { imageUpload } from './ImageUpload';
@@ -236,11 +237,16 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
           />
         </TouchableOpacity>
 
-        {shouldShowPost && (
-          <TouchableOpacity onPress={handlePost} disabled={loading} style={styles.postIcon}>
-            <MaterialIcons name="send" size={24} color="#007AFF" />
-          </TouchableOpacity>
-        )}
+        {shouldShowPost &&
+          (loading ? (
+            <View style={styles.loadingIndicator}>
+              <ActivityIndicator size="small" color="#007AFF" />
+            </View>
+          ) : (
+            <TouchableOpacity onPress={handlePost} style={styles.postIcon}>
+              <MaterialIcons name="send" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          ))}
       </View>
 
       <View style={styles.imageGrid}>
@@ -313,5 +319,10 @@ const styles = StyleSheet.create({
   removeText: {
     color: '#fff',
     fontSize: 12,
+  },
+  loadingIndicator: {
+    paddingLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
