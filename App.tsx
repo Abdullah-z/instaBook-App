@@ -1,5 +1,6 @@
 import React from 'react';
 import { AuthProvider } from './src/auth/AuthContext';
+import { SocketProvider } from './src/auth/SocketContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
@@ -16,7 +17,7 @@ import { OrangeDark } from './src/constants/themes/OrangeDark';
 import { RedDark } from './src/constants/themes/RedDark';
 import { PurpleDark } from './src/constants/themes/PurpleDark';
 import { useData } from './src/hooks';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'; // ✅ CORRECT
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
@@ -39,15 +40,17 @@ function MainApp() {
 
   return (
     <AuthProvider>
-      <PaperProvider theme={theme}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheetModalProvider>
-            <NavigationContainer>
-              <AppNavigator />
-            </NavigationContainer>
-          </BottomSheetModalProvider>
-        </GestureHandlerRootView>
-      </PaperProvider>
+      <SocketProvider>
+        <PaperProvider theme={theme}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <BottomSheetModalProvider>
+              <NavigationContainer>
+                <AppNavigator />
+              </NavigationContainer>
+            </BottomSheetModalProvider>
+          </GestureHandlerRootView>
+        </PaperProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }

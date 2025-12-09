@@ -4,10 +4,11 @@ import {
   View,
   FlatList,
   ActivityIndicator,
-  StyleSheet,
   Image,
   TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Text } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { deletePostAPI, getPostsAPI, getSuggestionsAPI } from '../api/postAPI';
@@ -29,13 +30,13 @@ const HomeScreen = () => {
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'Home' | 'For You'>('Home');
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['80%'], []);
   const navigation = useNavigation();
 
   const openComments = (post: any) => {
-    console.log('📣 openComments called for:', post._id);
     setSelectedPost(post);
     requestAnimationFrame(() => {
       bottomSheetRef.current?.snapToIndex(0);
@@ -56,11 +57,8 @@ const HomeScreen = () => {
       if (!token) return;
       const res = await getPostsAPI(1, LIMIT);
       const posts = res.posts;
-      const merged =
-        posts.length >= 4
-          ? [...posts.slice(0, 4), { _id: 'suggestions_block' }, ...posts.slice(4)]
-          : [...posts];
-      setVisiblePosts(merged);
+      // We don't need to inject suggestions block manually if we have a separate stories/suggestions UI
+      setVisiblePosts(posts);
       setPage(1);
 
       const suggestRes = await getSuggestionsAPI();
@@ -95,32 +93,56 @@ const HomeScreen = () => {
     loadInitialPosts();
   }, [token]);
 
-  const renderItem = ({ item }: { item: any }) => {
-    if (item._id === 'suggestions_block') {
-      return (
-        <View style={styles.suggestionContainer}>
-          <Text style={styles.suggestionTitle}>Suggested Users</Text>
-          <FlatList
-            data={suggestedUsers}
-            horizontal
-            keyExtractor={(item) => item._id}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: item._id })}>
-                <View style={styles.suggestionCard}>
-                  <Image source={{ uri: item.avatar }} style={styles.avatar} />
-                  <Text style={styles.username}>{item.username}</Text>
-                  <TouchableOpacity style={styles.followBtn} onPress={() => handleFollow(item._id)}>
-                    <Text style={styles.followText}>Follow</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      );
-    }
+  const renderHeader = () => (
+    <View>
+      {/* Stories Bar */}
+      {/* <View style={styles.storiesContainer}>
+        <FlatList
+          data={[
+            { _id: 'me', username: 'Your story', avatar: 'https://i.pravatar.cc/150?u=me' },
+            ...suggestedUsers,
+          ]}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          renderItem={({ item }) => (
+            <View style={styles.storyItem}>
+              <View style={[styles.storyRing, item._id === 'me' && { borderColor: '#ccc' }]}>
+                <Image source={{ uri: item.avatar }} style={styles.storyAvatar} />
+                {item._id === 'me' && (
+                  <View style={styles.addStoryBadge}>
+                    <Text style={{ color: '#fff', fontSize: 10 }}>+</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.storyUsername} numberOfLines={1}>
+                {item.username}
+              </Text>
+            </View>
+          )}
+        />
+      </View> */}
 
+      {/* Tabs */}
+      {/* <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          onPress={() => setActiveTab('Home')}
+          style={[styles.tab, activeTab === 'Home' && styles.activeTab]}>
+          <Text style={[styles.tabText, activeTab === 'Home' && styles.activeTabText]}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('For You')}
+          style={[styles.tab, activeTab === 'For You' && styles.activeTab]}>
+          <Text style={[styles.tabText, activeTab === 'For You' && styles.activeTabText]}>
+            For you
+          </Text>
+        </TouchableOpacity>
+      </View> */}
+    </View>
+  );
+
+  const renderItem = ({ item }: { item: any }) => {
     return (
       <PostCard
         post={item}
@@ -132,17 +154,38 @@ const HomeScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          {/* <View style={styles.logoBox}>
+            <Text style={styles.logoP}>P.</Text>
+          </View>
+          <Text style={styles.logoText}>Pipel</Text> */}
+        </View>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Search' as never)}>
+            <Ionicons name="search" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Notifications' as never)}>
+            <Ionicons name="notifications" size={24} color="#000" />
+          </TouchableOpacity>
+          {/* <TouchableOpacity style={styles.iconBtn}>
+            <Text>💬</Text>
+          </TouchableOpacity> */}
+        </View>
+      </View>
+
       <FlatList
         data={visiblePosts}
-        ListHeaderComponent={
-          <CreatePostBox
-            onPostCreated={(newPost) => setVisiblePosts((prev) => [newPost, ...prev])}
-          />
-        }
+        ListHeaderComponent={renderHeader}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.listContent}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         refreshing={refreshing}
@@ -180,53 +223,100 @@ export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 10,
+    padding: 0,
   },
-  centered: {
-    flex: 1,
+  listContent: {
+    paddingBottom: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  logoContainer: { flexDirection: 'row', alignItems: 'center' },
+  logoBox: {
+    backgroundColor: '#D4F637',
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 6,
   },
-  loadingMore: {
-    marginVertical: 16,
-  },
+  logoP: { fontWeight: 'bold', fontSize: 14 },
+  logoText: { fontWeight: 'bold', fontSize: 18 },
+  headerIcons: { flexDirection: 'row', gap: 16 },
+  iconBtn: { padding: 4 },
 
-  suggestionContainer: {
-    paddingVertical: 10,
+  storiesContainer: {
+    paddingVertical: 16,
   },
-  suggestionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  suggestionCard: {
-    backgroundColor: '#eee',
-    padding: 10,
-    borderRadius: 8,
-    marginRight: 10,
-    minWidth: 120,
+  storyItem: {
     alignItems: 'center',
+    marginRight: 16,
+    width: 60,
   },
-  avatar: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    marginBottom: 6,
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: '500',
+  storyRing: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#D4F637',
+    padding: 2,
     marginBottom: 4,
   },
-  followBtn: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+  storyAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
   },
-  followText: {
-    color: '#fff',
-    fontSize: 13,
+  addStoryBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#000',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  storyUsername: {
+    fontSize: 11,
+    color: '#333',
+  },
+
+  tabsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 10,
+  },
+  tab: {
+    paddingVertical: 10,
+    flex: 1,
+    alignItems: 'center',
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#000',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#888',
     fontWeight: '600',
+  },
+  activeTabText: {
+    color: '#000',
+  },
+
+  loadingMore: {
+    marginVertical: 16,
   },
 });

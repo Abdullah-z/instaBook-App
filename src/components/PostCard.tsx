@@ -1,5 +1,13 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Dimensions,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
@@ -16,11 +24,13 @@ const PostCard = ({
   onPostUpdate,
   onOpenComments,
   onDelete,
+  disableNavigation,
 }: {
   post: any;
   onPostUpdate: (updatedPost: any) => void;
   onOpenComments: (post: any) => void;
   onDelete: (postId: string) => void;
+  disableNavigation?: boolean;
 }) => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
@@ -105,6 +115,7 @@ const PostCard = ({
           </TouchableOpacity>
           <View style={styles.userInfo}>
             <Text style={styles.username}>{post.user.username}</Text>
+
             <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
           </View>
         </View>
@@ -125,7 +136,12 @@ const PostCard = ({
             <Menu.Item
               onPress={() => {
                 closeMenu();
-                // implement navigation to Edit screen later
+                navigation.navigate('EditPost', {
+                  post,
+                  onPostUpdate: (updatedPost: any) => {
+                    onPostUpdate(updatedPost);
+                  },
+                });
               }}
               title="Edit"
               leadingIcon="pencil-outline"
@@ -135,49 +151,59 @@ const PostCard = ({
       </View>
 
       {/* ✅ Post content */}
-      <Text style={styles.content}>{post.content}</Text>
+      {disableNavigation ? (
+        <Text style={styles.content}>{post.content}</Text>
+      ) : (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}>
+          <Text style={styles.content}>{post.content}</Text>
+        </TouchableOpacity>
+      )}
 
       {images.length > 0 && (
-        <View style={{ alignItems: 'center' }}>
-          <Carousel
-            ref={ref}
-            width={screenWidth - 20}
-            height={450}
-            data={images}
-            onProgressChange={progress}
-            scrollAnimationDuration={500}
-            renderItem={({ item }) => (
-              <Image
-                source={{ uri: item.url }}
-                style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+        <TouchableWithoutFeedback
+          onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}>
+          <View style={{ alignItems: 'center' }}>
+            <Carousel
+              ref={ref}
+              width={screenWidth - 20}
+              height={450}
+              data={images}
+              onProgressChange={progress}
+              scrollAnimationDuration={500}
+              renderItem={({ item }) => (
+                <Image
+                  source={{ uri: item.url }}
+                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                />
+              )}
+              mode="parallax"
+              modeConfig={{
+                parallaxScrollingScale: 1,
+                parallaxScrollingOffset: 0,
+                parallaxAdjacentItemScale: 1,
+              }}
+              loop={false}
+            />
+            {images.length > 1 && (
+              <Pagination.Basic
+                progress={progress}
+                data={images}
+                containerStyle={{ gap: 6, marginTop: 10 }}
+                dotStyle={{ backgroundColor: '#ccc', width: 8, height: 8, borderRadius: 4 }}
+                dotActiveStyle={{
+                  backgroundColor: 'black',
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                }}
+                onPress={(index) => {
+                  ref.current?.scrollTo({ count: index - progress.value, animated: true });
+                }}
               />
             )}
-            mode="parallax"
-            modeConfig={{
-              parallaxScrollingScale: 1,
-              parallaxScrollingOffset: 0,
-              parallaxAdjacentItemScale: 1,
-            }}
-            loop={false}
-          />
-          {images.length > 1 && (
-            <Pagination.Basic
-              progress={progress}
-              data={images}
-              containerStyle={{ gap: 6, marginTop: 10 }}
-              dotStyle={{ backgroundColor: '#ccc', width: 8, height: 8, borderRadius: 4 }}
-              dotActiveStyle={{
-                backgroundColor: 'black',
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-              }}
-              onPress={(index) => {
-                ref.current?.scrollTo({ count: index - progress.value, animated: true });
-              }}
-            />
-          )}
-        </View>
+          </View>
+        </TouchableWithoutFeedback>
       )}
 
       {/* ✅ Like / Comment / Save */}

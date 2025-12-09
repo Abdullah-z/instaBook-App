@@ -6,7 +6,13 @@ interface UserType {
   _id: string;
   username: string;
   avatar: string;
-  // ... add other fields
+  cover?: string;
+  fullname?: string;
+  mobile?: string;
+  address?: string;
+  website?: string;
+  story?: string;
+  gender?: string;
 }
 
 interface AuthContextType {
@@ -14,8 +20,10 @@ interface AuthContextType {
   user: UserType | null;
   userType: 'user' | 'admin' | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: any) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  setUser: (user: UserType | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -23,8 +31,10 @@ export const AuthContext = createContext<AuthContextType>({
   user: null,
   userType: null,
   login: async () => {},
+  register: async () => {},
   logout: () => {},
   loading: true,
+  setUser: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -68,6 +78,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(res.data.user);
     setUserType(res.data.userType);
   };
+
+  const register = async (data: any) => {
+    const res = await API.post('/register', data);
+    setToken(res.data.access_token);
+    setGlobalToken(res.data.access_token);
+    setUser(res.data.user);
+    setUserType('user'); // Default to user
+  };
   const logout = async () => {
     try {
       await API.post('/logout');
@@ -82,7 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, userType, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{ token, user, userType, login, register, logout, loading, setUser }}>
       {children}
     </AuthContext.Provider>
   );
