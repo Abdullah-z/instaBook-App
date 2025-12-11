@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';
@@ -24,6 +25,26 @@ const EditPostScreen = () => {
   const [content, setContent] = useState(post.content);
   const [images, setImages] = useState<any[]>(post.images || []);
   const [loading, setLoading] = useState(false);
+
+  // YouTube Input State
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+  const [youtubeLink, setYoutubeLink] = useState('');
+
+  const handleAddYoutubeLink = () => {
+    if (!youtubeLink.trim()) {
+      setShowYoutubeInput(false);
+      return;
+    }
+    if (!youtubeLink.includes('youtube.com') && !youtubeLink.includes('youtu.be')) {
+      Alert.alert('Invalid Link', 'Please enter a valid YouTube URL.');
+      return;
+    }
+
+    const newContent = content ? `${content}\n\n${youtubeLink}` : youtubeLink;
+    setContent(newContent);
+    setYoutubeLink('');
+    setShowYoutubeInput(false);
+  };
 
   // Separate new images (local URIs) from old images (server URLs)
   // Actually, for simplicity in UI, we treat them all as images to display.
@@ -151,6 +172,11 @@ const EditPostScreen = () => {
           <Ionicons name="camera-outline" size={24} color="#FF9800" />
           <Text style={styles.iconText}>Camera</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconButton}>
+          <Ionicons name="logo-youtube" size={24} color="#F44336" />
+          <Text style={styles.iconText}>YouTube</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.imageGrid}>
@@ -177,6 +203,35 @@ const EditPostScreen = () => {
           <Text style={styles.updateButtonText}>Update Post</Text>
         )}
       </TouchableOpacity>
+
+      <Modal
+        visible={showYoutubeInput}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYoutubeInput(false)}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Add YouTube Link</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Paste YouTube URL here..."
+              value={youtubeLink}
+              onChangeText={setYoutubeLink}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setShowYoutubeInput(false)}
+                style={styles.modalBtnCancel}>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAddYoutubeLink} style={styles.modalBtnAdd}>
+                <Text style={styles.modalBtnTextAdd}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -258,6 +313,56 @@ const styles = StyleSheet.create({
   updateButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalBtnCancel: {
+    marginRight: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalBtnTextCancel: {
+    color: '#555',
+    fontWeight: '600',
+  },
+  modalBtnAdd: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  modalBtnTextAdd: {
+    color: '#fff',
     fontWeight: 'bold',
   },
 });

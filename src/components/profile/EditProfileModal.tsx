@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from '../../auth/AuthContext';
 import { updateUserProfile } from '../../api/userAPI';
+import { imageUpload } from '../../utils/imageUpload';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -87,10 +88,38 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
 
     setLoading(true);
     try {
+      let newAvatarUri = avatarUri;
+      let newCoverUri = coverUri;
+      const mediaToUpload = [];
+
+      // Check if avatar is a local file (needs upload)
+      if (avatarUri && !avatarUri.startsWith('http')) {
+        mediaToUpload.push({ uri: avatarUri });
+      }
+
+      // Check if cover is a local file (needs upload)
+      if (coverUri && !coverUri.startsWith('http')) {
+        mediaToUpload.push({ uri: coverUri });
+      }
+
+      if (mediaToUpload.length > 0) {
+        const uploadResult = await imageUpload(mediaToUpload);
+
+        // Map uploaded URLs back to correct fields
+        let uploadIndex = 0;
+        if (avatarUri && !avatarUri.startsWith('http')) {
+          newAvatarUri = uploadResult[uploadIndex].url;
+          uploadIndex++;
+        }
+        if (coverUri && !coverUri.startsWith('http')) {
+          newCoverUri = uploadResult[uploadIndex].url;
+        }
+      }
+
       await updateUserProfile({
         ...formData,
-        avatar: avatarUri,
-        cover: coverUri,
+        avatar: newAvatarUri,
+        cover: newCoverUri,
       });
 
       // Update local user context
@@ -99,8 +128,8 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
           _id: user._id,
           username: user.username,
           ...formData,
-          avatar: avatarUri,
-          cover: coverUri,
+          avatar: newAvatarUri,
+          cover: newCoverUri,
         });
       }
 

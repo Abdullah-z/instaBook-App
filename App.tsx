@@ -4,6 +4,8 @@ import { SocketProvider } from './src/auth/SocketContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/RootNavigation';
+import Toast from 'react-native-toast-message';
 import { BlueDark } from './src/constants/themes/BlueDark';
 import { BlueLight } from './src/constants/themes/BlueLight';
 import { GreenDark } from './src/constants/themes/GreenDark';
@@ -44,9 +46,12 @@ function MainApp() {
         <PaperProvider theme={theme}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <BottomSheetModalProvider>
-              <NavigationContainer>
-                <AppNavigator />
-              </NavigationContainer>
+              <BottomSheetModalProvider>
+                <NavigationContainer ref={navigationRef}>
+                  <AppNavigator />
+                </NavigationContainer>
+                <Toast />
+              </BottomSheetModalProvider>
             </BottomSheetModalProvider>
           </GestureHandlerRootView>
         </PaperProvider>

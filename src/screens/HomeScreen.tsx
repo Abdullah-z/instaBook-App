@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
+import { SocketContext } from '../auth/SocketContext';
 import { deletePostAPI, getPostsAPI, getSuggestionsAPI } from '../api/postAPI';
 import PostCard from '../components/PostCard';
 import StatusBox from '../components/StatusBox';
@@ -18,11 +19,13 @@ import BottomSheet, { BottomSheetScrollView, BottomSheetView } from '@gorhom/bot
 import CommentsScreen from './CommentScreen';
 import { useNavigation } from '@react-navigation/native';
 import CreatePostBox from '../components/CreatePostBox';
+import SuggestedUsers from '../components/SuggestedUsers';
 
 const LIMIT = 4;
 
 const HomeScreen = () => {
   const { token } = useContext(AuthContext);
+  const { unreadCount } = useContext(SocketContext);
   const [visiblePosts, setVisiblePosts] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
@@ -142,14 +145,17 @@ const HomeScreen = () => {
     </View>
   );
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
     return (
-      <PostCard
-        post={item}
-        onPostUpdate={handlePostUpdate}
-        onOpenComments={openComments}
-        onDelete={handleDeletePost}
-      />
+      <View>
+        <PostCard
+          post={item}
+          onPostUpdate={handlePostUpdate}
+          onOpenComments={openComments}
+          onDelete={handleDeletePost}
+        />
+        {index === 4 && <SuggestedUsers users={suggestedUsers} />}
+      </View>
     );
   };
 
@@ -172,7 +178,14 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications' as never)}>
-            <Ionicons name="notifications" size={24} color="#000" />
+            <View>
+              <Ionicons name="notifications" size={24} color="#000" />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           {/* <TouchableOpacity style={styles.iconBtn}>
             <Text>💬</Text>
@@ -318,5 +331,23 @@ const styles = StyleSheet.create({
 
   loadingMore: {
     marginVertical: 16,
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -2,
+    backgroundColor: 'red',
+    borderRadius: 10,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
 });

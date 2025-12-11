@@ -1,28 +1,55 @@
 import React, { createContext, useEffect, useState, useContext } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
+import { getNotifications } from '../api/notificationAPI';
+import Toast from 'react-native-toast-message';
+import * as RootNavigation from '../navigation/RootNavigation';
 
 interface SocketContextType {
   socket: Socket | null;
-  notification: any;
+  notifications: any[];
+  unreadCount: number;
+  setNotifications: (notif: any[]) => void;
   showNotification: boolean;
   setNotification: (notif: any) => void;
   setShowNotification: (show: boolean) => void;
+  refreshNotifications: () => void;
 }
 
 export const SocketContext = createContext<SocketContextType>({
   socket: null,
-  notification: null,
+  notifications: [],
+  unreadCount: 0,
+  setNotifications: () => {},
   showNotification: false,
   setNotification: () => {},
   setShowNotification: () => {},
+  refreshNotifications: () => {},
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, token } = useContext(AuthContext);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [notification, setNotification] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notification, setNotification] = useState<any>(null); // For popup
   const [showNotification, setShowNotification] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const refreshNotifications = async () => {
+    if (token) {
+      try {
+        const res = await getNotifications();
+        setNotifications(res.notifies);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [token]);
 
   useEffect(() => {
     if (token && user) {
@@ -54,10 +81,31 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.on('addMessageToClient', (msg: any) => {
         console.log('📨 Received message via socket:', msg);
+
+        // Show Toast notification if message is from someone else
+        if (msg.recipient === user._id) {
+          Toast.show({
+            type: 'success',
+            text1: `New message from ${msg.sender.username}`,
+            text2:
+              msg.text || (msg.media && msg.media.length > 0 ? 'Sent an image' : 'Sent a message'),
+            onPress: () => {
+              RootNavigation.navigate(
+                'Chat' as never,
+                {
+                  userId: msg.sender._id,
+                  username: msg.sender.username,
+                } as never
+              );
+              Toast.hide();
+            },
+          });
+        }
       });
 
       newSocket.on('createNotifyToClient', (msg: any) => {
         console.log('🔔 Received notification:', msg);
+        setNotifications((prev) => [msg, ...prev]);
         setNotification(msg);
         setShowNotification(true);
         // Play sound here if needed
@@ -65,6 +113,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       newSocket.on('removeNotifyToClient', (msg: any) => {
         console.log('🔕 Removed notification:', msg);
+        setNotifications((prev) => prev.filter((n) => n.id !== msg.id || n.url !== msg.url));
       });
 
       setSocket(newSocket);
@@ -85,10 +134,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     <SocketContext.Provider
       value={{
         socket,
+        notifications,
+        unreadCount,
+        setNotifications,
         notification,
         showNotification,
         setNotification,
         setShowNotification,
+        refreshNotifications,
       }}>
       {children}
     </SocketContext.Provider>

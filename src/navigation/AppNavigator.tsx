@@ -24,6 +24,7 @@ import PostScreen from '../screens/PostScreen';
 import NotificationToast from '../components/NotificationToast';
 import { SocketContext } from '../auth/SocketContext';
 import HeaderLogo from '../components/HeaderLogo';
+import ProfileHeaderIcon from '../components/ProfileHeaderIcon';
 
 const Stack = createNativeStackNavigator();
 
@@ -52,6 +53,7 @@ const AppNavigator = () => {
 
                 headerShown: true,
                 headerLeft: () => <HeaderLogo />,
+                headerRight: () => <ProfileHeaderIcon />,
                 headerLeftContainerStyle: {
                   paddingLeft: 0,
                 },
@@ -75,7 +77,7 @@ const AppNavigator = () => {
             <Stack.Screen
               name="PostDetail"
               component={PostScreen}
-              options={{ headerShown: false }}
+              options={{ headerShown: true, headerTitle: '' }}
             />
           </>
         ) : (

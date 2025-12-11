@@ -21,6 +21,8 @@ const NotificationsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  console.log(notifications);
+
   const loadNotifications = async () => {
     try {
       const res = await getNotifications();
@@ -56,7 +58,10 @@ const NotificationsScreen = () => {
           navigation.navigate('Profile', { id: userId });
         } else if (notification.url.includes('/post/')) {
           // Navigate to post detail if you have that screen
-          console.log('Navigate to post:', notification.url);
+          console.log('Navigate to post:', notification.url.split('/post/')[1]);
+          navigation.navigate('PostDetail', {
+            postId: notification.url.split('/post/')[1],
+          });
         }
       }
     } catch (err) {
@@ -203,7 +208,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    paddingTop: 50,
+    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 24,

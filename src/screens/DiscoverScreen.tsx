@@ -66,7 +66,7 @@ const DiscoverScreen = () => {
         onPress={() => {
           // Navigate to post detail if available, or just log for now
           console.log('Pressed post:', item._id);
-          navigation.navigate('PostDetail', { post: item });
+          navigation.navigate('PostDetail', { post: item._id, postId: item._id });
         }}>
         <Image
           source={{

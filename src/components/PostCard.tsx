@@ -11,13 +11,22 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
+import { createNotification, removeNotification } from '../api/notificationAPI';
+import { SocketContext } from '../auth/SocketContext';
 import { Avatar, Menu, IconButton } from 'react-native-paper';
 import moment from 'moment';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 const screenWidth = Dimensions.get('window').width;
+
+const getYoutubeId = (url: string) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
 
 const PostCard = ({
   post,
@@ -34,8 +43,8 @@ const PostCard = ({
 }) => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+  const { socket } = useContext(SocketContext);
 
-  console.log(post?.user);
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(post.likes.length);
   const [isSaved, setIsSaved] = useState(user.saved?.includes(post._id));
@@ -45,6 +54,10 @@ const PostCard = ({
   const progress = useSharedValue(0);
   const ref = useRef<ICarouselInstance>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [playVideo, setPlayVideo] = useState(false);
+
+  // Extract YouTube ID from content
+  const youtubeId = post.content ? getYoutubeId(post.content) : null;
 
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
@@ -60,6 +73,19 @@ const PostCard = ({
 
     try {
       await likePostAPI(post._id);
+
+      // Notify
+      const msg = {
+        id: user._id,
+        text: 'liked your post.',
+        recipients: [post.user._id],
+        url: `/post/${post._id}`, // Mobile might handle URLs differently or rely on screen logic
+        content: post.content,
+        image: post.images && post.images.length > 0 ? post.images[0].url : '',
+      };
+
+      await createNotification(msg);
+      socket?.emit('createNotify', msg);
     } catch (err) {
       console.error('Like failed', err);
       setIsLiked(false);
@@ -78,6 +104,17 @@ const PostCard = ({
 
     try {
       await unlikePostAPI(post._id);
+
+      // Remove Notify
+      const msg = {
+        id: user._id,
+        text: 'liked your post.',
+        recipients: [post.user._id],
+        url: `/post/${post._id}`,
+      };
+
+      await removeNotification(msg.id, msg.url);
+      socket?.emit('removeNotify', msg);
     } catch (err) {
       console.error('Unlike failed', err);
       setIsLiked(true);
@@ -160,7 +197,8 @@ const PostCard = ({
         </TouchableOpacity>
       )}
 
-      {images.length > 0 && (
+      {/* Media Section: Images OR YouTube Video */}
+      {images.length > 0 ? (
         <TouchableWithoutFeedback
           onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}>
           <View style={{ alignItems: 'center' }}>
@@ -204,7 +242,46 @@ const PostCard = ({
             )}
           </View>
         </TouchableWithoutFeedback>
-      )}
+      ) : youtubeId ? (
+        <View
+          style={{
+            marginTop: 10,
+            borderRadius: 10,
+            overflow: 'hidden',
+            height: 240,
+            backgroundColor: '#000',
+          }}>
+          {playVideo ? (
+            <YoutubePlayer
+              height={240}
+              play={true}
+              videoId={youtubeId}
+              onChangeState={(state) => {
+                if (state === 'ended') {
+                  setPlayVideo(false);
+                }
+              }}
+            />
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setPlayVideo(true)}
+              style={{
+                width: '100%',
+                height: '100%',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+              <Image
+                source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
+                style={{ width: '100%', height: '100%', position: 'absolute', opacity: 0.8 }}
+                resizeMode="cover"
+              />
+              <Ionicons name="play-circle" size={60} color="#fff" style={{ opacity: 0.9 }} />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null}
 
       {/* ✅ Like / Comment / Save */}
       <View style={styles.actions}>
@@ -239,8 +316,8 @@ const PostCard = ({
       {firstComment && (
         <TouchableOpacity
           onPress={() => {
-            console.log('📣 onOpenComments called for post:', post._id); // ADD THIS
-            onOpenComments(post); // This should expand the bottom sheet
+            console.log('📣 onOpenComments called for post:', post._id);
+            onOpenComments(post);
           }}
           style={styles.commentCard}>
           <View style={styles.commentRow}>

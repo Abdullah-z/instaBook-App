@@ -1,15 +1,31 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import { getProfileUser, getSavedPosts, getUserPosts } from '../api/profileAPI';
 import PostGrid from '../components/profile/PostGrid';
 import ProfileHeader from '../components/profile/ProfileHeader';
+import Animated, {
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+const HEADER_HEIGHT = 200;
+const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ userId }: { userId?: string }) => {
   const route = useRoute<any>();
   const { user } = useContext(AuthContext);
-  const id = userId || route.params?.id;
+  const id = userId || route.params?.id || user?._id;
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -22,7 +38,10 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const [savedPage, setSavedPage] = useState(1);
   const [savedResult, setSavedResult] = useState(0);
 
+  const scrollY = useSharedValue(0);
+
   const loadProfile = async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const res = await getProfileUser(id);
@@ -93,34 +112,68 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
     }
   }, [showSaved, id, user, savedPosts]);
 
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
+            [-HEADER_HEIGHT / 2, 0, -HEADER_HEIGHT * 0.5],
+            'clamp'
+          ),
+        },
+        {
+          scale: interpolate(scrollY.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1], 'clamp'),
+        },
+      ],
+    };
+  });
+
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} />;
 
   const showLoadMoreButton = showSaved ? savedResult === 9 : result === 9;
 
-  return (
-    <View style={{ flex: 1 }}>
-      {profileUser && user && (
+  const renderHeader = () => {
+    if (!profileUser || !user) return null;
+    return (
+      <View>
         <ProfileHeader
           profile={profileUser}
           isOwner={id === user._id}
           postCount={posts.length}
           onRefresh={loadProfile}
         />
-      )}
 
-      {user && id === user._id && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 12 }}>
-          <TouchableOpacity onPress={() => setShowSaved(false)}>
-            <Text style={{ fontWeight: showSaved ? 'normal' : 'bold', marginHorizontal: 12 }}>
-              Posts
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowSaved(true)}>
-            <Text style={{ fontWeight: showSaved ? 'bold' : 'normal', marginHorizontal: 12 }}>
-              Saved
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {user && id === user._id && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 12 }}>
+            <TouchableOpacity onPress={() => setShowSaved(false)}>
+              <Text style={{ fontWeight: showSaved ? 'normal' : 'bold', marginHorizontal: 12 }}>
+                Posts
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowSaved(true)}>
+              <Text style={{ fontWeight: showSaved ? 'bold' : 'normal', marginHorizontal: 12 }}>
+                Saved
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      {profileUser && (
+        <Animated.Image
+          source={{ uri: profileUser.cover || 'https://picsum.photos/800/400' }}
+          style={[styles.headerImage, headerAnimatedStyle]}
+        />
       )}
 
       <PostGrid
@@ -128,9 +181,24 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         onLoadMore={showSaved ? handleLoadMoreSaved : handleLoadMore}
         isLoadingMore={loadingMore}
         loadMoreVisible={showLoadMoreButton}
+        ListHeaderComponent={renderHeader()}
+        onScroll={scrollHandler}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
+        scrollEnabled={true}
       />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  headerImage: {
+    width: width,
+    height: HEADER_HEIGHT,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+});
 
 export default ProfileScreen;

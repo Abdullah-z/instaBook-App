@@ -20,6 +20,7 @@ const ProfileHeader = ({
 }) => {
   const { user, logout } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  console.log(profile);
   const [isFollowing, setIsFollowing] = useState(
     user ? profile.followers?.some((f: any) => f._id === user._id) : false
   );
@@ -50,14 +51,6 @@ const ProfileHeader = ({
 
   return (
     <View style={{ backgroundColor: '#fff', paddingBottom: 20 }}>
-      {/* Cover Image */}
-      <View style={{ height: 150, backgroundColor: '#ccc' }}>
-        <Image
-          source={{ uri: profile.cover || 'https://picsum.photos/800/400' }}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </View>
-
       {/* Profile Info Container */}
       <View style={{ alignItems: 'center', marginTop: -50 }}>
         {/* Avatar with Border */}

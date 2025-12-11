@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "my-expo-app",
-    "slug": "test",
+    "slug": "instabook",
     "version": "1.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,12 +29,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.abdullah95.myexpoapp",
+      "package": "com.instabook.social",
       "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
-        "projectId": "665396f9-b371-4956-ab43-d8c9ea14029d"
+        "projectId": "05b266f5-4c75-46bb-b44b-8602b859ef8e"
       }
     },
     "owner": "expo53"

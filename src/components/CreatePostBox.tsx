@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { createPostAPI } from '../api/postAPI';
 import { imageUpload } from './ImageUpload';
@@ -33,6 +34,27 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  // YouTube Input State
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+  const [youtubeLink, setYoutubeLink] = useState('');
+
+  const handleAddYoutubeLink = () => {
+    if (!youtubeLink.trim()) {
+      setShowYoutubeInput(false);
+      return;
+    }
+    // simple check
+    if (!youtubeLink.includes('youtube.com') && !youtubeLink.includes('youtu.be')) {
+      Alert.alert('Invalid Link', 'Please enter a valid YouTube URL.');
+      return;
+    }
+
+    const newContent = content ? `${content}\n\n${youtubeLink}` : youtubeLink;
+    setContent(newContent);
+    setYoutubeLink('');
+    setShowYoutubeInput(false);
+  };
 
   const pickImages = async () => {
     try {
@@ -237,6 +259,10 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
           />
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconInsideInput}>
+          <Ionicons name="logo-youtube" size={24} color="#F44336" />
+        </TouchableOpacity>
+
         {shouldShowPost &&
           (loading ? (
             <View style={styles.loadingIndicator}>
@@ -259,6 +285,36 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
           </View>
         ))}
       </View>
+
+      {/* YouTube Link Modal/Input */}
+      <Modal
+        visible={showYoutubeInput}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowYoutubeInput(false)}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Add YouTube Link</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Paste YouTube URL here..."
+              value={youtubeLink}
+              onChangeText={setYoutubeLink}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setShowYoutubeInput(false)}
+                style={styles.modalBtnCancel}>
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAddYoutubeLink} style={styles.modalBtnAdd}>
+                <Text style={styles.modalBtnTextAdd}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -324,5 +380,55 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalBtnCancel: {
+    marginRight: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalBtnTextCancel: {
+    color: '#555',
+    fontWeight: '600',
+  },
+  modalBtnAdd: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  modalBtnTextAdd: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });

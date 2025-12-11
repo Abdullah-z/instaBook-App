@@ -10,14 +10,17 @@ import {
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
+import { SocketContext } from '../auth/SocketContext';
 import API from '../api/axios';
 import { addCommentAPI, deleteCommentAPI, updateCommentAPI } from '../api/commentAPI';
+import { createNotification } from '../api/notificationAPI';
 import CommentDisplay from '../components/CommentDisplay';
 import InputComment from '../components/InputComment';
 import { CommentType } from '../types/types';
 
 const CommentsScreen = ({ post }: { post: any }) => {
   const { user } = useContext(AuthContext);
+  const { socket } = useContext(SocketContext);
 
   const [comments, setComments] = useState<CommentType[]>([]);
   const [replyComments, setReplyComments] = useState<CommentType[]>([]);
@@ -95,6 +98,21 @@ const CommentsScreen = ({ post }: { post: any }) => {
 
       setCommentText('');
       setReplyingID(null);
+      setCommentText('');
+      setReplyingID(null);
+
+      // Notify
+      const msg = {
+        id: newComment._id,
+        text: newComment.reply ? 'replied to you.' : 'commented on your post.',
+        recipients: newComment.reply ? [newComment.tag._id] : [post.user._id],
+        url: `/post/${post._id}`,
+        content: post.content,
+        image: post.images && post.images.length > 0 ? post.images[0].url : '',
+      };
+
+      await createNotification(msg);
+      socket?.emit('createNotify', msg);
     } catch (err) {
       console.error('❌ Failed to send comment:', err);
     }

@@ -90,7 +90,10 @@ const ChatScreen = () => {
     if (!socket) return;
 
     const handleIncomingMessage = (msg: any) => {
-      if (msg.sender === userId || msg.recipient === userId) {
+      const msgSenderId = msg.sender?._id || msg.sender;
+      const msgRecipientId = msg.recipient?._id || msg.recipient;
+
+      if (msgSenderId === userId || msgRecipientId === userId) {
         setMessages((prev) => [...prev, msg]);
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
@@ -124,6 +127,7 @@ const ChatScreen = () => {
   };
 
   const handleSend = async () => {
+    console.log('Sending message...');
     if (!text.trim() && media.length === 0) return;
     if (sending) return;
 
@@ -156,7 +160,11 @@ const ChatScreen = () => {
       setMessages((prev) => [...prev, { ...newMessage, _id: Date.now().toString() }]);
 
       if (socket) {
-        socket.emit('addMessage', newMessage);
+        // Send full user object for socket (so recipient can get username/avatar)
+        socket.emit('addMessage', {
+          ...newMessage,
+          sender: user,
+        });
       }
 
       setTimeout(() => {
@@ -173,7 +181,8 @@ const ChatScreen = () => {
   };
 
   const renderMessage = ({ item }: { item: any }) => {
-    const isSent = item.sender === user?._id;
+    const senderId = item.sender?._id || item.sender;
+    const isSent = senderId === user?._id;
 
     return (
       <View
@@ -224,9 +233,10 @@ const ChatScreen = () => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id || index.toString()}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
@@ -248,7 +258,10 @@ const ChatScreen = () => {
 
       {/* Input Area */}
       <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.imageButton} onPress={handlePickImage}>
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={handlePickImage}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="image" size={24} color="#666" />
         </TouchableOpacity>
         <TextInput
@@ -266,7 +279,8 @@ const ChatScreen = () => {
             ((!text.trim() && media.length === 0) || sending) && styles.sendButtonDisabled,
           ]}
           onPress={handleSend}
-          disabled={(!text.trim() && media.length === 0) || sending}>
+          disabled={(!text.trim() && media.length === 0) || sending}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           {sending ? (
             <ActivityIndicator size="small" color="#000" />
           ) : (

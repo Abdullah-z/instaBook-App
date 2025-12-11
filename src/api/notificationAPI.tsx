@@ -26,3 +26,8 @@ export const createNotification = async (data: {
   const res = await API.post('/notify', data);
   return res.data;
 };
+
+export const removeNotification = async (id: string, url: string) => {
+  const res = await API.delete(`/notify/${id}?url=${url}`);
+  return res.data;
+};
