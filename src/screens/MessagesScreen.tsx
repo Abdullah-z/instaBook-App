@@ -13,11 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getConversations } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
+import { SocketContext } from '../auth/SocketContext';
 import moment from 'moment';
 
 const MessagesScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
+  const { onlineUsers } = useContext(SocketContext);
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,13 +48,18 @@ const MessagesScreen = () => {
     const otherUser = getOtherUser(item);
     if (!otherUser) return null;
 
+    const isOnline = onlineUsers.has(otherUser._id);
+
     return (
       <TouchableOpacity
         style={styles.conversationItem}
         onPress={() =>
           navigation.navigate('Chat', { userId: otherUser._id, username: otherUser.username })
         }>
-        <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+        <View style={styles.avatarContainer}>
+          <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+          {isOnline && <View style={styles.onlineIndicator} />}
+        </View>
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
@@ -147,6 +154,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     backgroundColor: '#fff',
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   conversationContent: {
     flex: 1,

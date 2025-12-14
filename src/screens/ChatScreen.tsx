@@ -26,7 +26,7 @@ const ChatScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+  const { socket, onlineUsers } = useContext(SocketContext);
   const { userId, username } = route.params;
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -36,16 +36,32 @@ const ChatScreen = () => {
   const [media, setMedia] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
+  const isUserOnline = onlineUsers.has(userId);
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: username || 'Chat',
+      title: (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
+            {username || 'Chat'}
+          </Text>
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: isUserOnline ? '#4CAF50' : '#999',
+            }}
+          />
+        </View>
+      ),
       headerRight: () => (
         <TouchableOpacity onPress={handleDeleteConversation} style={{ marginRight: 16 }}>
           <Ionicons name="trash-outline" size={24} color="#ff4444" />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, username]);
+  }, [navigation, username, isUserOnline]);
 
   const handleDeleteConversation = () => {
     Alert.alert(
@@ -131,6 +147,13 @@ const ChatScreen = () => {
     if (!text.trim() && media.length === 0) return;
     if (sending) return;
 
+    // Check if socket is connected
+    if (!socket || !socket.connected) {
+      console.error('Socket is not connected');
+      Alert.alert('Error', 'Connection lost. Please try again.');
+      return;
+    }
+
     const messageText = text.trim();
     setText('');
     const mediaToSend = [...media];
@@ -159,7 +182,7 @@ const ChatScreen = () => {
 
       setMessages((prev) => [...prev, { ...newMessage, _id: Date.now().toString() }]);
 
-      if (socket) {
+      if (socket && socket.connected) {
         // Send full user object for socket (so recipient can get username/avatar)
         socket.emit('addMessage', {
           ...newMessage,

@@ -9,6 +9,7 @@ interface SocketContextType {
   socket: Socket | null;
   notifications: any[];
   unreadCount: number;
+  onlineUsers: Set<string>;
   setNotifications: (notif: any[]) => void;
   showNotification: boolean;
   setNotification: (notif: any) => void;
@@ -20,6 +21,7 @@ export const SocketContext = createContext<SocketContextType>({
   socket: null,
   notifications: [],
   unreadCount: 0,
+  onlineUsers: new Set(),
   setNotifications: () => {},
   showNotification: false,
   setNotification: () => {},
@@ -33,6 +35,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notification, setNotification] = useState<any>(null); // For popup
   const [showNotification, setShowNotification] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -116,6 +119,24 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         setNotifications((prev) => prev.filter((n) => n.id !== msg.id || n.url !== msg.url));
       });
 
+      newSocket.on('userOnlineStatusChanged', (data: any) => {
+        console.log('👤 User online status changed:', data);
+        setOnlineUsers((prev) => {
+          const newSet = new Set(prev);
+          if (data.isOnline) {
+            newSet.add(data.userId);
+          } else {
+            newSet.delete(data.userId);
+          }
+          return newSet;
+        });
+      });
+
+      newSocket.on('onlineUsersList', (userIds: string[]) => {
+        console.log('👥 Received online users list:', userIds);
+        setOnlineUsers(new Set(userIds));
+      });
+
       setSocket(newSocket);
 
       return () => {
@@ -136,6 +157,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         socket,
         notifications,
         unreadCount,
+        onlineUsers,
         setNotifications,
         notification,
         showNotification,
