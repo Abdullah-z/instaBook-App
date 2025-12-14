@@ -36,6 +36,7 @@
     "npm": "^11.5.2",
     "react": "19.0.0",
     "react-native": "0.79.4",
+    "react-native-agora": "^4.5.3",
     "react-native-fs": "^2.20.0",
     "react-native-fusioncharts": "^6.0.0",
     "react-native-gesture-handler": "~2.24.0",

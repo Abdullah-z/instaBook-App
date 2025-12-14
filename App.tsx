@@ -1,8 +1,10 @@
 import React from 'react';
 import { AuthProvider } from './src/auth/AuthContext';
 import { SocketProvider } from './src/auth/SocketContext';
+import { VoiceCallProvider } from './src/auth/VoiceCallContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from './src/navigation/AppNavigator';
+import VoiceCallScreen from './src/components/VoiceCallScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/RootNavigation';
 import Toast from 'react-native-toast-message';
@@ -43,18 +45,21 @@ function MainApp() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <PaperProvider theme={theme}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheetModalProvider>
+        <VoiceCallProvider>
+          <PaperProvider theme={theme}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
               <BottomSheetModalProvider>
-                <NavigationContainer ref={navigationRef}>
-                  <AppNavigator />
-                </NavigationContainer>
-                <Toast />
+                <BottomSheetModalProvider>
+                  <NavigationContainer ref={navigationRef}>
+                    <VoiceCallScreen />
+                    <AppNavigator />
+                  </NavigationContainer>
+                  <Toast />
+                </BottomSheetModalProvider>
               </BottomSheetModalProvider>
-            </BottomSheetModalProvider>
-          </GestureHandlerRootView>
-        </PaperProvider>
+            </GestureHandlerRootView>
+          </PaperProvider>
+        </VoiceCallProvider>
       </SocketProvider>
     </AuthProvider>
   );

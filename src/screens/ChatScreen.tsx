@@ -13,12 +13,13 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { getMessages, sendMessage, deleteConversation } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
+import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { imageUpload } from '../utils/imageUpload';
 import moment from 'moment';
 
@@ -27,6 +28,7 @@ const ChatScreen = () => {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
   const { socket, onlineUsers } = useContext(SocketContext);
+  const { initiateCall } = useContext(VoiceCallContext);
   const { userId, username } = route.params;
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -56,12 +58,24 @@ const ChatScreen = () => {
         </View>
       ),
       headerRight: () => (
-        <TouchableOpacity onPress={handleDeleteConversation} style={{ marginRight: 16 }}>
-          <Ionicons name="trash-outline" size={24} color="#ff4444" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12, marginRight: 16 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (!isUserOnline) {
+                Alert.alert('User Offline', 'Cannot call offline users');
+                return;
+              }
+              initiateCall(userId, username);
+            }}>
+            <MaterialIcons name="call" size={24} color="#1f6feb" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDeleteConversation}>
+            <Ionicons name="trash-outline" size={24} color="#ff4444" />
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation, username, isUserOnline]);
+  }, [navigation, username, isUserOnline, userId]);
 
   const handleDeleteConversation = () => {
     Alert.alert(
