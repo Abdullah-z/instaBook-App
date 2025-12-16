@@ -1,5 +1,5 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { AuthContext } from '../auth/AuthContext';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -7,7 +7,16 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 const { width, height } = Dimensions.get('window');
 
 const VoiceCallScreen: React.FC = () => {
-  const { callState, acceptCall, rejectCall, endCall } = useContext(VoiceCallContext);
+  const {
+    callState,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMic,
+    toggleSpeaker,
+    isMicEnabled,
+    isSpeakerEnabled,
+  } = useContext(VoiceCallContext);
   const { user } = useContext(AuthContext);
 
   const formatDuration = (seconds: number) => {
@@ -21,26 +30,28 @@ const VoiceCallScreen: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const avatarUrl = callState.callerAvatar || callState.recipientAvatar;
+
   // Incoming call screen
   if (callState.remoteCalling && !callState.inCall) {
     return (
       <View style={styles.incomingCallContainer}>
         <View style={styles.incomingCallContent}>
-          <MaterialIcons name="account-circle" size={80} color="#fff" />
+          {callState.callerAvatar ? (
+            <Image source={{ uri: callState.callerAvatar }} style={styles.avatar} />
+          ) : (
+            <MaterialIcons name="account-circle" size={120} color="#fff" />
+          )}
           <Text style={styles.incomingCallerName}>{callState.callerName}</Text>
           <Text style={styles.incomingCallText}>Incoming call...</Text>
         </View>
 
         <View style={styles.incomingCallActions}>
-          <TouchableOpacity
-            style={[styles.callButton, styles.rejectButton]}
-            onPress={rejectCall}>
+          <TouchableOpacity style={[styles.callButton, styles.rejectButton]} onPress={rejectCall}>
             <MaterialIcons name="call-end" size={28} color="#fff" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.callButton, styles.acceptButton]}
-            onPress={acceptCall}>
+          <TouchableOpacity style={[styles.callButton, styles.acceptButton]} onPress={acceptCall}>
             <MaterialIcons name="call" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -53,7 +64,11 @@ const VoiceCallScreen: React.FC = () => {
     return (
       <View style={styles.activeCallContainer}>
         <View style={styles.callInfo}>
-          <MaterialIcons name="account-circle" size={100} color="#1f6feb" />
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={[styles.avatar, styles.activeAvatar]} />
+          ) : (
+            <MaterialIcons name="account-circle" size={140} color="#1f6feb" />
+          )}
           <Text style={styles.callPartnerName}>
             {callState.recipientName || callState.callerName}
           </Text>
@@ -61,17 +76,27 @@ const VoiceCallScreen: React.FC = () => {
         </View>
 
         <View style={styles.callControls}>
-          <TouchableOpacity style={styles.controlButton}>
-            <MaterialIcons name="mic" size={24} color="#333" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.controlButton}>
-            <MaterialIcons name="volume-up" size={24} color="#333" />
+          <TouchableOpacity
+            style={[styles.controlButton, !isMicEnabled && styles.disabledButton]}
+            onPress={toggleMic}>
+            <MaterialIcons
+              name={isMicEnabled ? 'mic' : 'mic-off'}
+              size={24}
+              color={isMicEnabled ? '#333' : '#999'}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.controlButton, styles.endCallButton]}
-            onPress={endCall}>
+            style={[styles.controlButton, !isSpeakerEnabled && styles.disabledButton]}
+            onPress={toggleSpeaker}>
+            <MaterialIcons
+              name={isSpeakerEnabled ? 'volume-up' : 'volume-off'}
+              size={24}
+              color={isSpeakerEnabled ? '#333' : '#999'}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={endCall}>
             <MaterialIcons name="call-end" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -162,6 +187,10 @@ const styles = StyleSheet.create({
   endCallButton: {
     backgroundColor: '#ff4444',
   },
+  disabledButton: {
+    opacity: 0.6,
+    backgroundColor: '#f0f0f0',
+  },
   callButton: {
     width: 70,
     height: 70,
@@ -174,6 +203,20 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     backgroundColor: '#4CAF50',
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#fff',
+    marginBottom: 20,
+  },
+  activeAvatar: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderColor: '#1f6feb',
   },
 });
 

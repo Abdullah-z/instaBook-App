@@ -29,7 +29,7 @@ const ChatScreen = () => {
   const { user } = useContext(AuthContext);
   const { socket, onlineUsers } = useContext(SocketContext);
   const { initiateCall } = useContext(VoiceCallContext);
-  const { userId, username } = route.params;
+  const { userId, username, avatar } = route.params;
 
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,10 @@ const ChatScreen = () => {
   const [text, setText] = useState('');
   const [media, setMedia] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
+
+  // Use avatar from params, or try to find it from messages later if needed.
+  // Ideally it should be passed in navigation.
+  const [recipientAvatar, setRecipientAvatar] = useState(avatar || null);
 
   const isUserOnline = onlineUsers.has(userId);
 
@@ -65,7 +69,7 @@ const ChatScreen = () => {
                 Alert.alert('User Offline', 'Cannot call offline users');
                 return;
               }
-              initiateCall(userId, username);
+              initiateCall(userId, username, recipientAvatar || '');
             }}>
             <MaterialIcons name="call" size={24} color="#1f6feb" />
           </TouchableOpacity>
@@ -104,6 +108,14 @@ const ChatScreen = () => {
     try {
       const res = await getMessages(userId);
       setMessages((res.messages || []).reverse());
+
+      // Try to find avatar from messages if not provided
+      if (!recipientAvatar && res.messages && res.messages.length > 0) {
+        const otherUserMsg = res.messages.find((m: any) => (m.sender?._id || m.sender) === userId);
+        if (otherUserMsg && otherUserMsg.sender?.avatar) {
+          setRecipientAvatar(otherUserMsg.sender.avatar);
+        }
+      }
     } catch (err) {
       console.error('Failed to load messages:', err);
     } finally {

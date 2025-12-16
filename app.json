@@ -22,7 +22,10 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice calls"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +33,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.instabook.social",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "eas": {

@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useState, useContext } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { Audio as ExpoAudio, AVPlaybackStatus } from 'expo-av';
 import { AuthContext } from './AuthContext';
 import { getNotifications } from '../api/notificationAPI';
 import Toast from 'react-native-toast-message';
@@ -106,12 +107,26 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      newSocket.on('createNotifyToClient', (msg: any) => {
+      newSocket.on('createNotifyToClient', async (msg: any) => {
         console.log('🔔 Received notification:', msg);
         setNotifications((prev) => [msg, ...prev]);
         setNotification(msg);
         setShowNotification(true);
-        // Play sound here if needed
+        // Play sound here
+        try {
+          const { sound } = await ExpoAudio.Sound.createAsync(
+            require('../constants/sounds/notification.mp3')
+          );
+          await sound.playAsync();
+          // Unload sound after playback to free resources
+          sound.setOnPlaybackStatusUpdate(async (status: AVPlaybackStatus) => {
+            if (status.isLoaded && status.didJustFinish) {
+              await sound.unloadAsync();
+            }
+          });
+        } catch (error) {
+          console.error('Failed to play notification sound:', error);
+        }
       });
 
       newSocket.on('removeNotifyToClient', (msg: any) => {
