@@ -74,7 +74,7 @@ InstaBook is a comprehensive social media application built using the MERN stack
 
 ```
 /
-├── facebook/          # Mobile Application (React Native/Expo)
+├── app/          # Mobile Application (React Native/Expo)
 │   ├── src/
 │   │   ├── components/  # Reusable UI components
 │   │   ├── screens/     # Application screens (Home, Chat, Profile, etc.)
