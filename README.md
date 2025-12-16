@@ -134,7 +134,7 @@ InstaBook is a comprehensive social media application built using the MERN stack
 
 4.  **Setup Mobile App**
     ```bash
-    cd facebook
+    cd app
     npm install
     npx expo start
     # Scan the QR code with Expo Go
