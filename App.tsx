@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
 import { AuthProvider } from './src/auth/AuthContext';
 import { SocketProvider } from './src/auth/SocketContext';
-import { VoiceCallProvider } from './src/auth/VoiceCallContext';
+import { VoiceCallProvider, VoiceCallContext } from './src/auth/VoiceCallContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from './src/navigation/AppNavigator';
 import VoiceCallScreen from './src/components/VoiceCallScreen';
 import { NavigationContainer } from '@react-navigation/native';
-import { navigationRef } from './src/navigation/RootNavigation';
+import { navigationRef, navigate, flushNavigationQueue } from './src/navigation/RootNavigation';
 import Toast from 'react-native-toast-message';
 import { BlueDark } from './src/constants/themes/BlueDark';
 import { BlueLight } from './src/constants/themes/BlueLight';
@@ -20,7 +20,8 @@ import { OrangeLight } from './src/constants/themes/OrangeLight';
 import { OrangeDark } from './src/constants/themes/OrangeDark';
 import { RedDark } from './src/constants/themes/RedDark';
 import { PurpleDark } from './src/constants/themes/PurpleDark';
-import { useData } from './src/hooks';
+import { useData, usePushNotifications } from './src/hooks';
+import * as Notifications from 'expo-notifications';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -47,20 +48,79 @@ function MainApp() {
       <SocketProvider>
         <VoiceCallProvider>
           <PaperProvider theme={theme}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <BottomSheetModalProvider>
-                <BottomSheetModalProvider>
-                  <NavigationContainer ref={navigationRef}>
-                    <VoiceCallScreen />
-                    <AppNavigator />
-                  </NavigationContainer>
-                  <Toast />
-                </BottomSheetModalProvider>
-              </BottomSheetModalProvider>
-            </GestureHandlerRootView>
+            <AppContent />
           </PaperProvider>
         </VoiceCallProvider>
       </SocketProvider>
     </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { handleIncomingCallFromPush } = useContext(VoiceCallContext);
+
+  // Handle Notifications when app is running (foreground/background)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log('🔔 Notification Response Received:', data);
+
+      if (data?.type === 'MESSAGE' && data?.senderId) {
+        navigate('Chat', {
+          userId: data.senderId,
+          username: data.senderName || 'User',
+          avatar: data.senderAvatar || null,
+        });
+      } else if (data?.type === 'VOICE_CALL') {
+        handleIncomingCallFromPush(data);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [handleIncomingCallFromPush]);
+
+  // Handle Cold Start Notification (App was killed)
+  useEffect(() => {
+    const checkInitialNotification = async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response) {
+          const data = response.notification.request.content.data;
+          console.log('🔔 Cold Start Notification Detected:', data);
+
+          if (data?.type === 'MESSAGE' && data?.senderId) {
+            // Using the new queued navigate function
+            navigate('Chat', {
+              userId: data.senderId,
+              username: data.senderName || 'User',
+              avatar: data.senderAvatar || null,
+            });
+          } else if (data?.type === 'VOICE_CALL') {
+            handleIncomingCallFromPush(data);
+          }
+        }
+      } catch (e) {
+        console.error('❌ Failed to get last notification response:', e);
+      }
+    };
+
+    checkInitialNotification();
+  }, [handleIncomingCallFromPush]);
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            console.log('✅ NavigationContainer is ready');
+            flushNavigationQueue();
+          }}>
+          <VoiceCallScreen />
+          <AppNavigator />
+        </NavigationContainer>
+        <Toast />
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }
