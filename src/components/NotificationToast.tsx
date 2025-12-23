@@ -58,7 +58,9 @@ const NotificationToast = ({ visible, message, onClose }: NotificationToastProps
     <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
       <TouchableOpacity style={styles.content} onPress={handlePress}>
         <View style={styles.avatarContainer}>
-          {message.user?.avatar ? (
+          {message.user?.avatar &&
+          typeof message.user.avatar === 'string' &&
+          message.user.avatar.trim() !== '' ? (
             <Image source={{ uri: message.user.avatar }} style={styles.avatar} />
           ) : (
             <View style={styles.placeholderAvatar}>
