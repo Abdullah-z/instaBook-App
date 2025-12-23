@@ -177,6 +177,11 @@ const HomeScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
+            onPress={() => navigation.navigate('Marketplace' as never)}>
+            <Ionicons name="storefront-outline" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications' as never)}>
             <View>
               <Ionicons name="notifications" size={24} color="#000" />
