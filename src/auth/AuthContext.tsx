@@ -13,6 +13,7 @@ interface UserType {
   website?: string;
   story?: string;
   gender?: string;
+  saved?: string[];
 }
 
 interface AuthContextType {
@@ -72,7 +73,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const res = await API.post('/login', { email, password });
-    console.log('LOGIN RESPONSE:', res.data); // 👈 Check this
+    console.log('LOGIN RESPONSE:', res.data);
+
+    if (res.data.status === 0) {
+      const error = new Error(res.data.msg || 'Login failed');
+      (error as any).response = { data: res.data };
+      throw error;
+    }
+
     setToken(res.data.access_token);
     setGlobalToken(res.data.access_token);
     setUser(res.data.user);
