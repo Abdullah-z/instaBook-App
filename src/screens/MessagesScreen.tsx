@@ -57,7 +57,13 @@ const MessagesScreen = () => {
           navigation.navigate('Chat', { userId: otherUser._id, username: otherUser.username })
         }>
         <View style={styles.avatarContainer}>
-          <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+          {otherUser.avatar &&
+          typeof otherUser.avatar === 'string' &&
+          otherUser.avatar.trim() !== '' ? (
+            <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+          ) : (
+            <Avatar.Icon size={56} icon="account" />
+          )}
           {isOnline && <View style={styles.onlineIndicator} />}
         </View>
 
