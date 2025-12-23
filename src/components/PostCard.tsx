@@ -47,7 +47,7 @@ const PostCard = ({
 
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(post.likes.length);
-  const [isSaved, setIsSaved] = useState(user.saved?.includes(post._id));
+  const [isSaved, setIsSaved] = useState(user?.saved?.includes(post._id) || false);
   const comments = post.comments || [];
   const firstComment = comments.find((c: any) => !c.reply);
   const images = Array.isArray(post.images) ? post.images : [];
@@ -68,7 +68,7 @@ const PostCard = ({
       likes: [...post.likes, user],
     };
     setIsLiked(true);
-    setLikes((prev) => prev + 1);
+    setLikes((prev: number) => prev + 1);
     onPostUpdate(newPost);
 
     try {
@@ -76,7 +76,7 @@ const PostCard = ({
 
       // Notify
       const msg = {
-        id: user._id,
+        id: user?._id || '',
         text: 'liked your post.',
         recipients: [post.user._id],
         url: `/post/${post._id}`, // Mobile might handle URLs differently or rely on screen logic
@@ -89,17 +89,17 @@ const PostCard = ({
     } catch (err) {
       console.error('Like failed', err);
       setIsLiked(false);
-      setLikes((prev) => prev - 1);
+      setLikes((prev: number) => prev - 1);
     }
   };
 
   const handleUnlike = async () => {
     const newPost = {
       ...post,
-      likes: post.likes.filter((l: any) => l._id !== user._id),
+      likes: post.likes.filter((l: any) => l._id !== user?._id),
     };
     setIsLiked(false);
-    setLikes((prev) => prev - 1);
+    setLikes((prev: number) => prev - 1);
     onPostUpdate(newPost);
 
     try {
@@ -107,7 +107,7 @@ const PostCard = ({
 
       // Remove Notify
       const msg = {
-        id: user._id,
+        id: user?._id || '',
         text: 'liked your post.',
         recipients: [post.user._id],
         url: `/post/${post._id}`,
@@ -118,7 +118,7 @@ const PostCard = ({
     } catch (err) {
       console.error('Unlike failed', err);
       setIsLiked(true);
-      setLikes((prev) => prev + 1);
+      setLikes((prev: number) => prev + 1);
     }
   };
 
@@ -148,7 +148,13 @@ const PostCard = ({
       <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: post.user._id })}>
-            <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
+            {post.user.avatar &&
+            typeof post.user.avatar === 'string' &&
+            post.user.avatar.trim() !== '' ? (
+              <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
+            ) : (
+              <Avatar.Icon size={40} icon="account" />
+            )}
           </TouchableOpacity>
           <View style={styles.userInfo}>
             <Text style={styles.username}>{post.user.username}</Text>
@@ -209,12 +215,16 @@ const PostCard = ({
               data={images}
               onProgressChange={progress}
               scrollAnimationDuration={500}
-              renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item.url }}
-                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                />
-              )}
+              renderItem={({ item }: { item: any }) =>
+                item?.url ? (
+                  <Image
+                    source={{ uri: item.url }}
+                    style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                  />
+                ) : (
+                  <View style={{ width: '100%', height: '100%', backgroundColor: '#eee' }} />
+                )
+              }
               mode="parallax"
               modeConfig={{
                 parallaxScrollingScale: 1,
@@ -299,7 +309,7 @@ const PostCard = ({
           </TouchableOpacity>
         </View>
 
-        {post.user !== user._id && (
+        {post.user?._id !== user?._id && (
           <TouchableOpacity
             onPress={handleToggleSave}
             style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -321,7 +331,13 @@ const PostCard = ({
           }}
           style={styles.commentCard}>
           <View style={styles.commentRow}>
-            <Avatar.Image size={30} source={{ uri: firstComment.user.avatar }} />
+            {firstComment.user.avatar &&
+            typeof firstComment.user.avatar === 'string' &&
+            firstComment.user.avatar.trim() !== '' ? (
+              <Avatar.Image size={30} source={{ uri: firstComment.user.avatar }} />
+            ) : (
+              <Avatar.Icon size={30} icon="account" />
+            )}
             <View style={{ marginLeft: 8, flex: 1 }}>
               <Text style={styles.commentUsername}>{firstComment.user.username}</Text>
               <Text numberOfLines={1}>{firstComment.content}</Text>
