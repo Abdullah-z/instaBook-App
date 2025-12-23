@@ -1,10 +1,27 @@
-import React, { createContext, useEffect, useState, useContext, useRef } from 'react';
+import React, {
+  createContext,
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import { SocketContext } from './SocketContext';
 import { AuthContext } from './AuthContext';
-import type { IRtcEngine } from 'react-native-agora';
-import { ChannelProfileType } from 'react-native-agora';
+import { Alert, Platform } from 'react-native';
+// Conditionally import agora only in development builds
+// import type { IRtcEngine } from 'react-native-agora';
+// import { ChannelProfileType } from 'react-native-agora';
 import { Audio as ExpoAudio } from 'expo-av';
 import Constants from 'expo-constants';
+
+// Check if running in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Type stubs for when agora is not available
+type IRtcEngine = any;
+type ChannelProfileType = any;
 
 interface CallState {
   inCall: boolean;
@@ -20,6 +37,7 @@ interface CallState {
 
 interface VoiceCallContextType {
   callState: CallState;
+  callDuration: number;
   initiateCall: (recipientId: string, recipientName: string, recipientAvatar: string) => void;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -29,6 +47,7 @@ interface VoiceCallContextType {
   toggleSpeaker: () => void;
   isMicEnabled: boolean;
   isSpeakerEnabled: boolean;
+  handleIncomingCallFromPush: (data: any) => void;
 }
 
 export const VoiceCallContext = createContext<VoiceCallContextType>({
@@ -43,6 +62,7 @@ export const VoiceCallContext = createContext<VoiceCallContextType>({
     recipientAvatar: null,
     callDuration: 0,
   },
+  callDuration: 0,
   initiateCall: () => {},
   acceptCall: () => {},
   rejectCall: () => {},
@@ -52,6 +72,7 @@ export const VoiceCallContext = createContext<VoiceCallContextType>({
   toggleSpeaker: () => {},
   isMicEnabled: true,
   isSpeakerEnabled: true,
+  handleIncomingCallFromPush: () => {},
 });
 
 export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) => {
@@ -78,32 +99,47 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   const incomingSoundRef = useRef<ExpoAudio.Sound | null>(null);
 
   // Load and play ringing sound
-  const playRingingSound = async () => {
+  const playRingingSound = useCallback(async () => {
+    console.log('📢 Starting outgoing ringing sound...');
     try {
       const { sound } = await ExpoAudio.Sound.createAsync(
-        { uri: 'https://www.soundjay.com/phone/telephone-ring-03a.mp3' }, // Public ringing sound
+        require('../constants/sounds/ringtone.mp3'),
         { shouldPlay: true, isLooping: true }
       );
       soundRef.current = sound;
+      console.log('✅ Outgoing ringing sound started');
     } catch (err) {
-      console.error('Failed to play ringing sound:', err);
+      console.error('❌ Failed to play ringing sound:', err);
     }
-  };
+  }, []);
 
-  const stopRingingSound = async () => {
+  const stopRingingSound = useCallback(async () => {
+    console.log('📢 Stopping ringing sound...');
     try {
       if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
+        const sound = soundRef.current;
+        soundRef.current = null; // Clear ref immediately to prevent race conditions
+        try {
+          await sound.stopAsync();
+        } catch (e) {
+          console.log('   (Stop ringing failed - sound might be already stopped)');
+        }
+        try {
+          await sound.unloadAsync();
+          console.log('✅ Ringing sound unloaded');
+        } catch (e) {
+          console.log('   (Unload ringing failed)');
+        }
+      } else {
+        console.log('   (No ringing sound playing)');
       }
     } catch (err) {
-      console.error('Failed to stop ringing sound:', err);
+      console.error('❌ Failed to stop ringing sound:', err);
     }
-  };
+  }, []);
 
   // Play incoming call ringtone
-  const playIncomingSound = async () => {
+  const playIncomingSound = useCallback(async () => {
     try {
       const { sound } = await ExpoAudio.Sound.createAsync(
         require('../constants/sounds/ringtone.mp3'),
@@ -113,29 +149,44 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     } catch (err) {
       console.error('Failed to play incoming sound:', err);
     }
-  };
+  }, []);
 
-  const stopIncomingSound = async () => {
+  const stopIncomingSound = useCallback(async () => {
+    console.log('📢 Stopping incoming call sound...');
     try {
       if (incomingSoundRef.current) {
-        await incomingSoundRef.current.stopAsync();
-        await incomingSoundRef.current.unloadAsync();
-        incomingSoundRef.current = null;
+        const sound = incomingSoundRef.current;
+        incomingSoundRef.current = null; // Clear ref immediately
+        try {
+          await sound.stopAsync();
+        } catch (e) {
+          console.log('   (Stop incoming failed)');
+        }
+        try {
+          await sound.unloadAsync();
+          console.log('✅ Incoming call sound unloaded');
+        } catch (e) {
+          console.log('   (Unload incoming failed)');
+        }
+      } else {
+        console.log('   (No incoming sound playing)');
       }
     } catch (err) {
-      console.error('Failed to stop incoming sound:', err);
+      console.error('❌ Failed to stop incoming sound:', err);
     }
-  };
+  }, []);
 
   // ⚠️ IMPORTANT: Update this with your real Agora App ID from https://console.agora.io
   const AGORA_APP_ID = '57f1b0fb4940493faf15457d2388d722'; // TODO: Replace with your actual ID
 
   // Initialize Agora RTC Engine
-  const initializeAgoraEngine = async () => {
+  const initializeAgoraEngine = useCallback(async () => {
     try {
       // Check if running in Expo Go
       if (Constants.appOwnership === 'expo') {
-        console.log('⚠️ Running in Expo Go - Voice Calling is disabled');
+        console.log(
+          '⚠️ Running in Expo Go - Voice Calling is disabled. This avoids native module crashes.'
+        );
         return;
       }
 
@@ -164,6 +215,8 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
         playThroughEarpieceAndroid: false, // Default to speaker for now, or true for earpiece
       });
 
+      const AGORA_APP_ID = Constants.expoConfig?.extra?.agoraAppId;
+
       if (!AGORA_APP_ID) {
         console.error('❌ ERROR: AGORA_APP_ID is not set! Update it in VoiceCallContext.tsx');
         return;
@@ -173,41 +226,52 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
       // Dynamically require Agora to avoid native module crash in Expo Go
       let createAgoraRtcEngine;
+      let ChannelProfile;
       try {
         const Agora = require('react-native-agora');
         createAgoraRtcEngine = Agora.createAgoraRtcEngine;
+        ChannelProfile = Agora.ChannelProfileType;
       } catch (error) {
         console.error('Failed to load react-native-agora:', error);
         return;
       }
 
       // Correct way for react-native-agora v4.x
-      const engine = createAgoraRtcEngine();
-      engine.initialize({ appId: AGORA_APP_ID });
+      let engine;
+      try {
+        engine = createAgoraRtcEngine();
+        engine.initialize({ appId: AGORA_APP_ID });
+      } catch (err) {
+        console.error('❌ CRITICAL: Failed to initialize Agora native engine:', err);
+        return;
+      }
 
       console.log('🔧 Engine created, enabling audio...');
       engine.enableAudio();
 
       console.log('🔧 Setting channel profile to Communication...');
-      engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+      engine.setChannelProfile(ChannelProfile?.ChannelProfileCommunication || 0);
 
       console.log('🔧 Enabling speaker...');
       engine.setDefaultAudioRouteToSpeakerphone(true);
 
       engine.registerEventHandler({
-        onJoinChannelSuccess: (connection, elapsed) => {
+        onJoinChannelSuccess: (connection: any, elapsed: any) => {
           console.log(
             `✅ onJoinChannelSuccess: channel=${connection.channelId}, uid=${connection.localUid}`
           );
         },
-        onUserJoined: (connection, remoteUid, elapsed) => {
+        onUserJoined: (connection: any, remoteUid: any, elapsed: any) => {
           console.log(`👤 onUserJoined: remoteUid=${remoteUid}`);
         },
-        onUserOffline: (connection, remoteUid, reason) => {
-          console.log(`❌ onUserOffline: remoteUid=${remoteUid}`);
-        },
-        onError: (err, msg) => {
+        onError: (err: any, msg: any) => {
           console.error(`❌ Agora Error code: ${err}, msg: ${msg}`);
+          // Prevent crash if engine is in a bad state
+          if (err === 110) {
+            // ERR_NOT_INITIALIZED
+            console.log('Engine not initialized, clearing ref');
+            rtcEngineRef.current = null;
+          }
         },
       });
 
@@ -217,67 +281,83 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       console.error('❌ Failed to initialize Agora Engine:', err);
       console.log('Error details:', JSON.stringify(err, null, 2));
     }
-  };
+  }, []);
 
   // Join a channel with token
-  // Join a channel with token
-  const joinChannel = async (channelName: string, token: string, uid: number) => {
-    try {
-      if (!rtcEngineRef.current) {
-        console.log('🔧 Engine not initialized, initializing now...');
-        await initializeAgoraEngine();
+  const joinChannel = useCallback(
+    async (channelName: string, token: string, uid: number) => {
+      try {
+        if (!rtcEngineRef.current) {
+          console.log('🔧 Engine not initialized, initializing now...');
+          await initializeAgoraEngine();
+        }
+
+        if (!rtcEngineRef.current) {
+          console.error('❌ Failed to initialize engine before joining channel');
+          return;
+        }
+
+        console.log(`🔧 Joining channel: ${channelName} with UID: ${uid}`);
+
+        // Enable remote audio - enabled by default in enableAudio()
+        try {
+          rtcEngineRef.current.joinChannel(token, channelName, uid, {});
+          console.log(`✅ Successfully joined channel: ${channelName}`);
+        } catch (err) {
+          console.error('❌ CRITICAL: Failed to join channel via bridge:', err);
+        }
+      } catch (err) {
+        console.error('❌ Failed to join channel:', err);
       }
-
-      if (!rtcEngineRef.current) {
-        console.error('❌ Failed to initialize engine before joining channel');
-        return;
-      }
-
-      console.log(`🔧 Joining channel: ${channelName} with UID: ${uid}`);
-
-      // Enable remote audio - enabled by default in enableAudio()
-
-      rtcEngineRef.current.joinChannel(token, channelName, uid, {});
-
-      console.log(`✅ Successfully joined channel: ${channelName}`);
-    } catch (err) {
-      console.error('❌ Failed to join channel:', err);
-    }
-  };
+    },
+    [initializeAgoraEngine]
+  );
 
   // Leave channel
-  const leaveChannel = async () => {
+  const leaveChannel = useCallback(async () => {
     try {
-      rtcEngineRef.current?.leaveChannel();
-      console.log('✅ Left channel');
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.leaveChannel();
+        console.log('✅ Left channel');
+      } else {
+        console.log('⚠️ leaveChannel called but engine is null');
+      }
     } catch (err) {
       console.error('❌ Failed to leave channel:', err);
     }
-  };
+  }, []);
 
   // Toggle microphone
-  const toggleMic = async () => {
+  const toggleMic = useCallback(async () => {
     try {
       const newState = !isMicEnabled;
-      rtcEngineRef.current?.enableLocalAudio(newState);
-      setIsMicEnabled(newState);
-      console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.enableLocalAudio(newState);
+        setIsMicEnabled(newState);
+        console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
+      } else {
+        console.warn('⚠️ cannot toggle mic, rtcEngine is null');
+      }
     } catch (err) {
       console.error('❌ Failed to toggle mic:', err);
     }
-  };
+  }, [isMicEnabled]);
 
   // Toggle speaker
-  const toggleSpeaker = async () => {
+  const toggleSpeaker = useCallback(async () => {
     try {
       const newState = !isSpeakerEnabled;
-      rtcEngineRef.current?.setDefaultAudioRouteToSpeakerphone(newState);
-      setIsSpeakerEnabled(newState);
-      console.log(`🔊 Speaker ${newState ? 'enabled' : 'disabled'}`);
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.setDefaultAudioRouteToSpeakerphone(newState);
+        setIsSpeakerEnabled(newState);
+        console.log(`🔊 Speaker ${newState ? 'enabled' : 'disabled'}`);
+      } else {
+        console.warn('⚠️ cannot toggle speaker, rtcEngine is null');
+      }
     } catch (err) {
       console.error('❌ Failed to toggle speaker:', err);
     }
-  };
+  }, [isSpeakerEnabled]);
 
   // Generate a unique channel name based on user IDs
   const generateChannelName = (userId1: string, userId2: string) => {
@@ -318,37 +398,40 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
-  const initiateCall = (recipientId: string, recipientName: string, recipientAvatar: string) => {
-    if (Constants.appOwnership === 'expo') {
-      alert('Voice calling is not available in Expo Go. Please use a Development Build.');
-      return;
-    }
-    if (!socket || !user) return;
+  const initiateCall = useCallback(
+    (recipientId: string, recipientName: string, recipientAvatar: string) => {
+      if (Constants.appOwnership === 'expo') {
+        alert('Voice calling is not available in Expo Go. Please use a Development Build.');
+        return;
+      }
+      if (!socket || !user) return;
 
-    console.log(`📞 Initiating call to ${recipientName}`);
-    setCallState((prev) => ({
-      ...prev,
-      inCall: true,
-      recipientId,
-      recipientName,
-      recipientAvatar,
-    }));
+      console.log(`📞 Initiating call to ${recipientName}`);
+      setCallState((prev) => ({
+        ...prev,
+        inCall: true,
+        recipientId,
+        recipientName,
+        recipientAvatar,
+      }));
 
-    // Send call initiation via socket
-    socket.emit('voiceCallInitiate', {
-      callerId: user._id,
-      callerName: user.username,
-      callerAvatar: user.avatar,
-      recipientId,
-      recipientName,
-      timestamp: new Date().toISOString(),
-    });
+      // Send call initiation via socket
+      socket.emit('voiceCallInitiate', {
+        callerId: user._id,
+        callerName: user.username,
+        callerAvatar: user.avatar,
+        recipientId,
+        recipientName,
+        timestamp: new Date().toISOString(),
+      });
 
-    // Start ringing sound
-    playRingingSound();
-  };
+      // Start ringing sound
+      playRingingSound();
+    },
+    [socket, user, playRingingSound]
+  );
 
-  const acceptCall = async () => {
+  const acceptCall = useCallback(async () => {
     if (Constants.appOwnership === 'expo') {
       alert('Voice calling is not available in Expo Go. Please use a Development Build.');
       return;
@@ -383,9 +466,18 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       await initializeAgoraEngine();
       joinChannel(channelName, token, uid);
     }
-  };
+  }, [
+    socket,
+    user,
+    callState.callerId,
+    callState.callerName,
+    stopIncomingSound,
+    stopRingingSound,
+    initializeAgoraEngine,
+    joinChannel,
+  ]);
 
-  const rejectCall = () => {
+  const rejectCall = useCallback(() => {
     if (!socket || !callState.callerId) return;
 
     console.log(`❌ Rejecting call from ${callState.callerName}`);
@@ -405,9 +497,9 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callerName: null,
       callerAvatar: null,
     }));
-  };
+  }, [socket, user, callState.callerId, callState.callerName, stopIncomingSound, stopRingingSound]);
 
-  const endCall = async () => {
+  const endCall = useCallback(async () => {
     if (!socket) return;
 
     console.log('📵 Ending call');
@@ -446,7 +538,35 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callerId: callState.recipientId || callState.callerId,
       recipientId: user?._id,
     });
-  };
+  }, [
+    socket,
+    user,
+    callState.recipientId,
+    callState.callerId,
+    leaveChannel,
+    stopRingingSound,
+    stopIncomingSound,
+  ]);
+
+  const handleIncomingCallFromPush = useCallback(
+    (data: any) => {
+      if (!data) return;
+      console.log('📞 Handling incoming call from PUSH:', data);
+      try {
+        setCallState((prev) => ({
+          ...prev,
+          remoteCalling: true,
+          callerId: data?.callerId || null,
+          callerName: data?.callerName || 'Unknown Caller',
+          callerAvatar: data?.callerAvatar || null,
+        }));
+        playIncomingSound();
+      } catch (err) {
+        console.error('❌ Error handling incoming call data:', err);
+      }
+    },
+    [playIncomingSound]
+  );
 
   // Listen for incoming calls
   useEffect(() => {
@@ -479,27 +599,47 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     });
 
     socket.on('voiceCallRejected', (data: any) => {
-      console.log('Call rejected');
-      stopRingingSound();
-      setCallState((prev) => ({
-        ...prev,
-        inCall: false,
-        remoteCalling: false,
-      }));
-      stopIncomingSound();
+      console.log('📱 Call rejected by recipient');
+      try {
+        setCallState((prev) => ({
+          inCall: false,
+          remoteCalling: false,
+          callerId: null,
+          callerName: null,
+          callerAvatar: null,
+          recipientId: null,
+          recipientName: null,
+          recipientAvatar: null,
+          callDuration: 0,
+        }));
+        stopRingingSound();
+        stopIncomingSound();
+      } catch (err) {
+        console.error('❌ Error handling voiceCallRejected:', err);
+      }
     });
 
     socket.on('voiceCallEnded', (data: any) => {
-      console.log('Call ended');
-      setCallState((prev) => ({
-        ...prev,
-        inCall: false,
-        remoteCalling: false,
-        callDuration: 0,
-      }));
-      stopIncomingSound();
-      setCallDuration(0);
-      setCallToken(null);
+      console.log('📱 Call ended');
+      try {
+        setCallState((prev) => ({
+          inCall: false,
+          remoteCalling: false,
+          callerId: null,
+          callerName: null,
+          callerAvatar: null,
+          recipientId: null,
+          recipientName: null,
+          recipientAvatar: null,
+          callDuration: 0,
+        }));
+        stopIncomingSound();
+        stopRingingSound();
+        setCallDuration(0);
+        setCallToken(null);
+      } catch (err) {
+        console.error('❌ Error handling voiceCallEnded:', err);
+      }
     });
 
     return () => {
@@ -512,34 +652,45 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
   // Track call duration
   useEffect(() => {
-    if (!callState.inCall) return;
+    if (!callState.inCall || callState.remoteCalling) return;
 
     const timer = setInterval(() => {
       setCallDuration((prev) => prev + 1);
-      setCallState((prev) => ({
-        ...prev,
-        callDuration: prev.callDuration + 1,
-      }));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [callState.inCall]);
+  }, [callState.inCall, callState.remoteCalling]);
 
-  return (
-    <VoiceCallContext.Provider
-      value={{
-        callState,
-        initiateCall,
-        acceptCall,
-        rejectCall,
-        endCall,
-        callToken,
-        toggleMic,
-        toggleSpeaker,
-        isMicEnabled,
-        isSpeakerEnabled,
-      }}>
-      {children}
-    </VoiceCallContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      callState,
+      callDuration,
+      initiateCall,
+      acceptCall,
+      rejectCall,
+      endCall,
+      callToken,
+      toggleMic,
+      toggleSpeaker,
+      isMicEnabled,
+      isSpeakerEnabled,
+      handleIncomingCallFromPush,
+    }),
+    [
+      callState,
+      callDuration,
+      initiateCall,
+      acceptCall,
+      rejectCall,
+      endCall,
+      callToken,
+      toggleMic,
+      toggleSpeaker,
+      isMicEnabled,
+      isSpeakerEnabled,
+      handleIncomingCallFromPush,
+    ]
   );
+
+  return <VoiceCallContext.Provider value={contextValue}>{children}</VoiceCallContext.Provider>;
 };
