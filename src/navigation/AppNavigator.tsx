@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -10,6 +10,10 @@ import HomeScreen from '../screens/HomeScreen';
 import MainTabNavigator from './MainTabNavigator';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import MarketplaceScreen from '../screens/MarketplaceScreen';
+import CreateListingScreen from '../screens/CreateListingScreen';
+import ListingDetailScreen from '../screens/ListingDetailScreen';
+import MyListingsScreen from '../screens/MyListingsScreen';
 
 import { AuthContext } from '../auth/AuthContext';
 import PageScreen from '../screens/PageScreen';
@@ -54,13 +58,13 @@ const AppNavigator = () => {
                 headerShown: true,
                 headerLeft: () => <HeaderLogo />,
                 headerRight: () => <ProfileHeaderIcon />,
-                headerLeftContainerStyle: {
-                  paddingLeft: 0,
-                },
+                // headerLeftContainerStyle: { // Removed this line
+                //   paddingLeft: 0,
+                // },
               }}
             />
 
-            <Stack.Screen name="CommentsScreen" component={CommentsScreen} />
+            <Stack.Screen name="CommentsScreen" component={CommentsScreen as any} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen
               name="EditPost"
@@ -79,6 +83,26 @@ const AppNavigator = () => {
               component={PostScreen}
               options={{ headerShown: true, headerTitle: '' }}
             />
+            <Stack.Screen
+              name="Marketplace"
+              component={MarketplaceScreen}
+              options={{ title: 'Marketplace' }}
+            />
+            <Stack.Screen
+              name="CreateListing"
+              component={CreateListingScreen}
+              options={{ title: 'Create Listing' }}
+            />
+            <Stack.Screen
+              name="ListingDetail"
+              component={ListingDetailScreen}
+              options={{ title: 'Listing Details' }}
+            />
+            <Stack.Screen
+              name="MyListings"
+              component={MyListingsScreen}
+              options={{ title: 'Your Listings' }}
+            />
           </>
         ) : (
           <>
@@ -91,7 +115,7 @@ const AppNavigator = () => {
           </>
         )}
       </Stack.Navigator>
-      {notification && (
+      {showNotification && (
         <NotificationToast
           visible={showNotification}
           message={notification}
