@@ -13,6 +13,7 @@ interface SocketContextType {
   onlineUsers: Set<string>;
   setNotifications: (notif: any[]) => void;
   showNotification: boolean;
+  notification: any;
   setNotification: (notif: any) => void;
   setShowNotification: (show: boolean) => void;
   refreshNotifications: () => void;
@@ -25,6 +26,7 @@ export const SocketContext = createContext<SocketContextType>({
   onlineUsers: new Set(),
   setNotifications: () => {},
   showNotification: false,
+  notification: null,
   setNotification: () => {},
   setShowNotification: () => {},
   refreshNotifications: () => {},
@@ -87,23 +89,30 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('📨 Received message via socket:', msg);
 
         // Show Toast notification if message is from someone else
-        if (msg.recipient === user._id) {
-          Toast.show({
-            type: 'success',
-            text1: `New message from ${msg.sender.username}`,
-            text2:
-              msg.text || (msg.media && msg.media.length > 0 ? 'Sent an image' : 'Sent a message'),
-            onPress: () => {
-              RootNavigation.navigate(
-                'Chat' as never,
-                {
-                  userId: msg.sender._id,
-                  username: msg.sender.username,
-                } as never
-              );
-              Toast.hide();
-            },
-          });
+        if (msg?.recipient === user?._id && msg?.sender) {
+          try {
+            Toast.show({
+              type: 'success',
+              text1: `New message from ${msg?.sender?.username || 'User'}`,
+              text2:
+                msg?.text ||
+                (msg?.media && msg?.media.length > 0 ? 'Sent an image' : 'Sent a message'),
+              onPress: () => {
+                if (msg?.sender?._id) {
+                  RootNavigation.navigate(
+                    'Chat' as never,
+                    {
+                      userId: msg.sender._id,
+                      username: msg.sender.username || 'User',
+                    } as never
+                  );
+                }
+                Toast.hide();
+              },
+            });
+          } catch (err) {
+            console.error('❌ Failed to show Toast:', err);
+          }
         }
       });
 
@@ -114,16 +123,17 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         setShowNotification(true);
         // Play sound here
         try {
-          const { sound } = await ExpoAudio.Sound.createAsync(
-            require('../constants/sounds/notification.mp3')
-          );
-          await sound.playAsync();
-          // Unload sound after playback to free resources
-          sound.setOnPlaybackStatusUpdate(async (status: AVPlaybackStatus) => {
-            if (status.isLoaded && status.didJustFinish) {
-              await sound.unloadAsync();
-            }
-          });
+          const soundModule = require('../constants/sounds/notification.mp3');
+          if (soundModule) {
+            const { sound } = await ExpoAudio.Sound.createAsync(soundModule);
+            await sound.playAsync();
+            // Unload sound after playback to free resources
+            sound.setOnPlaybackStatusUpdate(async (status: AVPlaybackStatus) => {
+              if (status.isLoaded && status.didJustFinish) {
+                await sound.unloadAsync();
+              }
+            });
+          }
         } catch (error) {
           console.error('Failed to play notification sound:', error);
         }
