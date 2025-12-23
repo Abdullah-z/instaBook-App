@@ -9,6 +9,7 @@ const { width, height } = Dimensions.get('window');
 const VoiceCallScreen: React.FC = () => {
   const {
     callState,
+    callDuration,
     acceptCall,
     rejectCall,
     endCall,
@@ -30,19 +31,32 @@ const VoiceCallScreen: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const avatarUrl = callState.callerAvatar || callState.recipientAvatar;
+  const avatarUrl =
+    callState?.callerAvatar &&
+    typeof callState.callerAvatar === 'string' &&
+    callState.callerAvatar.trim() !== ''
+      ? callState.callerAvatar
+      : callState?.recipientAvatar &&
+          typeof callState.recipientAvatar === 'string' &&
+          callState.recipientAvatar.trim() !== ''
+        ? callState.recipientAvatar
+        : null;
 
+  // If no call activity, return early before trying to render any images
+  if (!callState?.remoteCalling && !callState?.inCall) {
+    return null;
+  }
   // Incoming call screen
-  if (callState.remoteCalling && !callState.inCall) {
+  if (callState?.remoteCalling && !callState?.inCall) {
     return (
       <View style={styles.incomingCallContainer}>
         <View style={styles.incomingCallContent}>
-          {callState.callerAvatar ? (
-            <Image source={{ uri: callState.callerAvatar }} style={styles.avatar} />
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
           ) : (
             <MaterialIcons name="account-circle" size={120} color="#fff" />
           )}
-          <Text style={styles.incomingCallerName}>{callState.callerName}</Text>
+          <Text style={styles.incomingCallerName}>{callState?.callerName || 'Unknown User'}</Text>
           <Text style={styles.incomingCallText}>Incoming call...</Text>
         </View>
 
@@ -60,7 +74,7 @@ const VoiceCallScreen: React.FC = () => {
   }
 
   // Active call screen
-  if (callState.inCall) {
+  if (callState?.inCall) {
     return (
       <View style={styles.activeCallContainer}>
         <View style={styles.callInfo}>
@@ -70,9 +84,9 @@ const VoiceCallScreen: React.FC = () => {
             <MaterialIcons name="account-circle" size={140} color="#1f6feb" />
           )}
           <Text style={styles.callPartnerName}>
-            {callState.recipientName || callState.callerName}
+            {callState?.recipientName || callState?.callerName || 'In Call'}
           </Text>
-          <Text style={styles.callDuration}>{formatDuration(callState.callDuration)}</Text>
+          <Text style={styles.callDuration}>{formatDuration(callDuration || 0)}</Text>
         </View>
 
         <View style={styles.callControls}>
