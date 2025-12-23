@@ -11,7 +11,11 @@ const ProfileHeaderIcon = () => {
   return (
     <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
       <View style={{ marginRight: 15, borderWidth: 1, borderColor: '#ddd', borderRadius: 20 }}>
-        <Avatar.Image size={32} source={{ uri: user?.avatar }} />
+        {user?.avatar && typeof user.avatar === 'string' && user.avatar.trim() !== '' ? (
+          <Avatar.Image size={32} source={{ uri: user.avatar }} />
+        ) : (
+          <Avatar.Icon size={32} icon="account" />
+        )}
       </View>
     </TouchableOpacity>
   );
