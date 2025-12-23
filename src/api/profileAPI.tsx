@@ -8,6 +8,7 @@ export const getProfileUser = async (id: string) => {
     user: userRes.data.user,
     posts: postsRes.data.posts,
     result: postsRes.data.result,
+    totalPosts: postsRes.data.totalPosts,
   };
 };
 
