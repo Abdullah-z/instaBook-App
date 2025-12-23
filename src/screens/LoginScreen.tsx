@@ -3,20 +3,46 @@ import { View, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-n
 import { TextInput, Button, Text } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
 const LoginScreen = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [isLoginView, setIsLoginView] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter both email and password',
+      });
+      return;
+    }
+
+    setLoading(true);
+    setError('');
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      const errorMsg =
+        err.response?.data?.msg || err.message || 'Login failed. Please check your credentials.';
+      setError(errorMsg);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: errorMsg,
+      });
+    } finally {
+      setLoading(true); // Stay loading until navigation if success, though AuthContext usually handles redirect
+      // Wait, AuthContext usually changes the state which triggers AppNavigator to re-render.
+      // Let's set loading false if we catch error.
+      setLoading(false);
     }
   };
 
@@ -49,11 +75,18 @@ const LoginScreen = () => {
             label="Password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             style={styles.input}
             mode="outlined"
             outlineColor="#eee"
             activeOutlineColor="#000"
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowPassword(!showPassword)}
+                color="#666"
+              />
+            }
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -61,6 +94,8 @@ const LoginScreen = () => {
           <Button
             mode="contained"
             onPress={handleLogin}
+            loading={loading}
+            disabled={loading}
             style={styles.loginButton}
             contentStyle={{ height: 50 }}
             labelStyle={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
@@ -112,7 +147,6 @@ const LoginScreen = () => {
               style={{ width: 100, height: 100 }}
             />
           </View>
-          <Text style={{ position: 'absolute', alignSelf: 'center', top: '40%' }}></Text>
         </View>
 
         <Text style={styles.heroTitle}>Best Social App to Make New Friends</Text>
