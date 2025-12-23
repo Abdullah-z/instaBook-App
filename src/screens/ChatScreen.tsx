@@ -14,6 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { getMessages, sendMessage, deleteConversation } from '../api/messageAPI';
@@ -46,8 +47,8 @@ const ChatScreen = () => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      headerTitle: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
             {username || 'Chat'}
           </Text>
@@ -57,19 +58,19 @@ const ChatScreen = () => {
               height: 8,
               borderRadius: 4,
               backgroundColor: isUserOnline ? '#4CAF50' : '#999',
+              marginLeft: 8,
             }}
           />
         </View>
       ),
       headerRight: () => (
-        <View style={{ flexDirection: 'row', gap: 12, marginRight: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
           <TouchableOpacity
+            style={{ marginRight: 16 }}
             onPress={() => {
-              if (!isUserOnline) {
-                Alert.alert('User Offline', 'Cannot call offline users');
-                return;
-              }
-              initiateCall(userId, username, recipientAvatar || '');
+              const safeAvatar =
+                recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
+              initiateCall(userId, username, safeAvatar);
             }}>
             <MaterialIcons name="call" size={24} color="#1f6feb" />
           </TouchableOpacity>
@@ -79,7 +80,15 @@ const ChatScreen = () => {
         </View>
       ),
     });
-  }, [navigation, username, isUserOnline, userId]);
+  }, [navigation, username, isUserOnline, userId, recipientAvatar]);
+
+  if (!route.params) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text>Error: Missing chat parameters</Text>
+      </View>
+    );
+  }
 
   const handleDeleteConversation = () => {
     Alert.alert(
@@ -125,21 +134,25 @@ const ChatScreen = () => {
 
   useEffect(() => {
     loadMessages();
-    navigation.setOptions({ title: username || 'Chat' });
   }, [userId]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleIncomingMessage = (msg: any) => {
-      const msgSenderId = msg.sender?._id || msg.sender;
-      const msgRecipientId = msg.recipient?._id || msg.recipient;
+      if (!msg) return;
+      try {
+        const msgSenderId = msg.sender?._id || msg.sender;
+        const msgRecipientId = msg.recipient?._id || msg.recipient;
 
-      if (msgSenderId === userId || msgRecipientId === userId) {
-        setMessages((prev) => [...prev, msg]);
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        if (msgSenderId === userId || msgRecipientId === userId) {
+          setMessages((prev) => [...prev, msg]);
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        }
+      } catch (err) {
+        console.error('❌ Error handling incoming message:', err);
       }
     };
 
@@ -221,7 +234,12 @@ const ChatScreen = () => {
       }, 100);
     } catch (err) {
       console.error('Failed to send message:', err);
-      Alert.alert('Error', 'Failed to send message');
+      // Alert.alert('Error', 'Failed to send message'); // Removed to prevent hard crash loops
+      Toast.show({
+        type: 'error',
+        text1: 'Message failed to send',
+        text2: 'Please checking your connection.',
+      });
       setText(messageText);
       setMedia(mediaToSend);
     } finally {
@@ -230,6 +248,7 @@ const ChatScreen = () => {
   };
 
   const renderMessage = ({ item }: { item: any }) => {
+    if (!item) return null;
     const senderId = item.sender?._id || item.sender;
     const isSent = senderId === user?._id;
 
@@ -239,9 +258,11 @@ const ChatScreen = () => {
         <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
           {item.media && item.media.length > 0 && (
             <View style={styles.mediaContainer}>
-              {item.media.map((img: any, idx: number) => (
-                <Image key={idx} source={{ uri: img.url }} style={styles.messageImage} />
-              ))}
+              {item.media.map((img: any, idx: number) =>
+                img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
+                  <Image key={idx} source={{ uri: img.url }} style={styles.messageImage} />
+                ) : null
+              )}
             </View>
           )}
           {item.text && (
@@ -294,7 +315,11 @@ const ChatScreen = () => {
         <ScrollView horizontal style={styles.mediaPreview}>
           {media.map((item, index) => (
             <View key={index} style={styles.previewImageContainer}>
-              <Image source={{ uri: item.uri }} style={styles.previewImage} />
+              {item.uri ? (
+                <Image source={{ uri: item.uri }} style={styles.previewImage} />
+              ) : (
+                <View style={[styles.previewImage, { backgroundColor: '#eee' }]} />
+              )}
               <TouchableOpacity
                 style={styles.deleteMediaButton}
                 onPress={() => handleDeleteMedia(index)}>
