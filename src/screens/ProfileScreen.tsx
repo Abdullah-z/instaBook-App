@@ -30,6 +30,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const [profileUser, setProfileUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [savedPosts, setSavedPosts] = useState<any[] | null>(null);
+  const [totalPosts, setTotalPosts] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showSaved, setShowSaved] = useState(false);
   const [page, setPage] = useState(1);
@@ -47,6 +48,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
       const res = await getProfileUser(id);
       setProfileUser(res.user);
       setPosts(res.posts);
+      setTotalPosts(res.totalPosts);
       setResult(res.result);
       setPage(1);
     } catch (err) {
@@ -145,7 +147,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         <ProfileHeader
           profile={profileUser}
           isOwner={id === user._id}
-          postCount={posts.length}
+          postCount={totalPosts}
           onRefresh={loadProfile}
         />
 
