@@ -18,3 +18,8 @@ export const searchUser = async (username: string) => {
   const res = await API.get(`/search?username=${username}`);
   return res.data;
 };
+
+export const savePushToken = async (pushToken: string) => {
+  const res = await API.post('/user/push_token', { pushToken });
+  return res.data;
+};
