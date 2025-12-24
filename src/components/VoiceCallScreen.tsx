@@ -15,8 +15,12 @@ const VoiceCallScreen: React.FC = () => {
     endCall,
     toggleMic,
     toggleSpeaker,
+    toggleVideo,
+    switchCamera,
     isMicEnabled,
     isSpeakerEnabled,
+    isVideoEnabled,
+    remoteUid,
   } = useContext(VoiceCallContext);
   const { user } = useContext(AuthContext);
 
@@ -75,21 +79,69 @@ const VoiceCallScreen: React.FC = () => {
 
   // Active call screen
   if (callState?.inCall) {
+    // Dynamically require Agora views
+    let RtcSurfaceView: any = null;
+    try {
+      if (callState.isVideo) {
+        const Agora = require('react-native-agora');
+        RtcSurfaceView = Agora.RtcSurfaceView;
+      }
+    } catch (e) {
+      console.error('Failed to load Agora views:', e);
+    }
+
     return (
       <View style={styles.activeCallContainer}>
-        <View style={styles.callInfo}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={[styles.avatar, styles.activeAvatar]} />
-          ) : (
-            <MaterialIcons name="account-circle" size={140} color="#1f6feb" />
-          )}
-          <Text style={styles.callPartnerName}>
-            {callState?.recipientName || callState?.callerName || 'In Call'}
-          </Text>
-          <Text style={styles.callDuration}>{formatDuration(callDuration || 0)}</Text>
-        </View>
+        {callState.isVideo ? (
+          <View style={styles.videoContainer}>
+            {/* Remote Video (Background) */}
+            {remoteUid !== null ? (
+              <RtcSurfaceView
+                style={styles.remoteVideo}
+                canvas={{ uid: remoteUid }}
+                zOrderMediaOverlay={false}
+              />
+            ) : (
+              <View style={styles.remoteVideoPlaceholder}>
+                <MaterialIcons name="account-circle" size={140} color="#fff" />
+                <Text style={styles.waitingText}>Waiting for participant...</Text>
+              </View>
+            )}
 
-        <View style={styles.callControls}>
+            {/* Local Video (PIP) */}
+            {isVideoEnabled && (
+              <View style={styles.localVideoContainer}>
+                <RtcSurfaceView
+                  style={styles.localVideo}
+                  canvas={{ uid: 0 }} // 0 is always local user
+                  zOrderMediaOverlay={true}
+                />
+              </View>
+            )}
+
+            {/* Call Info Overlay */}
+            <View style={styles.videoCallOverlay}>
+              <Text style={styles.videoPartnerName}>
+                {callState?.recipientName || callState?.callerName || 'In Call'}
+              </Text>
+              <Text style={styles.videoDuration}>{formatDuration(callDuration || 0)}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.callInfo}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={[styles.avatar, styles.activeAvatar]} />
+            ) : (
+              <MaterialIcons name="account-circle" size={140} color="#1f6feb" />
+            )}
+            <Text style={styles.callPartnerName}>
+              {callState?.recipientName || callState?.callerName || 'In Call'}
+            </Text>
+            <Text style={styles.callDuration}>{formatDuration(callDuration || 0)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.callControls, callState.isVideo && styles.videoControls]}>
           <TouchableOpacity
             style={[styles.controlButton, !isMicEnabled && styles.disabledButton]}
             onPress={toggleMic}>
@@ -100,15 +152,33 @@ const VoiceCallScreen: React.FC = () => {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.controlButton, !isSpeakerEnabled && styles.disabledButton]}
-            onPress={toggleSpeaker}>
-            <MaterialIcons
-              name={isSpeakerEnabled ? 'volume-up' : 'volume-off'}
-              size={24}
-              color={isSpeakerEnabled ? '#333' : '#999'}
-            />
-          </TouchableOpacity>
+          {callState.isVideo ? (
+            <>
+              <TouchableOpacity
+                style={[styles.controlButton, !isVideoEnabled && styles.disabledButton]}
+                onPress={toggleVideo}>
+                <MaterialIcons
+                  name={isVideoEnabled ? 'videocam' : 'videocam-off'}
+                  size={24}
+                  color={isVideoEnabled ? '#333' : '#999'}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.controlButton} onPress={switchCamera}>
+                <MaterialIcons name="flip-camera-ios" size={24} color="#333" />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.controlButton, !isSpeakerEnabled && styles.disabledButton]}
+              onPress={toggleSpeaker}>
+              <MaterialIcons
+                name={isSpeakerEnabled ? 'volume-up' : 'volume-off'}
+                size={24}
+                color={isSpeakerEnabled ? '#333' : '#999'}
+              />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={endCall}>
             <MaterialIcons name="call-end" size={24} color="#fff" />
@@ -231,6 +301,69 @@ const styles = StyleSheet.create({
     height: 140,
     borderRadius: 70,
     borderColor: '#1f6feb',
+  },
+  videoContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  remoteVideo: {
+    flex: 1,
+  },
+  remoteVideoPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  waitingText: {
+    color: '#fff',
+    marginTop: 20,
+    fontSize: 16,
+  },
+  localVideoContainer: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    width: 120,
+    height: 160,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#fff',
+    backgroundColor: '#333',
+    zIndex: 10,
+  },
+  localVideo: {
+    flex: 1,
+  },
+  videoCallOverlay: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+    right: 20,
+  },
+  videoPartnerName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  videoDuration: {
+    fontSize: 16,
+    color: '#fff',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  videoControls: {
+    backgroundColor: 'transparent',
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
   },
 });
 
