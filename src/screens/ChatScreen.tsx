@@ -74,6 +74,15 @@ const ChatScreen = () => {
             }}>
             <MaterialIcons name="call" size={24} color="#1f6feb" />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={{ marginRight: 16 }}
+            onPress={() => {
+              const safeAvatar =
+                recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
+              initiateCall(userId, username, safeAvatar, true);
+            }}>
+            <MaterialIcons name="videocam" size={26} color="#1f6feb" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleDeleteConversation}>
             <Ionicons name="trash-outline" size={24} color="#ff4444" />
           </TouchableOpacity>
