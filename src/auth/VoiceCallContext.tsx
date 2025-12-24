@@ -33,20 +33,30 @@ interface CallState {
   recipientName: string | null;
   recipientAvatar: string | null;
   callDuration: number;
+  isVideo: boolean;
 }
 
 interface VoiceCallContextType {
   callState: CallState;
   callDuration: number;
-  initiateCall: (recipientId: string, recipientName: string, recipientAvatar: string) => void;
+  initiateCall: (
+    recipientId: string,
+    recipientName: string,
+    recipientAvatar: string,
+    isVideo?: boolean
+  ) => void;
   acceptCall: () => void;
   rejectCall: () => void;
   endCall: () => void;
   callToken: string | null;
   toggleMic: () => void;
   toggleSpeaker: () => void;
+  toggleVideo: () => void;
+  switchCamera: () => void;
   isMicEnabled: boolean;
   isSpeakerEnabled: boolean;
+  isVideoEnabled: boolean;
+  remoteUid: number | null;
   handleIncomingCallFromPush: (data: any) => void;
 }
 
@@ -61,6 +71,7 @@ export const VoiceCallContext = createContext<VoiceCallContextType>({
     recipientName: null,
     recipientAvatar: null,
     callDuration: 0,
+    isVideo: false,
   },
   callDuration: 0,
   initiateCall: () => {},
@@ -70,8 +81,12 @@ export const VoiceCallContext = createContext<VoiceCallContextType>({
   callToken: null,
   toggleMic: () => {},
   toggleSpeaker: () => {},
+  toggleVideo: () => {},
+  switchCamera: () => {},
   isMicEnabled: true,
   isSpeakerEnabled: true,
+  isVideoEnabled: true,
+  remoteUid: null,
   handleIncomingCallFromPush: () => {},
 });
 
@@ -90,11 +105,14 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     recipientName: null,
     recipientAvatar: null,
     callDuration: 0,
+    isVideo: false,
   });
   const [callToken, setCallToken] = useState<string | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [remoteUid, setRemoteUid] = useState<number | null>(null);
   const soundRef = useRef<ExpoAudio.Sound | null>(null);
   const incomingSoundRef = useRef<ExpoAudio.Sound | null>(null);
 
@@ -249,6 +267,11 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       console.log('🔧 Engine created, enabling audio...');
       engine.enableAudio();
 
+      if (callState.isVideo) {
+        console.log('🔧 Enabling video...');
+        engine.enableVideo();
+      }
+
       console.log('🔧 Setting channel profile to Communication...');
       engine.setChannelProfile(ChannelProfile?.ChannelProfileCommunication || 0);
 
@@ -261,8 +284,13 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
             `✅ onJoinChannelSuccess: channel=${connection.channelId}, uid=${connection.localUid}`
           );
         },
-        onUserJoined: (connection: any, remoteUid: any, elapsed: any) => {
-          console.log(`👤 onUserJoined: remoteUid=${remoteUid}`);
+        onUserJoined: (connection: any, uid: any, elapsed: any) => {
+          console.log(`👤 onUserJoined: remoteUid=${uid}`);
+          setRemoteUid(uid);
+        },
+        onUserOffline: (connection: any, uid: any, reason: any) => {
+          console.log(`👤 onUserOffline: remoteUid=${uid}, reason=${reason}`);
+          setRemoteUid(null);
         },
         onError: (err: any, msg: any) => {
           console.error(`❌ Agora Error code: ${err}, msg: ${msg}`);
@@ -359,6 +387,32 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     }
   }, [isSpeakerEnabled]);
 
+  // Toggle video
+  const toggleVideo = useCallback(async () => {
+    try {
+      const newState = !isVideoEnabled;
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.enableLocalVideo(newState);
+        setIsVideoEnabled(newState);
+        console.log(`📹 Video ${newState ? 'enabled' : 'disabled'}`);
+      }
+    } catch (err) {
+      console.error('❌ Failed to toggle video:', err);
+    }
+  }, [isVideoEnabled]);
+
+  // Switch camera
+  const switchCamera = useCallback(async () => {
+    try {
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.switchCamera();
+        console.log('🔄 Camera switched');
+      }
+    } catch (err) {
+      console.error('❌ Failed to switch camera:', err);
+    }
+  }, []);
+
   // Generate a unique channel name based on user IDs
   const generateChannelName = (userId1: string, userId2: string) => {
     const ids = [userId1, userId2].sort();
@@ -399,20 +453,26 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const initiateCall = useCallback(
-    (recipientId: string, recipientName: string, recipientAvatar: string) => {
+    (
+      recipientId: string,
+      recipientName: string,
+      recipientAvatar: string,
+      isVideo: boolean = false
+    ) => {
       if (Constants.appOwnership === 'expo') {
-        alert('Voice calling is not available in Expo Go. Please use a Development Build.');
+        alert('Calling is not available in Expo Go. Please use a Development Build.');
         return;
       }
       if (!socket || !user) return;
 
-      console.log(`📞 Initiating call to ${recipientName}`);
+      console.log(`📞 Initiating ${isVideo ? 'video' : 'voice'} call to ${recipientName}`);
       setCallState((prev) => ({
         ...prev,
         inCall: true,
         recipientId,
         recipientName,
         recipientAvatar,
+        isVideo,
       }));
 
       // Send call initiation via socket
@@ -423,6 +483,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
         recipientId,
         recipientName,
         timestamp: new Date().toISOString(),
+        isVideo,
       });
 
       // Start ringing sound
@@ -451,6 +512,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     socket.emit('voiceCallAccepted', {
       callerId: callState.callerId,
       recipientId: user?._id,
+      isVideo: callState.isVideo,
     });
 
     // Stop ringing
@@ -527,11 +589,14 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       recipientId: null,
       recipientName: null,
       recipientAvatar: null,
+      isVideo: false,
     }));
     setCallDuration(0);
     setCallToken(null);
     setIsMicEnabled(true);
     setIsSpeakerEnabled(true);
+    setIsVideoEnabled(true);
+    setRemoteUid(null);
 
     // Notify other party
     socket.emit('voiceCallEnded', {
@@ -559,6 +624,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
           callerId: data?.callerId || null,
           callerName: data?.callerName || 'Unknown Caller',
           callerAvatar: data?.callerAvatar || null,
+          isVideo: !!data?.isVideo,
         }));
         playIncomingSound();
       } catch (err) {
@@ -580,6 +646,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
         callerId: data.callerId,
         callerName: data.callerName,
         callerAvatar: data.callerAvatar,
+        isVideo: !!data.isVideo,
       }));
       playIncomingSound();
     });
@@ -611,6 +678,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
           recipientName: null,
           recipientAvatar: null,
           callDuration: 0,
+          isVideo: false,
         }));
         stopRingingSound();
         stopIncomingSound();
@@ -632,11 +700,13 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
           recipientName: null,
           recipientAvatar: null,
           callDuration: 0,
+          isVideo: false,
         }));
         stopIncomingSound();
         stopRingingSound();
         setCallDuration(0);
         setCallToken(null);
+        setRemoteUid(null);
       } catch (err) {
         console.error('❌ Error handling voiceCallEnded:', err);
       }
@@ -672,8 +742,12 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callToken,
       toggleMic,
       toggleSpeaker,
+      toggleVideo,
+      switchCamera,
       isMicEnabled,
       isSpeakerEnabled,
+      isVideoEnabled,
+      remoteUid,
       handleIncomingCallFromPush,
     }),
     [
@@ -686,8 +760,12 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callToken,
       toggleMic,
       toggleSpeaker,
+      toggleVideo,
+      switchCamera,
       isMicEnabled,
       isSpeakerEnabled,
+      isVideoEnabled,
+      remoteUid,
       handleIncomingCallFromPush,
     ]
   );
