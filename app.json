@@ -27,7 +27,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice calls"
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice calls",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for video calls"
       }
     },
     "android": {
@@ -37,12 +38,18 @@
       },
       "package": "com.instabook.social",
       "usesCleartextTraffic": true,
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "eas": {
         "projectId": "05b266f5-4c75-46bb-b44b-8602b859ef8e"
-      }
+      },
+      "agoraAppId": "57f1b0fb4940493faf15457d2388d722"
     },
     "owner": "expo53"
   }
