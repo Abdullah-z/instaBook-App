@@ -198,7 +198,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   const AGORA_APP_ID = '57f1b0fb4940493faf15457d2388d722'; // TODO: Replace with your actual ID
 
   // Initialize Agora RTC Engine
-  const initializeAgoraEngine = useCallback(async () => {
+  const initializeAgoraEngine = useCallback(async (isVideo: boolean = false) => {
     try {
       // Check if running in Expo Go
       if (Constants.appOwnership === 'expo') {
@@ -222,25 +222,41 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       }
       console.log('✅ Microphone permission granted');
 
+      // 1.1 Request Camera Permissions if Video Call
+      if (callState.isVideo) {
+        console.log('📷 Requesting camera permissions...');
+        const { PermissionsAndroid } = require('react-native');
+        if (Platform.OS === 'android') {
+          const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            console.error('❌ Camera permission denied!');
+            Alert.alert('Permission Denied', 'Camera permission is required for video calls.');
+            return;
+          }
+        }
+        // For iOS, the infoPlist entries we added will trigger the system dialog
+        // when the engine tries to access the camera.
+        console.log('✅ Camera permission handled');
+      }
+
       // 2. Configure Audio Mode for Voice Call
-      console.log('🔊 Configuring audio mode...');
+      console.log('🔊 Configuring audio mode for Agora...');
+      // Minimal config to allow recording and playback
       await ExpoAudio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
-        // On Android, we want to ensure it acts like a VOIP call
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false, // Default to speaker for now, or true for earpiece
+        shouldDuckAndroid: false, // Don't duck, we want full volume
       });
 
-      const AGORA_APP_ID = Constants.expoConfig?.extra?.agoraAppId;
+      const configAppId = Constants.expoConfig?.extra?.agoraAppId || AGORA_APP_ID;
 
-      if (!AGORA_APP_ID) {
-        console.error('❌ ERROR: AGORA_APP_ID is not set! Update it in VoiceCallContext.tsx');
+      if (!configAppId) {
+        console.error('❌ ERROR: AGORA_APP_ID is not set!');
         return;
       }
 
-      console.log('🔧 Creating Agora RTC Engine with App ID: ' + AGORA_APP_ID);
+      console.log('🔧 Creating Agora RTC Engine with App ID: ' + configAppId);
 
       // Dynamically require Agora to avoid native module crash in Expo Go
       let createAgoraRtcEngine;
@@ -258,7 +274,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       let engine;
       try {
         engine = createAgoraRtcEngine();
-        engine.initialize({ appId: AGORA_APP_ID });
+        engine.initialize({ appId: configAppId });
       } catch (err) {
         console.error('❌ CRITICAL: Failed to initialize Agora native engine:', err);
         return;
@@ -267,16 +283,22 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       console.log('🔧 Engine created, enabling audio...');
       engine.enableAudio();
 
-      if (callState.isVideo) {
-        console.log('🔧 Enabling video...');
+      // Set audio scenario for better VOIP performance
+      // Scenario 3 (GameStreaming) often works better for high-quality RN audio
+      engine.setAudioProfile(0, 3);
+
+      if (isVideo) {
+        console.log('🔧 Enabling video and starting preview...');
         engine.enableVideo();
+        engine.startPreview();
       }
 
       console.log('🔧 Setting channel profile to Communication...');
       engine.setChannelProfile(ChannelProfile?.ChannelProfileCommunication || 0);
 
-      console.log('🔧 Enabling speaker...');
+      console.log('🔧 Enabling speaker by default...');
       engine.setDefaultAudioRouteToSpeakerphone(true);
+      engine.setEnableSpeakerphone(true); // Ensure speaker is on
 
       engine.registerEventHandler({
         onJoinChannelSuccess: (connection: any, elapsed: any) => {
@@ -313,11 +335,11 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
   // Join a channel with token
   const joinChannel = useCallback(
-    async (channelName: string, token: string, uid: number) => {
+    async (channelName: string, token: string, uid: number, isVideo: boolean = false) => {
       try {
         if (!rtcEngineRef.current) {
           console.log('🔧 Engine not initialized, initializing now...');
-          await initializeAgoraEngine();
+          await initializeAgoraEngine(isVideo);
         }
 
         if (!rtcEngineRef.current) {
@@ -329,7 +351,28 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
         // Enable remote audio - enabled by default in enableAudio()
         try {
-          rtcEngineRef.current.joinChannel(token, channelName, uid, {});
+          rtcEngineRef.current.joinChannel(token, channelName, uid, {
+            publishMicrophoneTrack: true,
+            publishCameraTrack: isVideo,
+            autoSubscribeAudio: true,
+            autoSubscribeVideo: isVideo,
+          });
+
+          // CRITICAL: Explicitly enforce initial mic and speaker states after joining
+          setTimeout(() => {
+            if (rtcEngineRef.current) {
+              console.log(
+                '🔧 Enforcing initial states: Mic=',
+                isMicEnabled,
+                'Speaker=',
+                isSpeakerEnabled
+              );
+              rtcEngineRef.current.muteLocalAudioStream(!isMicEnabled);
+              rtcEngineRef.current.setEnableSpeakerphone(isSpeakerEnabled);
+              rtcEngineRef.current.muteAllRemoteAudioStreams(false);
+            }
+          }, 1000); // Give it a second to establish connection
+
           console.log(`✅ Successfully joined channel: ${channelName}`);
         } catch (err) {
           console.error('❌ CRITICAL: Failed to join channel via bridge:', err);
@@ -360,7 +403,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     try {
       const newState = !isMicEnabled;
       if (rtcEngineRef.current) {
-        rtcEngineRef.current.enableLocalAudio(newState);
+        rtcEngineRef.current.muteLocalAudioStream(!newState);
         setIsMicEnabled(newState);
         console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
       } else {
@@ -376,7 +419,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     try {
       const newState = !isSpeakerEnabled;
       if (rtcEngineRef.current) {
-        rtcEngineRef.current.setDefaultAudioRouteToSpeakerphone(newState);
+        rtcEngineRef.current.setEnableSpeakerphone(newState);
         setIsSpeakerEnabled(newState);
         console.log(`🔊 Speaker ${newState ? 'enabled' : 'disabled'}`);
       } else {
@@ -525,8 +568,8 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
     if (token) {
       // Initialize engine and join channel
-      await initializeAgoraEngine();
-      joinChannel(channelName, token, uid);
+      await initializeAgoraEngine(callState.isVideo);
+      joinChannel(channelName, token, uid, callState.isVideo);
     }
   }, [
     socket,
@@ -572,11 +615,18 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     stopRingingSound();
     stopIncomingSound();
 
-    // Disable audio
+    // Disable and release engine
     try {
-      rtcEngineRef.current?.disableAudio();
+      if (rtcEngineRef.current) {
+        rtcEngineRef.current.disableAudio();
+        rtcEngineRef.current.disableVideo();
+        rtcEngineRef.current.unregisterEventHandler({});
+        rtcEngineRef.current.release();
+        rtcEngineRef.current = null;
+        console.log('✅ Agora Engine released and reset');
+      }
     } catch (err) {
-      console.error('Error disabling audio:', err);
+      console.error('Error releasing engine:', err);
     }
 
     setCallState((prev) => ({
@@ -660,8 +710,8 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
       if (token) {
         // Initialize engine and join channel
-        await initializeAgoraEngine();
-        joinChannel(channelName, token, uid);
+        await initializeAgoraEngine(!!data.isVideo);
+        joinChannel(channelName, token, uid, !!data.isVideo);
       }
     });
 
