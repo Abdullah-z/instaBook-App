@@ -256,8 +256,95 @@ const ChatScreen = () => {
     }
   };
 
+  const groupMessagesByDate = (msgs: any[]) => {
+    const grouped: any[] = [];
+    let lastDate = '';
+
+    msgs.forEach((msg) => {
+      const date = moment(msg.createdAt).format('MMMM D, YYYY');
+      if (date !== lastDate) {
+        grouped.push({ _id: `date-${date}`, type: 'date', date });
+        lastDate = date;
+      }
+      grouped.push(msg);
+    });
+
+    return grouped;
+  };
+
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins === 0) return `${secs} sec`;
+    return `${mins} min ${secs} sec`;
+  };
+
+  const renderCallLog = (call: any, isSent: boolean) => {
+    let iconName: any = 'call';
+    let statusText = 'Voice call';
+    let durationText = '';
+    let iconColor = isSent ? '#000' : '#444';
+
+    if (call.video) {
+      iconName = 'videocam';
+      statusText = 'Video call';
+    }
+
+    switch (call.status) {
+      case 'accepted':
+        durationText = formatDuration(call.duration);
+        break;
+      case 'rejected':
+        statusText = `Declined ${call.video ? 'video' : 'voice'} call`;
+        iconColor = '#ff4444';
+        break;
+      case 'missed':
+        statusText = `Missed ${call.video ? 'video' : 'voice'} call`;
+        iconColor = '#ff4444';
+        break;
+      default:
+        break;
+    }
+
+    return (
+      <View style={styles.callLogContent}>
+        <View
+          style={[
+            styles.callIconContainer,
+            { backgroundColor: isSent ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.05)' },
+          ]}>
+          <Ionicons name={iconName} size={24} color={iconColor} />
+        </View>
+        <View style={styles.callInfo}>
+          <Text style={[styles.callStatus, isSent ? styles.sentText : styles.receivedText]}>
+            {statusText}
+          </Text>
+          {durationText ? (
+            <Text style={[styles.callDuration, isSent ? styles.sentText : styles.receivedText]}>
+              {durationText}
+            </Text>
+          ) : (
+            call.status === 'missed' && <Text style={styles.callActionText}>Tap to call back</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   const renderMessage = ({ item }: { item: any }) => {
     if (!item) return null;
+
+    if (item.type === 'date') {
+      return (
+        <View style={styles.dateSeparator}>
+          <View style={styles.dateLabel}>
+            <Text style={styles.dateText}>{item.date}</Text>
+          </View>
+        </View>
+      );
+    }
+
     const senderId = item.sender?._id || item.sender;
     const isSent = senderId === user?._id;
 
@@ -265,19 +352,25 @@ const ChatScreen = () => {
       <View
         style={[styles.messageContainer, isSent ? styles.sentContainer : styles.receivedContainer]}>
         <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
-          {item.media && item.media.length > 0 && (
-            <View style={styles.mediaContainer}>
-              {item.media.map((img: any, idx: number) =>
-                img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
-                  <Image key={idx} source={{ uri: img.url }} style={styles.messageImage} />
-                ) : null
+          {item.call ? (
+            renderCallLog(item.call, isSent)
+          ) : (
+            <>
+              {item.media && item.media.length > 0 && (
+                <View style={styles.mediaContainer}>
+                  {item.media.map((img: any, idx: number) =>
+                    img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
+                      <Image key={idx} source={{ uri: img.url }} style={styles.messageImage} />
+                    ) : null
+                  )}
+                </View>
               )}
-            </View>
-          )}
-          {item.text && (
-            <Text style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
-              {item.text}
-            </Text>
+              {item.text && (
+                <Text style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
+                  {item.text}
+                </Text>
+              )}
+            </>
           )}
           <Text
             style={[styles.timestamp, isSent ? styles.sentTimestamp : styles.receivedTimestamp]}>
@@ -310,7 +403,7 @@ const ChatScreen = () => {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={groupMessagesByDate(messages)}
           renderItem={renderMessage}
           keyExtractor={(item, index) => item._id || index.toString()}
           contentContainerStyle={styles.messagesList}
@@ -521,6 +614,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dateLabel: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  callLogContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    minWidth: 150,
+  },
+  callIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  callInfo: {
+    flex: 1,
+  },
+  callStatus: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  callDuration: {
+    fontSize: 12,
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  callActionText: {
+    fontSize: 12,
+    color: '#2196F3',
+    marginTop: 2,
   },
 });
 
