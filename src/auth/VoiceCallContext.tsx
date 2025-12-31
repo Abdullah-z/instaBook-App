@@ -10,6 +10,7 @@ import React, {
 import { SocketContext } from './SocketContext';
 import { AuthContext } from './AuthContext';
 import { Alert, Platform } from 'react-native';
+import { sendMessage } from '../api/messageAPI';
 // Conditionally import agora only in development builds
 // import type { IRtcEngine } from 'react-native-agora';
 // import { ChannelProfileType } from 'react-native-agora';
@@ -209,7 +210,13 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       }
 
       if (rtcEngineRef.current) {
-        console.log('⚠️ Agora Engine already initialized, skipping...');
+        console.log('⚠️ Agora Engine already initialized, checking video state...');
+        if (isVideo) {
+          console.log('🔧 Ensuring video is enabled for already initialized engine...');
+          rtcEngineRef.current.enableVideo();
+          rtcEngineRef.current.enableLocalVideo(true);
+          rtcEngineRef.current.startPreview();
+        }
         return; // Already initialized
       }
 
@@ -223,7 +230,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       console.log('✅ Microphone permission granted');
 
       // 1.1 Request Camera Permissions if Video Call
-      if (callState.isVideo) {
+      if (isVideo) {
         console.log('📷 Requesting camera permissions...');
         const { PermissionsAndroid } = require('react-native');
         if (Platform.OS === 'android') {
@@ -290,6 +297,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       if (isVideo) {
         console.log('🔧 Enabling video and starting preview...');
         engine.enableVideo();
+        engine.enableLocalVideo(true); // Explicitly enable local video
         engine.startPreview();
       }
 
@@ -370,6 +378,9 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
               rtcEngineRef.current.muteLocalAudioStream(!isMicEnabled);
               rtcEngineRef.current.setEnableSpeakerphone(isSpeakerEnabled);
               rtcEngineRef.current.muteAllRemoteAudioStreams(false);
+              if (isVideo) {
+                rtcEngineRef.current.enableLocalVideo(isVideoEnabled);
+              }
             }
           }, 1000); // Give it a second to establish connection
 
@@ -531,8 +542,49 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
       // Start ringing sound
       playRingingSound();
+
+      // NEW: Initialize engine immediately for video calls to show caller preview
+      if (isVideo) {
+        initializeAgoraEngine(true);
+      }
     },
-    [socket, user, playRingingSound]
+    [socket, user, playRingingSound, initializeAgoraEngine]
+  );
+
+  // Helper to log call to chat
+  const logCallToChat = useCallback(
+    async (
+      targetId: string,
+      status: 'accepted' | 'rejected' | 'missed' | 'cancelled',
+      duration: number = 0,
+      isVideo: boolean = false
+    ) => {
+      try {
+        const callData = {
+          status,
+          duration,
+          video: isVideo,
+        };
+
+        const res = await sendMessage({
+          recipient: targetId,
+          call: callData,
+        });
+
+        if (socket && socket.connected) {
+          socket.emit('addMessage', {
+            _id: res.message?._id || Date.now().toString(),
+            sender: user,
+            recipient: targetId,
+            call: callData,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to log call to chat:', err);
+      }
+    },
+    [socket, user]
   );
 
   const acceptCall = useCallback(async () => {
@@ -588,6 +640,8 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     console.log(`❌ Rejecting call from ${callState.callerName}`);
     stopIncomingSound();
 
+    logCallToChat(callState.callerId, 'rejected', 0, callState.isVideo);
+
     socket.emit('voiceCallRejected', {
       callerId: callState.callerId,
       recipientId: user?._id,
@@ -627,6 +681,21 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       }
     } catch (err) {
       console.error('Error releasing engine:', err);
+    }
+
+    // Log call to chat
+    const targetId = callState.recipientId || callState.callerId;
+    if (targetId) {
+      if (remoteUid) {
+        // Call was connected
+        logCallToChat(targetId, 'accepted', callDuration, callState.isVideo);
+      } else if (callState.recipientId) {
+        // I was the caller and cancelled before they answered
+        logCallToChat(targetId, 'missed', 0, callState.isVideo);
+      }
+      // If I was the recipient and I hang up, it's either accepted or rejected.
+      // Rejections are handled in rejectCall.
+      // Missed calls are usually logged by the caller when they give up.
     }
 
     setCallState((prev) => ({
