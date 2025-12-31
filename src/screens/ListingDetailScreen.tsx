@@ -179,7 +179,7 @@ const ListingDetailScreen = () => {
         <TouchableOpacity
           style={styles.sellerRow}
           onPress={() =>
-            listing.user?._id && navigation.navigate('Profile', { userId: listing.user._id })
+            listing.user?._id && navigation.navigate('Profile', { id: listing.user._id })
           }>
           <Avatar.Image
             size={50}
