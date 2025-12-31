@@ -10,7 +10,12 @@ export const getMessages = async (userId: string, page: number = 1) => {
   return res.data;
 };
 
-export const sendMessage = async (data: { recipient: string; text: string; media: any[] }) => {
+export const sendMessage = async (data: {
+  recipient: string;
+  text?: string;
+  media?: any[];
+  call?: any;
+}) => {
   const res = await API.post('/message', data);
   return res.data;
 };
