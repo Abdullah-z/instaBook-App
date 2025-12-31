@@ -73,7 +73,9 @@ const MessagesScreen = () => {
             <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
           </View>
           <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.text || 'Sent an image'}
+            {item.call
+              ? `${item.call.status === 'missed' ? 'Missed' : item.call.status === 'rejected' ? 'Declined' : ''} ${item.call.video ? 'video' : 'voice'} call`.trim()
+              : item.text || (item.media?.length > 0 ? 'Sent an image' : '')}
           </Text>
         </View>
       </TouchableOpacity>
