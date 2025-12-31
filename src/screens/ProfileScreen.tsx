@@ -25,7 +25,7 @@ const { width } = Dimensions.get('window');
 const ProfileScreen = ({ userId }: { userId?: string }) => {
   const route = useRoute<any>();
   const { user } = useContext(AuthContext);
-  const id = userId || route.params?.id || user?._id;
+  const id = userId || route.params?.id || route.params?.userId || user?._id;
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
