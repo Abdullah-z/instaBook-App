@@ -1,28 +1,55 @@
-export const imageUpload = async (images: any[]) => {
-  let imgArr = [];
+import * as ImageManipulator from 'expo-image-manipulator';
+import { Video } from 'react-native-compressor';
 
-  for (const item of images) {
+export const imageUpload = async (mediaList: any[], isHD: boolean = false) => {
+  const mediaArr: { public_id: string; url: string; resource_type: string }[] = [];
+
+  for (const item of mediaList) {
     try {
+      let uri = typeof item === 'string' ? item : item.uri;
+      const type = typeof item === 'string' ? 'image' : item.type || 'image';
+      const isVideo =
+        type === 'video' || uri.endsWith('.mp4') || uri.endsWith('.mov') || uri.endsWith('.m4v');
+
+      console.log(`Processing ${isVideo ? 'VIDEO' : 'IMAGE'}... (HD: ${isHD})`);
+
+      if (!isHD) {
+        if (isVideo) {
+          console.log('🎞️ Compressing video...');
+          uri = await Video.compress(uri, {
+            compressionMethod: 'auto',
+          });
+          console.log('✅ Video compressed');
+        } else {
+          console.log('🖼️ Compressing image...');
+          const result = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 1080 } }],
+            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          uri = result.uri;
+          console.log('✅ Image compressed');
+        }
+      }
+
       const formData: any = new FormData();
+      const fileName = uri.split('/').pop() || (isVideo ? 'video.mp4' : 'photo.jpg');
+      const mimeType = isVideo ? `video/mp4` : `image/jpeg`;
 
-      // Get file extension from URI
-      const uriParts = item.uri.split('.');
-      const fileType = uriParts[uriParts.length - 1];
+      formData.append('file', {
+        uri,
+        name: fileName,
+        type: mimeType,
+      } as any);
 
-      // Format image data for React Native
-      const imageData = {
-        uri: item.uri,
-        type: `image/${fileType}`,
-        name: `photo_${Date.now()}.${fileType}`,
-      };
-
-      formData.append('file', imageData as any);
       formData.append('upload_preset', 'dprkhzls');
       formData.append('cloud_name', 'dcxgup2xo');
 
-      console.log('📤 Uploading image to Cloudinary...');
+      const endpoint = isVideo
+        ? 'https://api.cloudinary.com/v1_1/dcxgup2xo/video/upload'
+        : 'https://api.cloudinary.com/v1_1/dcxgup2xo/image/upload';
 
-      const res = await fetch('https://api.cloudinary.com/v1_1/dcxgup2xo/image/upload', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
@@ -34,13 +61,19 @@ export const imageUpload = async (images: any[]) => {
       }
 
       const data = await res.json();
-      console.log('✅ Image uploaded successfully');
-      imgArr.push({ public_id: data.public_id, url: data.secure_url });
+      mediaArr.push({
+        public_id: data.public_id,
+        url: data.secure_url,
+        resource_type: data.resource_type || (isVideo ? 'video' : 'image'),
+      });
+
+      console.log('✅ Uploaded successfully');
     } catch (error) {
-      console.error('❌ Failed to upload image:', error);
-      throw error;
+      console.error('❌ Failed to process/upload media:', error);
+      // Depending on requirements, we might want to continue or throw.
+      // For now, let's keep going for other items.
     }
   }
 
-  return imgArr;
+  return mediaArr;
 };
