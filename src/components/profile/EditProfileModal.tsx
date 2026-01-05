@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,6 +38,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
   });
   const [avatarUri, setAvatarUri] = useState('');
   const [coverUri, setCoverUri] = useState('');
+  const [isHD, setIsHD] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -103,7 +105,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
       }
 
       if (mediaToUpload.length > 0) {
-        const uploadResult = await imageUpload(mediaToUpload);
+        const uploadResult = await imageUpload(mediaToUpload, isHD);
 
         // Map uploaded URLs back to correct fields
         let uploadIndex = 0;
@@ -141,6 +143,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
       Alert.alert('Error', err.response?.data?.msg || 'Failed to update profile');
     } finally {
       setLoading(false);
+      setIsHD(false);
     }
   };
 
@@ -152,7 +155,25 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
           <TouchableOpacity onPress={onClose} disabled={loading}>
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <View style={styles.hdToggleContainer}>
+              <Text style={styles.hdToggleText}>HD</Text>
+              <Switch
+                value={isHD}
+                onValueChange={setIsHD}
+                trackColor={{ false: '#767577', true: '#D4F637' }}
+                thumbColor={isHD ? '#fff' : '#f4f3f4'}
+                style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+              />
+            </View>
+          </View>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#D4F637" />
@@ -425,6 +446,17 @@ const styles = StyleSheet.create({
   },
   genderTextActive: {
     color: '#000',
+  },
+  hdToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  hdToggleText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    marginRight: 2,
   },
 });
 
