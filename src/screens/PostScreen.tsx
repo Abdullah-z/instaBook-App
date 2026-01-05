@@ -34,6 +34,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { Avatar, Menu, IconButton } from 'react-native-paper';
 import moment from 'moment';
 import YoutubePlayer from 'react-native-youtube-iframe';
+import { Video, ResizeMode } from 'expo-av';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -348,12 +349,30 @@ const PostScreen = () => {
                   data={images}
                   onProgressChange={progress}
                   scrollAnimationDuration={500}
-                  renderItem={({ item }) => (
-                    <Image
-                      source={{ uri: item.url }}
-                      style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                    />
-                  )}
+                  renderItem={({ item }) => {
+                    const isVideo = item?.resource_type === 'video' || item?.url?.endsWith('.mp4');
+
+                    if (isVideo) {
+                      return (
+                        <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }}>
+                          <Video
+                            source={{ uri: item.url }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode={ResizeMode.CONTAIN}
+                            useNativeControls
+                            isLooping
+                          />
+                        </View>
+                      );
+                    }
+
+                    return (
+                      <Image
+                        source={{ uri: item.url }}
+                        style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                      />
+                    );
+                  }}
                   mode="parallax"
                   modeConfig={{
                     parallaxScrollingScale: 1,
