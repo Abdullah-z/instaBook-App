@@ -11,9 +11,14 @@ import {
   Text,
   ActivityIndicator,
   Modal,
+  Keyboard,
+  PermissionsAndroid,
+  Platform,
+  Switch,
 } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { createPostAPI } from '../api/postAPI';
-import { imageUpload } from './ImageUpload';
+import { imageUpload } from '../utils/imageUpload';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -27,6 +32,7 @@ interface Props {
 const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locationAdded, setLocationAdded] = useState<'none' | 'text' | 'image' | 'both'>('none');
   const [locationAddress, setLocationAddress] = useState('');
@@ -38,6 +44,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
   const [youtubeLink, setYoutubeLink] = useState('');
+  const [isHD, setIsHD] = useState(false);
 
   const handleAddYoutubeLink = () => {
     if (!youtubeLink.trim()) {
@@ -58,6 +65,10 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
 
   const pickImages = async () => {
     try {
+      if (videoUri) {
+        Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
       const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission denied', 'You must allow access to media library.');
@@ -65,8 +76,9 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
+        selectionLimit: 4 - images.length,
         quality: 1,
       });
 
@@ -82,6 +94,38 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
     } catch (error) {
       console.error('🔥 Image picker error:', error);
       Alert.alert('Error', 'Something went wrong while picking images.');
+    }
+  };
+
+  const pickVideo = async () => {
+    try {
+      if (images.length > 0) {
+        Alert.alert('Limit Reached', 'You cannot add a video when images are selected.');
+        return;
+      }
+      if (videoUri) {
+        Alert.alert('Limit Reached', 'You can only upload one video at a time.');
+        return;
+      }
+
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permission denied', 'You must allow access to media library.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['videos'],
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setVideoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('🔥 Video picker error:', error);
+      Alert.alert('Error', 'Something went wrong while picking video.');
     }
   };
 
@@ -162,29 +206,73 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
   };
 
   const takePhoto = async () => {
+    console.log('📸 Camera button pressed');
     try {
-      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Permission denied', 'You must allow access to camera.');
+      console.log('Current state - videoUri:', videoUri, 'images.length:', images.length);
+
+      if (videoUri) {
+        console.log('Blocked: video selected');
+        Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
+      if (images.length >= 4) {
+        console.log('Blocked: max images');
+        Alert.alert('Limit Reached', 'You can only upload up to 4 images.');
         return;
       }
 
+      let cameraGranted = false;
+      let mediaGranted = false;
+
+      if (Platform.OS === 'android') {
+        console.log('Step 1: Requesting Android Camera Permission directly...');
+        const cameraRes = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+          title: 'Camera Permission',
+          message: 'App needs access to your camera to take photos.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        });
+        cameraGranted = cameraRes === PermissionsAndroid.RESULTS.GRANTED;
+        console.log('Android Camera permission:', cameraRes);
+
+        console.log('Step 2: Checking Media Library (Images)...');
+        // For Android 13+, we need READ_MEDIA_IMAGES. Below that READ_EXTERNAL_STORAGE.
+        // expo-image-picker usually handles this well, but let's try their requester again now
+        // that we know where it hangs.
+        const mediaStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        mediaGranted = mediaStatus.status === 'granted';
+        console.log('Media library permission status:', mediaStatus.status);
+      } else {
+        const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+        cameraGranted = cameraStatus.status === 'granted';
+        const mediaStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        mediaGranted = mediaStatus.status === 'granted';
+      }
+
+      if (!cameraGranted || !mediaGranted) {
+        console.log('Permissions NOT granted:', { cameraGranted, mediaGranted });
+        Alert.alert('Permission denied', 'You must allow access to camera and media library.');
+        return;
+      }
+
+      console.log('Launching camera...');
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 1,
       });
+      console.log('Camera result:', result);
 
-      if (!result.canceled && result.assets.length > 0) {
-        if (images.length >= 4) {
-          Alert.alert('You can only upload up to 4 images.');
-          return;
-        }
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
+        console.log('Adding image:', uri);
         setImages((prev) => [...prev, uri]);
+      } else {
+        console.log('Camera canceled or no assets');
       }
     } catch (error) {
       console.error('🔥 Camera error:', error);
-      Alert.alert('Error', 'Something went wrong while using the camera.');
+      Alert.alert('Error', `Camera failed: ${error}`);
     }
   };
 
@@ -201,9 +289,13 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
     setLoading(true);
 
     try {
-      let media = [];
-      if (Array.isArray(images) && images.length > 0) {
-        media = await imageUpload(images);
+      let media: any[] = [];
+      if (videoUri) {
+        // Upload Video
+        media = await imageUpload([{ uri: videoUri, type: 'video' }], isHD);
+      } else if (Array.isArray(images) && images.length > 0) {
+        // Upload Images
+        media = await imageUpload(images, isHD);
       }
 
       let finalContent = content.trim();
@@ -219,9 +311,11 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
       onPostCreated(res.newPost);
       setContent('');
       setImages([]);
+      setVideoUri(null);
       setLocationAdded('none');
       setLocationAddress('');
       setLocationCoords(null);
+      setIsHD(false);
     } catch (err: any) {
       console.error('❌ Error creating post:', err);
       Alert.alert('Failed to post', err?.response?.data?.msg || 'Unknown error');
@@ -230,7 +324,8 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
     }
   };
 
-  const shouldShowPost = content.trim().length > 0 || images.length > 0 || locationAdded !== 'none';
+  const shouldShowPost =
+    content.trim().length > 0 || images.length > 0 || videoUri || locationAdded !== 'none';
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -251,6 +346,10 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
           <Ionicons name="camera-outline" size={24} color="#FF9800" />
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={pickVideo} style={styles.iconInsideInput}>
+          <Ionicons name="videocam-outline" size={24} color="#E91E63" />
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={handleShareLocation} style={styles.iconInsideInput}>
           <Ionicons
             name="location-outline"
@@ -262,6 +361,17 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
         <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconInsideInput}>
           <Ionicons name="logo-youtube" size={24} color="#F44336" />
         </TouchableOpacity>
+
+        <View style={styles.hdToggleContainer}>
+          <Text style={styles.hdToggleText}>HD</Text>
+          <Switch
+            value={isHD}
+            onValueChange={setIsHD}
+            trackColor={{ false: '#767577', true: '#4CAF50' }}
+            thumbColor={isHD ? '#fff' : '#f4f3f4'}
+            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+          />
+        </View>
 
         {shouldShowPost &&
           (loading ? (
@@ -284,6 +394,34 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
             </TouchableOpacity>
           </View>
         ))}
+
+        {videoUri && (
+          <View style={[styles.imageWrapper, { width: 120, height: 120 }]}>
+            <Video
+              source={{ uri: videoUri }}
+              style={{ width: '100%', height: '100%', borderRadius: 6, backgroundColor: '#000' }}
+              resizeMode={ResizeMode.COVER}
+              isLooping={false}
+              useNativeControls={false} // Just a thumbnail preview
+              shouldPlay={false}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+              <Ionicons name="play-circle" size={30} color="#fff" />
+            </View>
+            <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.removeBtn}>
+              <Text style={styles.removeText}>✖</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* YouTube Link Modal/Input */}
@@ -430,5 +568,16 @@ const styles = StyleSheet.create({
   modalBtnTextAdd: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  hdToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  hdToggleText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    marginRight: 2,
   },
 });
