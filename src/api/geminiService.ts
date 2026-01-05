@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-const API_KEY = 'AIzaSyB2QwC_uEBloX74xycwADW6Xf6Vp7qw8bM';
+const API_KEY = '';
 
 // Initialize the client with the API Key
 const ai = new GoogleGenAI({
