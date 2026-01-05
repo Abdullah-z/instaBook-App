@@ -42,11 +42,23 @@ const PostGrid = ({
       keyExtractor={(item) => item._id}
       renderItem={({ item }) => {
         const youtubeId = item.content ? getYoutubeId(item.content) : null;
-        const imageUrl =
-          item.images?.[0]?.url ||
-          (youtubeId
-            ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
-            : 'https://via.placeholder.com/150');
+        let isNativeVideo = false;
+        let imageUrl = 'https://via.placeholder.com/150';
+
+        if (item.images?.[0]?.url) {
+          imageUrl = item.images[0].url;
+          isNativeVideo =
+            item.images[0].resource_type === 'video' || item.images[0].url.endsWith('.mp4');
+
+          // If it's a Cloudinary video, we can get a thumbnail by changing the extension
+          if (isNativeVideo && imageUrl.includes('cloudinary.com')) {
+            imageUrl = imageUrl.replace(/\.[^/.]+$/, '.jpg');
+          }
+        } else if (youtubeId) {
+          imageUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+        }
+
+        const isVideo = isNativeVideo || youtubeId;
 
         return (
           <TouchableOpacity
@@ -60,7 +72,7 @@ const PostGrid = ({
                 backgroundColor: '#eee',
               }}
             />
-            {youtubeId && !item.images?.[0]?.url && (
+            {isVideo && (
               <View
                 style={{
                   position: 'absolute',
@@ -70,7 +82,7 @@ const PostGrid = ({
                   bottom: 0,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  backgroundColor: 'rgba(0,0,0,0.2)',
                 }}>
                 <Text style={{ color: '#fff', fontSize: 24 }}>▶</Text>
               </View>
