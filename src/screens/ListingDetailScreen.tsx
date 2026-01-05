@@ -19,6 +19,7 @@ import { VoiceCallContext } from '../auth/VoiceCallContext';
 import Carousel from 'react-native-reanimated-carousel';
 import LeafletMap from '../components/LeafletMap';
 import Constants from 'expo-constants';
+import { promptSaveImage } from '../utils/MediaUtils';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 
@@ -129,7 +130,11 @@ const ListingDetailScreen = () => {
             data={listing.images}
             scrollAnimationDuration={500}
             renderItem={({ item }) => (
-              <Image source={{ uri: item as string }} style={styles.carouselImage} />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onLongPress={() => promptSaveImage(item as string)}>
+                <Image source={{ uri: item as string }} style={styles.carouselImage} />
+              </TouchableOpacity>
             )}
           />
         ) : (
