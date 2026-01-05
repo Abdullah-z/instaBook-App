@@ -10,10 +10,11 @@ import {
   Text,
   ActivityIndicator,
   Modal,
+  Switch,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';
-import { imageUpload } from '../components/ImageUpload';
+import { imageUpload } from '../utils/imageUpload';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
@@ -25,6 +26,7 @@ const EditPostScreen = () => {
   const [content, setContent] = useState(post.content);
   const [images, setImages] = useState<any[]>(post.images || []);
   const [loading, setLoading] = useState(false);
+  const [isHD, setIsHD] = useState(false);
 
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
@@ -126,7 +128,7 @@ const EditPostScreen = () => {
       const oldImages = images.filter((img) => typeof img !== 'string');
 
       if (newImages.length > 0) {
-        const uploadedMedia = await imageUpload(newImages);
+        const uploadedMedia = await imageUpload(newImages, isHD);
         media = [...oldImages, ...uploadedMedia];
       } else {
         media = oldImages;
@@ -177,6 +179,16 @@ const EditPostScreen = () => {
           <Ionicons name="logo-youtube" size={24} color="#F44336" />
           <Text style={styles.iconText}>YouTube</Text>
         </TouchableOpacity>
+
+        <View style={styles.hdToggleContainer}>
+          <Text style={styles.hdToggleText}>HD</Text>
+          <Switch
+            value={isHD}
+            onValueChange={setIsHD}
+            trackColor={{ false: '#767577', true: '#4CAF50' }}
+            thumbColor={isHD ? '#fff' : '#f4f3f4'}
+          />
+        </View>
       </View>
 
       <View style={styles.imageGrid}>
@@ -364,5 +376,16 @@ const styles = StyleSheet.create({
   modalBtnTextAdd: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  hdToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  hdToggleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+    marginRight: 4,
   },
 });
