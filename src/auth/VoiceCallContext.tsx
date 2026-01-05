@@ -10,12 +10,12 @@ import React, {
 import { SocketContext } from './SocketContext';
 import { AuthContext } from './AuthContext';
 import { Alert, Platform } from 'react-native';
-import { sendMessage } from '../api/messageAPI';
 // Conditionally import agora only in development builds
 // import type { IRtcEngine } from 'react-native-agora';
 // import { ChannelProfileType } from 'react-native-agora';
 import { Audio as ExpoAudio } from 'expo-av';
 import Constants from 'expo-constants';
+import { sendMessage } from '../api/messageAPI';
 
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -114,6 +114,13 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [remoteUid, setRemoteUid] = useState<number | null>(null);
+
+  // Refs to track current states for use in async callbacks and engine setup
+  // These fix the stale closure issues during call connection phase
+  const isMicEnabledRef = useRef(true);
+  const isSpeakerEnabledRef = useRef(true);
+  const isVideoEnabledRef = useRef(true);
+
   const soundRef = useRef<ExpoAudio.Sound | null>(null);
   const incomingSoundRef = useRef<ExpoAudio.Sound | null>(null);
 
@@ -200,50 +207,59 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
   // Initialize Agora RTC Engine
   const initializeAgoraEngine = useCallback(async (isVideo: boolean = false) => {
+    console.log('Initialize Agora Engine started');
     try {
       // Check if running in Expo Go
       if (Constants.appOwnership === 'expo') {
-        console.log(
-          '⚠️ Running in Expo Go - Voice Calling is disabled. This avoids native module crashes.'
-        );
+        const msg = '⚠️ Expo Go detected - Voice Calling disabled';
+        console.log(msg);
+        console.log(msg);
         return;
       }
 
       if (rtcEngineRef.current) {
-        console.log('⚠️ Agora Engine already initialized, checking video state...');
-        if (isVideo) {
-          console.log('🔧 Ensuring video is enabled for already initialized engine...');
-          rtcEngineRef.current.enableVideo();
-          rtcEngineRef.current.enableLocalVideo(true);
-          rtcEngineRef.current.startPreview();
-        }
+        console.log('⚠️ Engine already initialized, skipping...');
         return; // Already initialized
       }
 
-      // 1. Request Microphone Permissions
-      console.log('🎤 Requesting microphone permissions...');
-      const { status } = await ExpoAudio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        console.error('❌ Microphone permission denied!');
-        return;
-      }
-      console.log('✅ Microphone permission granted');
+      // 1. Request Permissions
+      console.log('Requesting permissions...');
 
-      // 1.1 Request Camera Permissions if Video Call
-      if (isVideo) {
-        console.log('📷 Requesting camera permissions...');
+      if (Platform.OS === 'android') {
         const { PermissionsAndroid } = require('react-native');
-        if (Platform.OS === 'android') {
-          const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            console.error('❌ Camera permission denied!');
-            Alert.alert('Permission Denied', 'Camera permission is required for video calls.');
-            return;
-          }
+        const permissions = [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
+        if (isVideo) {
+          permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
         }
-        // For iOS, the infoPlist entries we added will trigger the system dialog
-        // when the engine tries to access the camera.
-        console.log('✅ Camera permission handled');
+
+        const granted = await PermissionsAndroid.requestMultiple(permissions);
+
+        if (
+          granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] !==
+          PermissionsAndroid.RESULTS.GRANTED
+        ) {
+          console.error('❌ Microphone permission denied');
+          return;
+        }
+
+        if (
+          isVideo &&
+          granted[PermissionsAndroid.PERMISSIONS.CAMERA] !== PermissionsAndroid.RESULTS.GRANTED
+        ) {
+          console.error('❌ Camera permission denied');
+          Alert.alert('Permission Denied', 'Camera permission is required for video calls.');
+          return;
+        }
+        console.log('✅ Permissions granted (Android)');
+      } else {
+        // iOS / specific Expo Go cases
+        console.log('🎤 Requesting microphone permissions (Expo wrapper)...');
+        const { status } = await ExpoAudio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.error('❌ Microphone permission denied (iOS)');
+          return;
+        }
+        console.log('✅ Microphone permission granted');
       }
 
       // 2. Configure Audio Mode for Voice Call
@@ -297,7 +313,6 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       if (isVideo) {
         console.log('🔧 Enabling video and starting preview...');
         engine.enableVideo();
-        engine.enableLocalVideo(true); // Explicitly enable local video
         engine.startPreview();
       }
 
@@ -310,20 +325,22 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
       engine.registerEventHandler({
         onJoinChannelSuccess: (connection: any, elapsed: any) => {
-          console.log(
-            `✅ onJoinChannelSuccess: channel=${connection.channelId}, uid=${connection.localUid}`
-          );
+          const msg = `✅ onJoinChannelSuccess: ${connection.channelId}`;
+          console.log(msg);
         },
         onUserJoined: (connection: any, uid: any, elapsed: any) => {
-          console.log(`👤 onUserJoined: remoteUid=${uid}`);
+          const msg = `👤 onUserJoined: ${uid}`;
+          console.log(msg);
           setRemoteUid(uid);
         },
         onUserOffline: (connection: any, uid: any, reason: any) => {
-          console.log(`👤 onUserOffline: remoteUid=${uid}, reason=${reason}`);
+          const msg = `👤 onUserOffline: ${uid}, reason=${reason}`;
+          console.log(msg);
           setRemoteUid(null);
         },
         onError: (err: any, msg: any) => {
-          console.error(`❌ Agora Error code: ${err}, msg: ${msg}`);
+          const errorMsg = `❌ Agora Error ${err}: ${msg}`;
+          console.error(errorMsg);
           // Prevent crash if engine is in a bad state
           if (err === 110) {
             // ERR_NOT_INITIALIZED
@@ -336,6 +353,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       rtcEngineRef.current = engine;
       console.log('✅ Agora Engine initialized successfully');
     } catch (err) {
+      console.error(`❌ Failed to initialize Engine: ${err}`);
       console.error('❌ Failed to initialize Agora Engine:', err);
       console.log('Error details:', JSON.stringify(err, null, 2));
     }
@@ -344,18 +362,28 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   // Join a channel with token
   const joinChannel = useCallback(
     async (channelName: string, token: string, uid: number, isVideo: boolean = false) => {
+      console.log(`Joining channel: ${channelName} with UID ${uid}`);
       try {
         if (!rtcEngineRef.current) {
           console.log('🔧 Engine not initialized, initializing now...');
           await initializeAgoraEngine(isVideo);
         }
 
+        if (rtcEngineRef.current) {
+          // Safety: Ensure video is enabled if this is a video call
+          if (isVideo) {
+            console.log('🔧 Enforcing video enable before join');
+            rtcEngineRef.current.enableVideo();
+            rtcEngineRef.current.startPreview();
+          }
+        }
+
         if (!rtcEngineRef.current) {
-          console.error('❌ Failed to initialize engine before joining channel');
+          console.error('❌ Failed to initialize engine before joining');
           return;
         }
 
-        console.log(`🔧 Joining channel: ${channelName} with UID: ${uid}`);
+        console.log('Calling joinChannel API...');
 
         // Enable remote audio - enabled by default in enableAudio()
         try {
@@ -370,16 +398,16 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
           setTimeout(() => {
             if (rtcEngineRef.current) {
               console.log(
-                '🔧 Enforcing initial states: Mic=',
-                isMicEnabled,
+                '🔧 Enforcing initial states from refs: Mic=',
+                isMicEnabledRef.current,
                 'Speaker=',
-                isSpeakerEnabled
+                isSpeakerEnabledRef.current
               );
-              rtcEngineRef.current.muteLocalAudioStream(!isMicEnabled);
-              rtcEngineRef.current.setEnableSpeakerphone(isSpeakerEnabled);
+              rtcEngineRef.current.muteLocalAudioStream(!isMicEnabledRef.current);
+              rtcEngineRef.current.setEnableSpeakerphone(isSpeakerEnabledRef.current);
               rtcEngineRef.current.muteAllRemoteAudioStreams(false);
               if (isVideo) {
-                rtcEngineRef.current.enableLocalVideo(isVideoEnabled);
+                rtcEngineRef.current.enableLocalVideo(isVideoEnabledRef.current);
               }
             }
           }, 1000); // Give it a second to establish connection
@@ -395,14 +423,54 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     [initializeAgoraEngine]
   );
 
+  // Leave channel and cleanup
+  const cleanupResources = useCallback(async () => {
+    console.log('🧹 Starting resource cleanup...');
+    try {
+      // 1. Stop Sounds
+      await stopRingingSound();
+      await stopIncomingSound();
+
+      // 2. Agora Cleanup
+      if (rtcEngineRef.current) {
+        const engine = rtcEngineRef.current;
+        try {
+          engine.stopPreview();
+          engine.leaveChannel();
+          engine.disableVideo();
+          engine.disableAudio();
+          engine.unregisterEventHandler({});
+          engine.release();
+        } catch (e) {
+          console.log('   (Agora release failed - already released?)');
+        }
+        rtcEngineRef.current = null;
+        console.log('✅ Agora Engine released');
+      }
+
+      // 3. Reset Expo Audio Mode
+      try {
+        await ExpoAudio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        });
+        console.log('✅ Audio mode reset to standard');
+      } catch (e) {
+        console.error('❌ Failed to reset audio mode:', e);
+      }
+    } catch (err) {
+      console.error('❌ Error during cleanup:', err);
+    }
+  }, [stopRingingSound, stopIncomingSound]);
+
   // Leave channel
   const leaveChannel = useCallback(async () => {
     try {
       if (rtcEngineRef.current) {
         rtcEngineRef.current.leaveChannel();
         console.log('✅ Left channel');
-      } else {
-        console.log('⚠️ leaveChannel called but engine is null');
       }
     } catch (err) {
       console.error('❌ Failed to leave channel:', err);
@@ -412,48 +480,53 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
   // Toggle microphone
   const toggleMic = useCallback(async () => {
     try {
-      const newState = !isMicEnabled;
+      const newState = !isMicEnabledRef.current;
+      setIsMicEnabled(newState);
+      isMicEnabledRef.current = newState;
+      console.log(`🎤 UI State: Microphone ${newState ? 'enabled' : 'disabled'}`);
+
       if (rtcEngineRef.current) {
         rtcEngineRef.current.muteLocalAudioStream(!newState);
-        setIsMicEnabled(newState);
-        console.log(`🎤 Microphone ${newState ? 'enabled' : 'disabled'}`);
-      } else {
-        console.warn('⚠️ cannot toggle mic, rtcEngine is null');
+        console.log('✅ Agora Engine: Microphone muted state updated');
       }
     } catch (err) {
       console.error('❌ Failed to toggle mic:', err);
     }
-  }, [isMicEnabled]);
+  }, []);
 
   // Toggle speaker
   const toggleSpeaker = useCallback(async () => {
     try {
-      const newState = !isSpeakerEnabled;
+      const newState = !isSpeakerEnabledRef.current;
+      setIsSpeakerEnabled(newState);
+      isSpeakerEnabledRef.current = newState;
+      console.log(`🔊 UI State: Speaker ${newState ? 'enabled' : 'disabled'}`);
+
       if (rtcEngineRef.current) {
         rtcEngineRef.current.setEnableSpeakerphone(newState);
-        setIsSpeakerEnabled(newState);
-        console.log(`🔊 Speaker ${newState ? 'enabled' : 'disabled'}`);
-      } else {
-        console.warn('⚠️ cannot toggle speaker, rtcEngine is null');
+        console.log('✅ Agora Engine: Speaker state updated');
       }
     } catch (err) {
       console.error('❌ Failed to toggle speaker:', err);
     }
-  }, [isSpeakerEnabled]);
+  }, []);
 
   // Toggle video
   const toggleVideo = useCallback(async () => {
     try {
-      const newState = !isVideoEnabled;
+      const newState = !isVideoEnabledRef.current;
+      setIsVideoEnabled(newState);
+      isVideoEnabledRef.current = newState;
+      console.log(`📹 UI State: Video ${newState ? 'enabled' : 'disabled'}`);
+
       if (rtcEngineRef.current) {
         rtcEngineRef.current.enableLocalVideo(newState);
-        setIsVideoEnabled(newState);
-        console.log(`📹 Video ${newState ? 'enabled' : 'disabled'}`);
+        console.log('✅ Agora Engine: Video state updated');
       }
     } catch (err) {
       console.error('❌ Failed to toggle video:', err);
     }
-  }, [isVideoEnabled]);
+  }, []);
 
   // Switch camera
   const switchCamera = useCallback(async () => {
@@ -542,13 +615,8 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
 
       // Start ringing sound
       playRingingSound();
-
-      // NEW: Initialize engine immediately for video calls to show caller preview
-      if (isVideo) {
-        initializeAgoraEngine(true);
-      }
     },
-    [socket, user, playRingingSound, initializeAgoraEngine]
+    [socket, user, playRingingSound]
   );
 
   // Helper to log call to chat
@@ -634,11 +702,10 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     joinChannel,
   ]);
 
-  const rejectCall = useCallback(() => {
+  const rejectCall = useCallback(async () => {
     if (!socket || !callState.callerId) return;
 
     console.log(`❌ Rejecting call from ${callState.callerName}`);
-    stopIncomingSound();
 
     logCallToChat(callState.callerId, 'rejected', 0, callState.isVideo);
 
@@ -647,7 +714,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       recipientId: user?._id,
     });
 
-    stopRingingSound();
+    await cleanupResources();
 
     setCallState((prev) => ({
       ...prev,
@@ -656,32 +723,15 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callerName: null,
       callerAvatar: null,
     }));
-  }, [socket, user, callState.callerId, callState.callerName, stopIncomingSound, stopRingingSound]);
+  }, [socket, user, callState, cleanupResources, logCallToChat]);
 
   const endCall = useCallback(async () => {
     if (!socket) return;
 
     console.log('📵 Ending call');
 
-    // Leave Agora channel
-    await leaveChannel();
-
-    stopRingingSound();
-    stopIncomingSound();
-
-    // Disable and release engine
-    try {
-      if (rtcEngineRef.current) {
-        rtcEngineRef.current.disableAudio();
-        rtcEngineRef.current.disableVideo();
-        rtcEngineRef.current.unregisterEventHandler({});
-        rtcEngineRef.current.release();
-        rtcEngineRef.current = null;
-        console.log('✅ Agora Engine released and reset');
-      }
-    } catch (err) {
-      console.error('Error releasing engine:', err);
-    }
+    // Centralized resource cleanup (Leave, Disable, Release, Reset Audio)
+    await cleanupResources();
 
     // Log call to chat
     const targetId = callState.recipientId || callState.callerId;
@@ -693,9 +743,6 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
         // I was the caller and cancelled before they answered
         logCallToChat(targetId, 'missed', 0, callState.isVideo);
       }
-      // If I was the recipient and I hang up, it's either accepted or rejected.
-      // Rejections are handled in rejectCall.
-      // Missed calls are usually logged by the caller when they give up.
     }
 
     setCallState((prev) => ({
@@ -715,6 +762,9 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
     setIsMicEnabled(true);
     setIsSpeakerEnabled(true);
     setIsVideoEnabled(true);
+    isMicEnabledRef.current = true;
+    isSpeakerEnabledRef.current = true;
+    isVideoEnabledRef.current = true;
     setRemoteUid(null);
 
     // Notify other party
@@ -722,15 +772,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       callerId: callState.recipientId || callState.callerId,
       recipientId: user?._id,
     });
-  }, [
-    socket,
-    user,
-    callState.recipientId,
-    callState.callerId,
-    leaveChannel,
-    stopRingingSound,
-    stopIncomingSound,
-  ]);
+  }, [socket, user, callState, cleanupResources, logCallToChat, remoteUid, callDuration]);
 
   const handleIncomingCallFromPush = useCallback(
     (data: any) => {
@@ -784,10 +826,12 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       }
     });
 
-    socket.on('voiceCallRejected', (data: any) => {
+    socket.on('voiceCallRejected', async (data: any) => {
       console.log('📱 Call rejected by recipient');
       try {
+        await cleanupResources();
         setCallState((prev) => ({
+          ...prev,
           inCall: false,
           remoteCalling: false,
           callerId: null,
@@ -799,16 +843,15 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
           callDuration: 0,
           isVideo: false,
         }));
-        stopRingingSound();
-        stopIncomingSound();
       } catch (err) {
         console.error('❌ Error handling voiceCallRejected:', err);
       }
     });
 
-    socket.on('voiceCallEnded', (data: any) => {
-      console.log('📱 Call ended');
+    socket.on('voiceCallEnded', async (data: any) => {
+      console.log('📵 Call ended by remote party');
       try {
+        await cleanupResources();
         setCallState((prev) => ({
           inCall: false,
           remoteCalling: false,
@@ -836,6 +879,7 @@ export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) =
       socket.off('voiceCallAccepted');
       socket.off('voiceCallRejected');
       socket.off('voiceCallEnded');
+      cleanupResources(); // Hard safety cleanup
     };
   }, [socket, user]);
 
