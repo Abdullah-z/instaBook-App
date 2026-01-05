@@ -11,7 +11,16 @@
     },
     "plugins": [
       "expo-maps",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
+        }
+      ],
+      "react-native-compressor"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
