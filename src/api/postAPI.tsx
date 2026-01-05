@@ -11,6 +11,11 @@ export const getDiscoverPostsAPI = async (token: string, page = 1) => {
   return res.data;
 };
 
+export const getReelsAPI = async () => {
+  const res = await API.get(`/reels`);
+  return res.data;
+};
+
 export const likePostAPI = (postId: string) => {
   return API.patch(`/post/${postId}/like`);
 };
