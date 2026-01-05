@@ -12,6 +12,8 @@ import {
   Image,
   Alert,
   ScrollView,
+  Switch,
+  Pressable,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -23,6 +25,7 @@ import { SocketContext } from '../auth/SocketContext';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { imageUpload } from '../utils/imageUpload';
 import moment from 'moment';
+import { promptSaveImage } from '../utils/MediaUtils';
 
 const ChatScreen = () => {
   const route = useRoute<any>();
@@ -37,6 +40,7 @@ const ChatScreen = () => {
   const [sending, setSending] = useState(false);
   const [text, setText] = useState('');
   const [media, setMedia] = useState<any[]>([]);
+  const [isHD, setIsHD] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // Use avatar from params, or try to find it from messages later if needed.
@@ -211,7 +215,7 @@ const ChatScreen = () => {
     try {
       let uploadedMedia: any[] = [];
       if (mediaToSend.length > 0) {
-        uploadedMedia = await imageUpload(mediaToSend);
+        uploadedMedia = await imageUpload(mediaToSend, isHD);
       }
 
       const newMessage = {
@@ -253,6 +257,7 @@ const ChatScreen = () => {
       setMedia(mediaToSend);
     } finally {
       setSending(false);
+      setIsHD(false);
     }
   };
 
@@ -360,7 +365,12 @@ const ChatScreen = () => {
                 <View style={styles.mediaContainer}>
                   {item.media.map((img: any, idx: number) =>
                     img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
-                      <Image key={idx} source={{ uri: img.url }} style={styles.messageImage} />
+                      <TouchableOpacity
+                        key={idx}
+                        activeOpacity={0.9}
+                        onLongPress={() => promptSaveImage(img.url)}>
+                        <Image source={{ uri: img.url }} style={styles.messageImage} />
+                      </TouchableOpacity>
                     ) : null
                   )}
                 </View>
@@ -440,6 +450,22 @@ const ChatScreen = () => {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="image" size={24} color="#666" />
         </TouchableOpacity>
+        <View style={styles.hdToggleContainer}>
+          <Pressable onPress={() => setIsHD(!isHD)}>
+            <Text
+              style={(styles.hdToggleText, { color: isHD ? '#4CAF50' : '#666', marginRight: 3 })}>
+              HD
+            </Text>
+          </Pressable>
+
+          {/* <Switch
+            value={isHD}
+            onValueChange={setIsHD}
+            trackColor={{ false: '#767577', true: '#4CAF50' }}
+            thumbColor={isHD ? '#fff' : '#f4f3f4'}
+            style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+          /> */}
+        </View>
         <TextInput
           style={styles.input}
           value={text}
@@ -561,7 +587,8 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
@@ -660,6 +687,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2196F3',
     marginTop: 2,
+  },
+  hdToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  hdToggleText: {
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });
 
