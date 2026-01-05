@@ -160,7 +160,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: '#f2f3f5' }}>
       {/* Custom Header */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
@@ -179,6 +179,11 @@ const HomeScreen = () => {
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Marketplace' as never)}>
             <Ionicons name="storefront-outline" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Discover' as never)}>
+            <Ionicons name="compass-outline" size={24} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
