@@ -29,6 +29,7 @@ import NotificationToast from '../components/NotificationToast';
 import { SocketContext } from '../auth/SocketContext';
 import HeaderLogo from '../components/HeaderLogo';
 import ProfileHeaderIcon from '../components/ProfileHeaderIcon';
+import DiscoverScreen from '../screens/DiscoverScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -102,6 +103,11 @@ const AppNavigator = () => {
               name="MyListings"
               component={MyListingsScreen}
               options={{ title: 'Your Listings' }}
+            />
+            <Stack.Screen
+              name="Discover"
+              component={DiscoverScreen}
+              options={{ title: 'Discover' }}
             />
           </>
         ) : (
