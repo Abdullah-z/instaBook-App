@@ -81,39 +81,49 @@ const VoiceCallScreen: React.FC = () => {
   if (callState?.inCall) {
     // Dynamically require Agora views
     let RtcSurfaceView: any = null;
+    let VideoRenderMode: any = null;
     try {
       if (callState.isVideo) {
         const Agora = require('react-native-agora');
         RtcSurfaceView = Agora.RtcSurfaceView;
+        VideoRenderMode = Agora.VideoRenderModeType;
       }
     } catch (e) {
       console.error('Failed to load Agora views:', e);
     }
 
     return (
-      <View style={styles.activeCallContainer}>
+      <View style={[styles.activeCallContainer, callState.isVideo && styles.videoCallContainer]}>
         {callState.isVideo ? (
           <View style={styles.videoContainer}>
             {/* Remote Video (Background) */}
-            {remoteUid !== null ? (
+            {remoteUid !== null && RtcSurfaceView ? (
               <RtcSurfaceView
                 style={styles.remoteVideo}
-                canvas={{ uid: remoteUid }}
+                canvas={{
+                  uid: remoteUid,
+                  renderMode: VideoRenderMode?.VideoRenderModeFit || 1,
+                }}
                 zOrderMediaOverlay={false}
               />
             ) : (
               <View style={styles.remoteVideoPlaceholder}>
                 <MaterialIcons name="account-circle" size={140} color="#fff" />
-                <Text style={styles.waitingText}>Waiting for participant...</Text>
+                <Text style={styles.waitingText}>
+                  {!RtcSurfaceView ? 'Loading video...' : 'Waiting for participant...'}
+                </Text>
               </View>
             )}
 
             {/* Local Video (PIP) */}
-            {isVideoEnabled && (
+            {isVideoEnabled && RtcSurfaceView && (
               <View style={styles.localVideoContainer}>
                 <RtcSurfaceView
                   style={styles.localVideo}
-                  canvas={{ uid: 0 }} // 0 is always local user
+                  canvas={{
+                    uid: 0,
+                    renderMode: VideoRenderMode?.VideoRenderModeFit || 1,
+                  }} // 0 is always local user
                   zOrderMediaOverlay={true}
                 />
               </View>
@@ -231,10 +241,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     zIndex: 1000,
     justifyContent: 'space-between',
     paddingVertical: 60,
+  },
+  videoCallContainer: {
+    backgroundColor: '#000',
+    paddingVertical: 0,
+    justifyContent: 'center', // Override space-between
   },
   callInfo: {
     alignItems: 'center',
