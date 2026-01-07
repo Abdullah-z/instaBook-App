@@ -30,9 +30,46 @@ const getYoutubeId = (url: string) => {
   return match && match[2].length === 11 ? match[2] : null;
 };
 
+const getVideoThumbnail = (url: string) => {
+  if (!url) return null;
+  // If it's a Cloudinary URL, we can get a thumbnail by changing the extension to .jpg
+  if (url.includes('cloudinary.com')) {
+    return url.replace(/\.[^/.]+$/, '.jpg');
+  }
+  return null;
+};
+
 // 🎥 Video Item Component to handle play state
 const VideoItem = ({ item }: { item: any }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [loadVideo, setLoadVideo] = useState(false);
+  const thumbnailUrl = getVideoThumbnail(item.url);
+
+  if (!loadVideo) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => setLoadVideo(true)}
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#000',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+        {thumbnailUrl && (
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={{ width: '100%', height: '100%', position: 'absolute', opacity: 0.6 }}
+            resizeMode="cover"
+          />
+        )}
+        <Ionicons name="play-circle-outline" size={80} color="rgba(255,255,255,0.9)" />
+        {/* <Text style={{ color: '#fff', marginTop: 10, fontWeight: 'bold' }}>Tap to Load Video</Text> */}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <View
       style={{
@@ -47,7 +84,8 @@ const VideoItem = ({ item }: { item: any }) => {
         style={{ width: '100%', height: '100%' }}
         resizeMode={ResizeMode.CONTAIN}
         useNativeControls
-        isLooping
+        shouldPlay={true} // Auto play after loading
+        isLooping={false}
         onPlaybackStatusUpdate={(status) => {
           if (status.isLoaded) {
             setIsPlaying(status.isPlaying);
