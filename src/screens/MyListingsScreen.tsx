@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getMyListingsAPI, deleteListingAPI } from '../api/listingAPI';
+import moment from 'moment';
 import { Button } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
@@ -80,6 +81,11 @@ const MyListingsScreen = () => {
           style={[styles.statusBadge, { backgroundColor: item.isSold ? '#ff4444' : '#44bb44' }]}>
           <Text style={styles.statusText}>{item.isSold ? 'SOLD' : 'AVAILABLE'}</Text>
         </View>
+        <Text style={{ fontSize: 10, color: '#666', marginTop: 4 }}>
+          {moment(item.createdAt).format('MMM D, YYYY')}
+          {'\n'}
+          {moment(item.createdAt).format('h:mm A')}
+        </Text>
         <View style={styles.cardActions}>
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateListing', { editListing: item })}>
