@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
-import { deletePostAPI, getPostsAPI, getSuggestionsAPI } from '../api/postAPI';
+import { deletePostAPI, getPostsAPI, getSuggestionsAPI, getStoriesAPI } from '../api/postAPI';
 import PostCard from '../components/PostCard';
 import StatusBox from '../components/StatusBox';
 import BottomSheet, { BottomSheetScrollView, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -24,9 +24,10 @@ import SuggestedUsers from '../components/SuggestedUsers';
 const LIMIT = 4;
 
 const HomeScreen = () => {
-  const { token } = useContext(AuthContext);
+  const { token, user } = useContext(AuthContext);
   const { unreadCount } = useContext(SocketContext);
   const [visiblePosts, setVisiblePosts] = useState<any[]>([]);
+  const [stories, setStories] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -66,6 +67,9 @@ const HomeScreen = () => {
 
       const suggestRes = await getSuggestionsAPI();
       setSuggestedUsers(suggestRes.users || []);
+
+      const storiesRes = await getStoriesAPI();
+      setStories(storiesRes.stories || []);
     } catch (err) {
       console.log('Error loading posts or suggestions:', err);
     }
@@ -96,36 +100,63 @@ const HomeScreen = () => {
     loadInitialPosts();
   }, [token]);
 
+  // Construct story list: First item is always "Me"
+  const myStoryData = stories.find((s) => s.user._id === user?._id);
+  const otherStories = stories.filter((s) => s.user._id !== user?._id);
+
   const renderHeader = () => (
     <View>
       {/* Stories Bar */}
-      {/* <View style={styles.storiesContainer}>
+      <View style={styles.storiesContainer}>
         <FlatList
           data={[
-            { _id: 'me', username: 'Your story', avatar: 'https://i.pravatar.cc/150?u=me' },
-            ...suggestedUsers,
+            { _id: 'me', isMe: true, user: user, stories: myStoryData?.stories || [] },
+            ...otherStories,
           ]}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => (item.isMe ? 'me' : item.user._id)}
           contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
-            <View style={styles.storyItem}>
-              <View style={[styles.storyRing, item._id === 'me' && { borderColor: '#ccc' }]}>
-                <Image source={{ uri: item.avatar }} style={styles.storyAvatar} />
-                {item._id === 'me' && (
-                  <View style={styles.addStoryBadge}>
-                    <Text style={{ color: '#fff', fontSize: 10 }}>+</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.storyUsername} numberOfLines={1}>
-                {item.username}
-              </Text>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const hasStory = item.stories && item.stories.length > 0;
+            const avatarUrl = item.isMe ? user?.avatar : item.user.avatar;
+            const username = item.isMe ? 'Your story' : item.user.username;
+
+            return (
+              <TouchableOpacity
+                style={styles.storyItem}
+                onPress={() => {
+                  // Navigate to story viewer
+                  if (hasStory) {
+                    navigation.navigate('StoryViewer' as never, { userStories: item } as never);
+                  } else if (item.isMe) {
+                    navigation.navigate(
+                      'CreatePostScreen' as never,
+                      { initialPostType: 'story' } as never
+                    );
+                  }
+                }}>
+                <View
+                  style={[
+                    styles.storyRing,
+                    hasStory && { borderColor: '#D4F637' },
+                    !hasStory && { borderColor: '#ddd' },
+                  ]}>
+                  <Image source={{ uri: avatarUrl }} style={styles.storyAvatar} />
+                  {item.isMe && !hasStory && (
+                    <View style={styles.addStoryBadge}>
+                      <Text style={{ color: '#fff', fontSize: 10 }}>+</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.storyUsername} numberOfLines={1}>
+                  {username}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
         />
-      </View> */}
+      </View>
 
       {/* Tabs */}
       {/* <View style={styles.tabsContainer}>
