@@ -11,8 +11,8 @@ export const getDiscoverPostsAPI = async (token: string, page = 1) => {
   return res.data;
 };
 
-export const getReelsAPI = async () => {
-  const res = await API.get(`/reels`);
+export const getReelsAPI = async (page = 1, limit = 3) => {
+  const res = await API.get(`/reels?page=${page}&limit=${limit}`);
   return res.data;
 };
 
@@ -39,7 +39,16 @@ export const getSuggestionsAPI = async () => {
   return res.data; // should include { users }
 };
 
-export const createPostAPI = async (post: { content: string; images: any[] }) => {
+export const getStoriesAPI = async () => {
+  const res = await API.get('/stories');
+  return res.data;
+};
+
+export const createPostAPI = async (post: {
+  content: string;
+  images: any[];
+  postType?: 'feed' | 'story' | 'both';
+}) => {
   const res = await API.post('/posts', post); // endpoint must be `/posts`
   return res.data;
 };
