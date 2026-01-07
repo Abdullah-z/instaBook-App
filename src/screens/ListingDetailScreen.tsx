@@ -20,6 +20,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import LeafletMap from '../components/LeafletMap';
 import Constants from 'expo-constants';
 import { promptSaveImage } from '../utils/MediaUtils';
+import moment from 'moment';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 
@@ -152,7 +153,10 @@ const ListingDetailScreen = () => {
       <View style={styles.content}>
         <Text style={styles.price}>${listing.price}</Text>
         <Text style={styles.name}>{listing.name}</Text>
-        <Text style={styles.time}>Listed {new Date(listing.createdAt).toLocaleDateString()}</Text>
+        <Text style={styles.time}>
+          Listed {moment(listing.createdAt).format('MMM D, YYYY')} at{' '}
+          {moment(listing.createdAt).format('h:mm A')}
+        </Text>
 
         <Divider style={styles.divider} />
 
