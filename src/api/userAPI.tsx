@@ -23,3 +23,8 @@ export const savePushToken = async (pushToken: string) => {
   const res = await API.post('/user/push_token', { pushToken });
   return res.data;
 };
+
+export const getAIUser = async () => {
+  const res = await API.get('/ai_user');
+  return res.data;
+};

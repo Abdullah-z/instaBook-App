@@ -108,6 +108,43 @@ const MessagesScreen = () => {
       </View>
 
       {/* Conversations List */}
+      <TouchableOpacity
+        style={[styles.conversationItem, { borderBottomWidth: 4, borderBottomColor: '#f8f9fa' }]}
+        onPress={async () => {
+          try {
+            const { getAIUser } = require('../api/userAPI');
+            const res = await getAIUser();
+            if (res.user) {
+              navigation.navigate('Chat', {
+                userId: res.user._id,
+                username: res.user.username,
+                avatar: res.user.avatar,
+              });
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }}>
+        <View style={styles.avatarContainer}>
+          <Avatar.Image
+            size={56}
+            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4712/4712035.png' }}
+          />
+          <View style={[styles.onlineIndicator, { backgroundColor: '#BB86FC' }]} />
+        </View>
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <Text style={[styles.username, { color: '#6200EE' }]}>AI Assistant ✨</Text>
+            <Text style={[styles.timestamp, { color: '#BB86FC', fontWeight: 'bold' }]}>
+              Always Online
+            </Text>
+          </View>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            Ask me anything...
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       {conversations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={80} color="#ccc" />

@@ -77,6 +77,10 @@ const ChatScreen = () => {
               onPress={() => navigation.navigate('GroupDetailsScreen', { conversationId: userId })}>
               <Ionicons name="create-outline" size={24} color="#000" />
             </TouchableOpacity>
+          ) : username === 'ai_assistant' || username?.includes('AI Assistant') ? (
+            <View style={{ marginRight: 16 }}>
+              <Ionicons name="hardware-chip-outline" size={24} color="#6200EE" />
+            </View>
           ) : (
             <>
               <TouchableOpacity
@@ -245,14 +249,23 @@ const ChatScreen = () => {
         createdAt: new Date().toISOString(),
       };
 
-      await sendMessage({
+      const res = await sendMessage({
         recipient: isGroup ? undefined : userId,
         conversationId: isGroup ? userId : undefined,
         text: messageText,
         media: uploadedMedia,
       });
 
-      setMessages((prev) => [...prev, { ...newMessage, _id: Date.now().toString() }]);
+      // Add user message to UI
+      const userMessage = { ...newMessage, _id: res.newMessage?._id || Date.now().toString() };
+      setMessages((prev) => [...prev, userMessage]);
+
+      // If AI response exists, add it to UI
+      if (res.aiMessage) {
+        setTimeout(() => {
+          setMessages((prev) => [...prev, res.aiMessage]);
+        }, 500); // Slight delay for natural feel
+      }
 
       if (socket && socket.connected) {
         // Send full user object for socket (so recipient can get username/avatar)
