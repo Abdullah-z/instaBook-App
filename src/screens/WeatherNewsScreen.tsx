@@ -31,6 +31,7 @@ const weatherBg = require('../../assets/weather_bg.jpg');
 const { width, height } = Dimensions.get('window');
 
 const API_KEY = '6cc098a44449cf3468d194cae0f91b47';
+const UNSPLASH_ACCESS_KEY = 'j67xuJY4yvRW8UprInTOzcA8XVdxb9YEAlBl_KN4nlU';
 
 const WeatherNewsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('Lahore');
@@ -281,7 +282,7 @@ const WeatherNewsScreen = () => {
       setIsSearching(false);
 
       // Generate City Image
-      updateCityImage(currentData.name);
+      updateCityImage(currentData.name, currentData.weather[0].main);
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to fetch weather data');
@@ -290,16 +291,29 @@ const WeatherNewsScreen = () => {
     }
   };
 
-  const updateCityImage = async (cityName: string) => {
-    // Gemini AI generation commented as requested - using Unsplash/LoremFlickr source directly
+  const updateCityImage = async (cityName: string, condition?: string) => {
     setIsGeneratingImage(true);
     try {
-      // const imageUrl = await generateCityImage(cityName);
-      const imageUrl = `https://loremflickr.com/1024/768/${encodeURIComponent(cityName)},city,landscape/all`;
-      setGeneratedBgImage(imageUrl);
+      // 1. Try Unsplash API for high-quality contextual images
+      const searchQuery = condition ? `${cityName} ${condition}` : cityName;
+      const unsplashUrl = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(
+        searchQuery
+      )}&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+
+      const response = await axios.get(unsplashUrl);
+      if (response.data && response.data.urls && response.data.urls.regular) {
+        setGeneratedBgImage(response.data.urls.regular);
+        return;
+      }
+
+      // 2. Fallback to LoremFlickr if Unsplash fails or returns empty
+      const fallbackUrl = `https://loremflickr.com/1024/768/${encodeURIComponent(cityName)},city,landscape/all`;
+      setGeneratedBgImage(fallbackUrl);
     } catch (error) {
       console.error('Image Generation Error:', error);
-      setGeneratedBgImage(null);
+      // 3. Robust fallback
+      const fallbackUrl = `https://loremflickr.com/1024/768/${encodeURIComponent(cityName)},city,landscape/all`;
+      setGeneratedBgImage(fallbackUrl);
     } finally {
       setIsGeneratingImage(false);
     }
