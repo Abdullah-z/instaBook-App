@@ -27,9 +27,10 @@ import { getReadableAddress } from '../utils/locationHelper';
 
 interface Props {
   onPostCreated: (newPost: any) => void;
+  initialPostType?: 'feed' | 'story' | 'both';
 }
 
-const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
+const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed' }) => {
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -45,6 +46,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
   const [youtubeLink, setYoutubeLink] = useState('');
   const [isHD, setIsHD] = useState(false);
+  const [postType, setPostType] = useState<'feed' | 'story' | 'both'>(initialPostType);
 
   const handleAddYoutubeLink = () => {
     if (!youtubeLink.trim()) {
@@ -307,7 +309,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
             : `📍 ${locationAddress}`;
       }
 
-      const res = await createPostAPI({ content: finalContent, images: media });
+      const res = await createPostAPI({ content: finalContent, images: media, postType });
       onPostCreated(res.newPost);
       setContent('');
       setImages([]);
@@ -316,6 +318,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
       setLocationAddress('');
       setLocationCoords(null);
       setIsHD(false);
+      setPostType('feed');
     } catch (err: any) {
       console.error('❌ Error creating post:', err);
       Alert.alert('Failed to post', err?.response?.data?.msg || 'Unknown error');
@@ -383,6 +386,33 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated }) => {
               <MaterialIcons name="send" size={24} color="#007AFF" />
             </TouchableOpacity>
           ))}
+      </View>
+
+      <View style={styles.postTypeContainer}>
+        <Text style={styles.postTypeLabel}>Post to:</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.postTypeBtn, postType === 'feed' && styles.postTypeBtnActive]}
+            onPress={() => setPostType('feed')}>
+            <Text style={[styles.postTypeTxt, postType === 'feed' && styles.postTypeTxtActive]}>
+              Feed
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.postTypeBtn, postType === 'story' && styles.postTypeBtnActive]}
+            onPress={() => setPostType('story')}>
+            <Text style={[styles.postTypeTxt, postType === 'story' && styles.postTypeTxtActive]}>
+              Story
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.postTypeBtn, postType === 'both' && styles.postTypeBtnActive]}
+            onPress={() => setPostType('both')}>
+            <Text style={[styles.postTypeTxt, postType === 'both' && styles.postTypeTxtActive]}>
+              Both
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <View style={styles.imageGrid}>
@@ -579,5 +609,36 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#666',
     marginRight: 2,
+  },
+  postTypeContainer: {
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  postTypeLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#555',
+  },
+  postTypeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  postTypeBtnActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  postTypeTxt: {
+    fontSize: 14,
+    color: '#555',
+  },
+  postTypeTxtActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
