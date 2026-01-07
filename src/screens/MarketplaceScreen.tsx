@@ -14,6 +14,7 @@ import { Searchbar, FAB } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getListingsAPI } from '../api/listingAPI';
+import moment from 'moment';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2;
@@ -77,6 +78,11 @@ const MarketplaceScreen = () => {
         <Text style={styles.cardLocation} numberOfLines={1}>
           {item.address}
         </Text>
+        <Text style={[styles.cardLocation, { fontSize: 10, marginTop: 4 }]}>
+          {moment(item.createdAt).format('MMM D, YYYY')}
+          {'\n'}
+          {moment(item.createdAt).format('h:mm A')}
+        </Text>
         {item.isSold && (
           <View style={styles.soldBadge}>
             <Text style={styles.soldText}>SOLD</Text>
@@ -97,12 +103,17 @@ const MarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Searchbar
-          placeholder="Search marketplace"
-          onChangeText={handleSearch}
-          value={searchQuery}
-          style={styles.searchbar}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Searchbar
+            placeholder="Search marketplace"
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={[styles.searchbar, { flex: 1, marginRight: 10 }]}
+          />
+          <TouchableOpacity onPress={() => navigation.navigate('MyListings' as never)}>
+            <Ionicons name="list-circle-outline" size={34} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
