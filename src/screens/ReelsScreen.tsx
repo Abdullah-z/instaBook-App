@@ -23,12 +23,17 @@ import { createNotification, removeNotification } from '../api/notificationAPI';
 
 const { width, height } = Dimensions.get('window');
 
+const LIMIT = 3;
+
 const ReelsScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [activeReelIndex, setActiveReelIndex] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
 
@@ -36,13 +41,35 @@ const ReelsScreen = () => {
   const fetchReels = async () => {
     try {
       setLoading(true);
-      const res = await getReelsAPI();
+      const res = await getReelsAPI(1, LIMIT);
       console.log('Reels fetched:', res.posts.length);
       setReels(res.posts);
+      setPage(1);
+      setHasMore(res.posts.length === LIMIT);
     } catch (error) {
       console.error('Error fetching reels:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await getReelsAPI(nextPage, LIMIT);
+      if (res.posts.length > 0) {
+        setReels((prev) => [...prev, ...res.posts]);
+        setPage(nextPage);
+        setHasMore(res.posts.length === LIMIT);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading more reels:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -243,6 +270,15 @@ const ReelsScreen = () => {
           decelerationRate="fast"
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 20 }}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : null
+          }
           initialNumToRender={1}
           maxToRenderPerBatch={2}
           windowSize={3}
