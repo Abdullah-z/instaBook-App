@@ -14,6 +14,10 @@ import MarketplaceScreen from '../screens/MarketplaceScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
 import ListingDetailScreen from '../screens/ListingDetailScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
+import StoryViewer from '../components/StoryViewer';
+import CreatePostScreen from '../screens/CreatePostScreen';
+import CreateGroupScreen from '../screens/CreateGroupScreen';
+import GroupDetailsScreen from '../screens/GroupDetailsScreen';
 
 import { AuthContext } from '../auth/AuthContext';
 import PageScreen from '../screens/PageScreen';
@@ -108,6 +112,30 @@ const AppNavigator = () => {
               name="Discover"
               component={DiscoverScreen}
               options={{ title: 'Discover' }}
+            />
+            <Stack.Screen
+              name="StoryViewer"
+              component={StoryViewer}
+              options={{
+                presentation: 'modal',
+                headerShown: false,
+                contentStyle: { backgroundColor: 'black' },
+              }}
+            />
+            <Stack.Screen
+              name="CreatePostScreen"
+              component={CreatePostScreen}
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateGroupScreen"
+              component={CreateGroupScreen}
+              options={{ title: 'Create Group', headerShown: false }}
+            />
+            <Stack.Screen
+              name="GroupDetailsScreen"
+              component={GroupDetailsScreen}
+              options={{ title: 'Group Details' }}
             />
           </>
         ) : (

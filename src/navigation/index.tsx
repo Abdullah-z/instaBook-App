@@ -10,8 +10,12 @@ import FullscreenChart from '../screens/FullscreenChart';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen'; // Make sure this exists
-import { useAuth } from '../context/AuthContext';
+import { useContext } from 'react';
+import { AuthContext } from '../auth/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
+
+import StoryViewer from '../components/StoryViewer';
+import CreatePostScreen from '../screens/CreatePostScreen';
 
 export type RootStackParamList = {
   Overview: undefined;
@@ -21,12 +25,14 @@ export type RootStackParamList = {
   LoginScreen: undefined;
   RegisterScreen: undefined;
   HomeScreen: undefined;
+  StoryViewer: { userStories: any };
+  CreatePostScreen: { initialPostType: 'feed' | 'story' | 'both' };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function RootStack() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useContext(AuthContext);
 
   console.log('RootStack user:', user);
 
@@ -54,6 +60,20 @@ export default function RootStack() {
             />
             <Stack.Screen name="FullscreenChart" component={FullscreenChart} />
             <Stack.Screen name="HomeScreen" component={HomeScreen} />
+            <Stack.Screen
+              name="StoryViewer"
+              component={StoryViewer}
+              options={{
+                presentation: 'modal',
+                headerShown: false,
+                cardStyle: { backgroundColor: 'black' },
+              }}
+            />
+            <Stack.Screen
+              name="CreatePostScreen"
+              component={CreatePostScreen}
+              options={{ presentation: 'modal' }}
+            />
           </>
         ) : (
           <>
