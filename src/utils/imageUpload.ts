@@ -1,5 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import { Video } from 'react-native-compressor';
+// import { Video } from 'react-native-compressor'; // Removed to avoid Expo Go crash
 
 export const imageUpload = async (mediaList: any[], isHD: boolean = false) => {
   const mediaArr: { public_id: string; url: string; resource_type: string }[] = [];
@@ -16,10 +16,18 @@ export const imageUpload = async (mediaList: any[], isHD: boolean = false) => {
       if (!isHD) {
         if (isVideo) {
           console.log('🎞️ Compressing video...');
-          uri = await Video.compress(uri, {
-            compressionMethod: 'auto',
-          });
-          console.log('✅ Video compressed');
+          try {
+            // Dynamic require to prevent crash in Expo Go if not linked
+            const { Video } = require('react-native-compressor');
+            uri = await Video.compress(uri, {
+              compressionMethod: 'auto',
+            });
+            console.log('✅ Video compressed');
+          } catch (e) {
+            console.warn(
+              '⚠️ Video compression failed or library not available (Expo Go?). Skipping compression.'
+            );
+          }
         } else {
           console.log('🖼️ Compressing image...');
           const result = await ImageManipulator.manipulateAsync(
