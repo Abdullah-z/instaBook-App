@@ -88,22 +88,38 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.on('addMessageToClient', (msg: any) => {
         console.log('📨 Received message via socket:', msg);
 
-        // Show Toast notification if message is from someone else
-        if (msg?.recipient === user?._id && msg?.sender) {
+        const isGroup = !!msg.conversation;
+        const isForMe = msg.recipient === user._id || isGroup;
+        const isFromMe = msg.sender?._id === user._id;
+
+        // Show Toast notification if message is for me and NOT from me
+        if (isForMe && !isFromMe) {
           try {
+            const senderName = msg?.sender?.username || 'User';
+            const groupName = msg?.groupName || 'Group Chat'; // Backend might need to inject this or we use generic
+
             Toast.show({
               type: 'success',
-              text1: `New message from ${msg?.sender?.username || 'User'}`,
+              text1: isGroup ? `New message in ${groupName}` : `New message from ${senderName}`,
               text2:
                 msg?.text ||
                 (msg?.media && msg?.media.length > 0 ? 'Sent an image' : 'Sent a message'),
               onPress: () => {
-                if (msg?.sender?._id) {
+                if (isGroup) {
+                  RootNavigation.navigate(
+                    'Chat' as never,
+                    {
+                      userId: msg.conversation,
+                      username: groupName,
+                      isGroup: true,
+                    } as never
+                  );
+                } else if (msg?.sender?._id) {
                   RootNavigation.navigate(
                     'Chat' as never,
                     {
                       userId: msg.sender._id,
-                      username: msg.sender.username || 'User',
+                      username: senderName,
                     } as never
                   );
                 }

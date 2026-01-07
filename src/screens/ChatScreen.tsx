@@ -29,11 +29,11 @@ import { promptSaveImage } from '../utils/MediaUtils';
 
 const ChatScreen = () => {
   const route = useRoute<any>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
   const { socket, onlineUsers } = useContext(SocketContext);
   const { initiateCall } = useContext(VoiceCallContext);
-  const { userId, username, avatar } = route.params;
+  const { userId, username, avatar, isGroup } = route.params;
 
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ const ChatScreen = () => {
   // Ideally it should be passed in navigation.
   const [recipientAvatar, setRecipientAvatar] = useState(avatar || null);
 
-  const isUserOnline = onlineUsers.has(userId);
+  const isUserOnline = !isGroup && onlineUsers.has(userId);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -56,44 +56,56 @@ const ChatScreen = () => {
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
             {username || 'Chat'}
           </Text>
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: isUserOnline ? '#4CAF50' : '#999',
-              marginLeft: 8,
-            }}
-          />
+          {!isGroup && (
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: isUserOnline ? '#4CAF50' : '#999',
+                marginLeft: 8,
+              }}
+            />
+          )}
         </View>
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
-          <TouchableOpacity
-            style={{ marginRight: 16 }}
-            onPress={() => {
-              const safeAvatar =
-                recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
-              initiateCall(userId, username, safeAvatar);
-            }}>
-            <MaterialIcons name="call" size={24} color="#1f6feb" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ marginRight: 16 }}
-            onPress={() => {
-              const safeAvatar =
-                recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
-              initiateCall(userId, username, safeAvatar, true);
-            }}>
-            <MaterialIcons name="videocam" size={26} color="#1f6feb" />
-          </TouchableOpacity>
+          {isGroup ? (
+            <TouchableOpacity
+              style={{ marginRight: 16 }}
+              onPress={() => navigation.navigate('GroupDetailsScreen', { conversationId: userId })}>
+              <Ionicons name="create-outline" size={24} color="#000" />
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={{ marginRight: 16 }}
+                onPress={() => {
+                  const safeAvatar =
+                    recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
+                  initiateCall(userId, username, safeAvatar);
+                }}>
+                <MaterialIcons name="call" size={24} color="#1f6feb" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ marginRight: 16 }}
+                onPress={() => {
+                  const safeAvatar =
+                    recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
+                  initiateCall(userId, username, safeAvatar, true);
+                }}>
+                <MaterialIcons name="videocam" size={26} color="#1f6feb" />
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity onPress={handleDeleteConversation}>
             <Ionicons name="trash-outline" size={24} color="#ff4444" />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, username, isUserOnline, userId, recipientAvatar]);
+  }, [navigation, username, isUserOnline, userId, recipientAvatar, isGroup]);
 
   if (!route.params) {
     return (
@@ -131,8 +143,8 @@ const ChatScreen = () => {
       const res = await getMessages(userId);
       setMessages((res.messages || []).reverse());
 
-      // Try to find avatar from messages if not provided
-      if (!recipientAvatar && res.messages && res.messages.length > 0) {
+      // For 1-on-1, try to find avatar from messages if not provided
+      if (!isGroup && !recipientAvatar && res.messages && res.messages.length > 0) {
         const otherUserMsg = res.messages.find((m: any) => (m.sender?._id || m.sender) === userId);
         if (otherUserMsg && otherUserMsg.sender?.avatar) {
           setRecipientAvatar(otherUserMsg.sender.avatar);
@@ -157,8 +169,14 @@ const ChatScreen = () => {
       try {
         const msgSenderId = msg.sender?._id || msg.sender;
         const msgRecipientId = msg.recipient?._id || msg.recipient;
+        // Check for Group Conversation ID match
+        const msgConversationId = msg.conversation;
 
-        if (msgSenderId === userId || msgRecipientId === userId) {
+        if (
+          isGroup
+            ? msgConversationId === userId
+            : msgSenderId === userId || msgRecipientId === userId
+        ) {
           setMessages((prev) => [...prev, msg]);
           setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
@@ -174,7 +192,7 @@ const ChatScreen = () => {
     return () => {
       socket.off('addMessageToClient', handleIncomingMessage);
     };
-  }, [socket, userId]);
+  }, [socket, userId, isGroup]);
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -220,14 +238,16 @@ const ChatScreen = () => {
 
       const newMessage = {
         sender: user?._id,
-        recipient: userId,
+        recipient: isGroup ? null : userId,
+        conversation: isGroup ? userId : null, // Assuming userId param IS conversationId for groups
         text: messageText,
         media: uploadedMedia,
         createdAt: new Date().toISOString(),
       };
 
       await sendMessage({
-        recipient: userId,
+        recipient: isGroup ? undefined : userId,
+        conversationId: isGroup ? userId : undefined,
         text: messageText,
         media: uploadedMedia,
       });
@@ -353,39 +373,57 @@ const ChatScreen = () => {
     const senderId = item.sender?._id || item.sender;
     const isSent = senderId === user?._id;
 
+    const senderName = item.sender?.username || 'User';
+    const senderAvatar = item.sender?.avatar;
+
     return (
       <View
         style={[styles.messageContainer, isSent ? styles.sentContainer : styles.receivedContainer]}>
-        <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
-          {item.call ? (
-            renderCallLog(item.call, isSent)
-          ) : (
-            <>
-              {item.media && item.media.length > 0 && (
-                <View style={styles.mediaContainer}>
-                  {item.media.map((img: any, idx: number) =>
-                    img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
-                      <TouchableOpacity
-                        key={idx}
-                        activeOpacity={0.9}
-                        onLongPress={() => promptSaveImage(img.url)}>
-                        <Image source={{ uri: img.url }} style={styles.messageImage} />
-                      </TouchableOpacity>
-                    ) : null
-                  )}
-                </View>
-              )}
-              {item.text && (
-                <Text style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
-                  {item.text}
-                </Text>
-              )}
-            </>
-          )}
-          <Text
-            style={[styles.timestamp, isSent ? styles.sentTimestamp : styles.receivedTimestamp]}>
-            {moment(item.createdAt).format('HH:mm')}
+        {!isSent && route.params.isGroup && (
+          <Text style={{ fontSize: 10, color: '#666', marginBottom: 2, marginLeft: 12 }}>
+            {senderName}
           </Text>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+          {!isSent && route.params.isGroup && (
+            <Image
+              source={{ uri: senderAvatar }}
+              style={{ width: 24, height: 24, borderRadius: 12, marginRight: 8, marginBottom: 4 }}
+            />
+          )}
+
+          <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
+            {item.call ? (
+              renderCallLog(item.call, isSent)
+            ) : (
+              <>
+                {item.media && item.media.length > 0 && (
+                  <View style={styles.mediaContainer}>
+                    {item.media.map((img: any, idx: number) =>
+                      img?.url && typeof img.url === 'string' && img.url.trim() !== '' ? (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.9}
+                          onLongPress={() => promptSaveImage(img.url)}>
+                          <Image source={{ uri: img.url }} style={styles.messageImage} />
+                        </TouchableOpacity>
+                      ) : null
+                    )}
+                  </View>
+                )}
+                {item.text && (
+                  <Text
+                    style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
+                    {item.text}
+                  </Text>
+                )}
+              </>
+            )}
+            <Text
+              style={[styles.timestamp, isSent ? styles.sentTimestamp : styles.receivedTimestamp]}>
+              {moment(item.createdAt).format('HH:mm')}
+            </Text>
+          </View>
         </View>
       </View>
     );

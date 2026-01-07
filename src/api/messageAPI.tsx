@@ -11,7 +11,8 @@ export const getMessages = async (userId: string, page: number = 1) => {
 };
 
 export const sendMessage = async (data: {
-  recipient: string;
+  recipient?: string;
+  conversationId?: string;
   text?: string;
   media?: any[];
   call?: any;
@@ -22,5 +23,15 @@ export const sendMessage = async (data: {
 
 export const deleteConversation = async (userId: string) => {
   const res = await API.delete(`/conversation/${userId}`);
+  return res.data;
+};
+
+export const createGroupAPI = async (data: { groupName: string; recipients: string[] }) => {
+  const res = await API.post('/group', data);
+  return res.data;
+};
+
+export const updateGroupAPI = async (id: string, data: any) => {
+  const res = await API.patch(`/group/${id}`, data);
   return res.data;
 };

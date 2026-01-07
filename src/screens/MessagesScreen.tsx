@@ -95,9 +95,16 @@ const MessagesScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Search', { isChatSearch: true })}>
-          <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateGroupScreen' as never)}
+            style={{ marginRight: 15 }}>
+            <Ionicons name="people-outline" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Search', { isChatSearch: true })}>
+            <Ionicons name="search" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Conversations List */}
@@ -110,7 +117,84 @@ const MessagesScreen = () => {
       ) : (
         <FlatList
           data={conversations}
-          renderItem={renderConversation}
+          renderItem={({ item }) => {
+            if (item.isGroup) {
+              return (
+                <TouchableOpacity
+                  style={styles.conversationItem}
+                  onPress={() =>
+                    navigation.navigate('Chat', {
+                      userId: item._id,
+                      username: item.groupName,
+                      avatar: item.groupAvatar,
+                      isGroup: true,
+                    })
+                  }>
+                  <View style={styles.avatarContainer}>
+                    {item.groupAvatar ? (
+                      <Avatar.Image size={56} source={{ uri: item.groupAvatar }} />
+                    ) : (
+                      <Avatar.Icon size={56} icon="account-group" />
+                    )}
+                  </View>
+
+                  <View style={styles.conversationContent}>
+                    <View style={styles.conversationHeader}>
+                      <Text style={styles.username}>{item.groupName}</Text>
+                      <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
+                    </View>
+                    <Text style={styles.lastMessage} numberOfLines={1}>
+                      {item.text || 'No messages yet'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+
+            const otherUser = getOtherUser(item);
+            if (!otherUser) return null;
+
+            const isOnline = onlineUsers.has(otherUser._id);
+
+            return (
+              <TouchableOpacity
+                style={styles.conversationItem}
+                onPress={() =>
+                  navigation.navigate('Chat', {
+                    userId: otherUser._id,
+                    username: otherUser.username,
+                    avatar: otherUser.avatar, // Pass avatar
+                  })
+                }>
+                <View style={styles.avatarContainer}>
+                  {otherUser.avatar ? (
+                    <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+                  ) : (
+                    <Avatar.Icon size={56} icon="account" />
+                  )}
+                  {isOnline && <View style={styles.onlineIndicator} />}
+                </View>
+
+                <View style={styles.conversationContent}>
+                  <View style={styles.conversationHeader}>
+                    <Text style={styles.username}>{otherUser.username}</Text>
+                    <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
+                  </View>
+                  <Text style={styles.lastMessage} numberOfLines={1}>
+                    {item.call
+                      ? `${
+                          item.call.status === 'missed'
+                            ? 'Missed'
+                            : item.call.status === 'rejected'
+                              ? 'Declined'
+                              : ''
+                        } ${item.call.video ? 'video' : 'voice'} call`.trim()
+                      : item.text || (item.media?.length > 0 ? 'Sent an image' : '')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           keyExtractor={(item) => item._id}
           refreshControl={
             <RefreshControl
