@@ -34,3 +34,8 @@ export const markListingAsSoldAPI = async (id: string, isSold: boolean) => {
   const res = await axiosInstance.patch(`/listings/${id}/sold`, { isSold });
   return res.data;
 };
+
+export const placeBidAPI = async (id: string, amount: number) => {
+  const res = await axiosInstance.patch(`/listings/${id}/bid`, { amount });
+  return res.data;
+};
