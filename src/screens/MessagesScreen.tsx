@@ -115,11 +115,27 @@ const MessagesScreen = () => {
             const { getAIUser } = require('../api/userAPI');
             const res = await getAIUser();
             if (res.user) {
-              navigation.navigate('Chat', {
-                userId: res.user._id,
-                username: res.user.username,
-                avatar: res.user.avatar,
+              // Check if conversation already exists
+              const existingAI = conversations.find((conv: any) => {
+                const other = conv.recipients?.find((r: any) => r._id !== user?._id);
+                return other?._id === res.user._id;
               });
+
+              if (existingAI) {
+                // Use existing conversation - still pass the AI user ID
+                navigation.navigate('Chat', {
+                  userId: res.user._id,
+                  username: res.user.username,
+                  avatar: res.user.avatar,
+                });
+              } else {
+                // Create new
+                navigation.navigate('Chat', {
+                  userId: res.user._id,
+                  username: res.user.username,
+                  avatar: res.user.avatar,
+                });
+              }
             }
           } catch (e) {
             console.error(e);
@@ -128,7 +144,12 @@ const MessagesScreen = () => {
         <View style={styles.avatarContainer}>
           <Avatar.Image
             size={56}
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4712/4712035.png' }}
+            style={{
+              backgroundColor: '#fff',
+            }}
+            source={{
+              uri: 'https://static.vecteezy.com/system/resources/previews/055/687/055/non_2x/rectangle-gemini-google-icon-symbol-logo-free-png.png',
+            }}
           />
           <View style={[styles.onlineIndicator, { backgroundColor: '#BB86FC' }]} />
         </View>
@@ -190,6 +211,11 @@ const MessagesScreen = () => {
 
             const otherUser = getOtherUser(item);
             if (!otherUser) return null;
+
+            // Hide AI conversations from regular list (we have a dedicated AI button above)
+            if (otherUser.role === 'ai_assistant' || otherUser.username === 'ai_assistant') {
+              return null;
+            }
 
             const isOnline = onlineUsers.has(otherUser._id);
 
