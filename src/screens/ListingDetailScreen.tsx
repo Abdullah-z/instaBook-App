@@ -9,11 +9,17 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  RefreshControl,
 } from 'react-native';
-import { Text, Button, Avatar, Divider, List } from 'react-native-paper';
+import { Text, Button, Avatar, Divider, List, TextInput } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { getListingAPI, markListingAsSoldAPI, deleteListingAPI } from '../api/listingAPI';
+import {
+  getListingAPI,
+  markListingAsSoldAPI,
+  deleteListingAPI,
+  placeBidAPI,
+} from '../api/listingAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import Carousel from 'react-native-reanimated-carousel';
@@ -35,6 +41,10 @@ const ListingDetailScreen = () => {
 
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [bidAmount, setBidAmount] = useState('');
+  const [timeLeft, setTimeLeft] = useState('');
+  const [placingBid, setPlacingBid] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -51,11 +61,66 @@ const ListingDetailScreen = () => {
     try {
       const res = await getListingAPI(id);
       setListing(res.listing);
+      if (res.listing.price) {
+        setBidAmount((res.listing.currentBid || 0).toString());
+      }
     } catch (err) {
       console.error('Failed to load listing:', err);
       Alert.alert('Error', 'Could not load listing details.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadListing();
+  };
+
+  useEffect(() => {
+    if (!listing?.bidEndTime || listing.isSold) return;
+
+    const interval = setInterval(() => {
+      const now = moment();
+      const end = moment(listing.bidEndTime);
+      const diff = end.diff(now);
+
+      if (diff <= 0) {
+        setTimeLeft('Auction Ended');
+        clearInterval(interval);
+      } else {
+        const duration = moment.duration(diff);
+        setTimeLeft(
+          `${duration.days() > 0 ? duration.days() + 'd ' : ''}${duration.hours()}h ${duration.minutes()}m ${duration.seconds()}s`
+        );
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [listing?.bidEndTime, listing?.isSold]);
+
+  const handlePlaceBid = async () => {
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount)) return Alert.alert('Error', 'Please enter a valid amount.');
+
+    if (amount <= (listing.currentBid || 0)) {
+      return Alert.alert('Error', 'Bid must be higher than current bid.');
+    }
+
+    if (amount > listing.price) {
+      return Alert.alert('Error', 'Bid cannot exceed asking price.');
+    }
+
+    setPlacingBid(true);
+    try {
+      const res = await placeBidAPI(id, amount);
+      setListing(res.listing);
+      Alert.alert('Success', res.msg);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.msg || 'Failed to place bid');
+    } finally {
+      setPlacingBid(false);
     }
   };
 
@@ -120,7 +185,9 @@ const ListingDetailScreen = () => {
   const isOwner = user?._id === listing.user._id;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {/* Image Carousel */}
       <View style={styles.carouselContainer}>
         {listing.images && listing.images.length > 0 ? (
@@ -153,6 +220,51 @@ const ListingDetailScreen = () => {
       <View style={styles.content}>
         <Text style={styles.price}>${listing.price}</Text>
         <Text style={styles.name}>{listing.name}</Text>
+
+        {(listing.listingType === 'Bid' || listing.listingType === 'Both') && (
+          <View style={styles.bidInfoContainer}>
+            <View style={styles.bidRow}>
+              <View>
+                <Text style={styles.bidLabel}>Current Bid</Text>
+                <Text style={styles.bidValue}>${listing.currentBid || 0}</Text>
+              </View>
+              <View style={styles.timerContainer}>
+                <Ionicons name="time-outline" size={16} color="#ff4757" />
+                <Text style={styles.timerText}>{timeLeft}</Text>
+              </View>
+            </View>
+
+            {listing.highestBidder && (
+              <Text style={styles.highestBidderText}>
+                Highest bidder: @{listing.highestBidder.username}
+              </Text>
+            )}
+
+            {!isOwner && !listing.isSold && timeLeft !== 'Auction Ended' && (
+              <View style={styles.placeBidContainer}>
+                <TextInput
+                  placeholder="Enter bid amount"
+                  value={bidAmount}
+                  onChangeText={setBidAmount}
+                  keyboardType="numeric"
+                  style={styles.bidInput}
+                  mode="outlined"
+                  dense
+                />
+                <Button
+                  mode="contained"
+                  onPress={handlePlaceBid}
+                  loading={placingBid}
+                  buttonColor="#D4F637"
+                  textColor="#000"
+                  style={styles.bidBtn}>
+                  Bid
+                </Button>
+              </View>
+            )}
+          </View>
+        )}
+
         <Text style={styles.time}>
           Listed {moment(listing.createdAt).format('MMM D, YYYY')} at{' '}
           {moment(listing.createdAt).format('h:mm A')}
@@ -379,6 +491,63 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontSize: 10,
     color: '#999',
+  },
+  bidInfoContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  bidRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bidLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  bidValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#ffeaea',
+  },
+  timerText: {
+    fontSize: 14,
+    color: '#ff4757',
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  highestBidderText: {
+    fontSize: 12,
+    color: '#2ecc71',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+  placeBidContainer: {
+    flexDirection: 'row',
+    marginTop: 15,
+    gap: 10,
+  },
+  bidInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  bidBtn: {
+    justifyContent: 'center',
+    borderRadius: 5,
   },
 });
 
