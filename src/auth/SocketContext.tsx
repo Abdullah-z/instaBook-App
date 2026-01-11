@@ -120,6 +120,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
                     {
                       userId: msg.sender._id,
                       username: senderName,
+                      avatar: msg.sender.avatar || null,
                     } as never
                   );
                 }
