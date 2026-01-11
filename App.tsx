@@ -58,6 +58,7 @@ function MainApp() {
 
 function AppContent() {
   const { handleIncomingCallFromPush } = useContext(VoiceCallContext);
+  const { expoPushToken } = usePushNotifications();
 
   // Handle Notifications when app is running (foreground/background)
   useEffect(() => {
@@ -65,14 +66,24 @@ function AppContent() {
       const data = response.notification.request.content.data;
       console.log('🔔 Notification Response Received:', data);
 
-      if (data?.type === 'MESSAGE' && data?.senderId) {
-        navigate('Chat', {
-          userId: data.senderId,
-          username: data.senderName || 'User',
-          avatar: data.senderAvatar || null,
-        });
+      if (data?.type === 'MESSAGE') {
+        const isGroup = data?.isGroup === true || data?.isGroup === 'true';
+        const targetId = isGroup ? data?.conversationId : data?.senderId;
+        const targetName = isGroup ? data?.groupName || 'Group Chat' : data?.senderName || 'User';
+        const targetAvatar = isGroup ? null : data?.senderAvatar || null;
+
+        if (targetId) {
+          navigate('Chat', {
+            userId: targetId,
+            username: targetName,
+            avatar: targetAvatar,
+            isGroup: isGroup,
+          });
+        }
       } else if (data?.type === 'VOICE_CALL') {
         handleIncomingCallFromPush(data);
+      } else if ((data?.type === 'AUCTION_WON' || data?.type === 'NEW_BID') && data?.listingId) {
+        navigate('ListingDetail', { id: data.listingId });
       }
     });
 
@@ -88,15 +99,29 @@ function AppContent() {
           const data = response.notification.request.content.data;
           console.log('🔔 Cold Start Notification Detected:', data);
 
-          if (data?.type === 'MESSAGE' && data?.senderId) {
-            // Using the new queued navigate function
-            navigate('Chat', {
-              userId: data.senderId,
-              username: data.senderName || 'User',
-              avatar: data.senderAvatar || null,
-            });
+          if (data?.type === 'MESSAGE') {
+            const isGroup = data?.isGroup === true || data?.isGroup === 'true';
+            const targetId = isGroup ? data?.conversationId : data?.senderId;
+            const targetName = isGroup
+              ? data?.groupName || 'Group Chat'
+              : data?.senderName || 'User';
+            const targetAvatar = isGroup ? null : data?.senderAvatar || null;
+
+            if (targetId) {
+              navigate('Chat', {
+                userId: targetId,
+                username: targetName,
+                avatar: targetAvatar,
+                isGroup: isGroup,
+              });
+            }
           } else if (data?.type === 'VOICE_CALL') {
             handleIncomingCallFromPush(data);
+          } else if (
+            (data?.type === 'AUCTION_WON' || data?.type === 'NEW_BID') &&
+            data?.listingId
+          ) {
+            navigate('ListingDetail', { id: data.listingId });
           }
         }
       } catch (e) {
