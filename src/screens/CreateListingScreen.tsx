@@ -9,9 +9,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
-import { TextInput, Button, Text, HelperText } from 'react-native-paper';
+import { TextInput, Button, Text, HelperText, SegmentedButtons } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -37,7 +39,12 @@ const CreateListingScreen = () => {
       type: 'Point',
       coordinates: [0, 0],
     },
+    listingType: editListing?.listingType || 'Sell',
+    bidEndTime: editListing?.bidEndTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   });
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
 
   const [images, setImages] = useState<any[]>(
     editListing?.images?.map((url: string) => ({ uri: url })) || []
@@ -221,6 +228,102 @@ const CreateListingScreen = () => {
           mode="outlined"
         />
 
+        <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Listing Type</Text>
+        <SegmentedButtons
+          value={listing.listingType}
+          onValueChange={(value) => setListing({ ...listing, listingType: value })}
+          buttons={[
+            { value: 'Sell', label: 'Sell' },
+            { value: 'Bid', label: 'Bid' },
+            { value: 'Both', label: 'Both' },
+          ]}
+          style={styles.input}
+        />
+
+        {(listing.listingType === 'Bid' || listing.listingType === 'Both') && (
+          <View style={styles.input}>
+            <Text style={styles.sectionTitle}>Auction End Time</Text>
+            <Button
+              mode="outlined"
+              onPress={() => {
+                setDatePickerMode('date');
+                setShowDatePicker(true);
+              }}
+              icon="calendar"
+              style={{ marginBottom: 10 }}>
+              {new Date(listing.bidEndTime).toLocaleString()}
+            </Button>
+
+            {/* Android - sequential date then time picker */}
+            {showDatePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={listing.bidEndTime ? new Date(listing.bidEndTime) : new Date()}
+                mode={datePickerMode}
+                display="default"
+                onChange={(event: any, selectedDate?: Date) => {
+                  if (event.type === 'dismissed') {
+                    setShowDatePicker(false);
+                    return;
+                  }
+
+                  if (event.type === 'set' && selectedDate) {
+                    if (datePickerMode === 'date') {
+                      // After selecting date, show time picker
+                      const currentTime = listing.bidEndTime
+                        ? new Date(listing.bidEndTime)
+                        : new Date();
+                      const newDateTime = new Date(selectedDate);
+                      newDateTime.setHours(currentTime.getHours());
+                      newDateTime.setMinutes(currentTime.getMinutes());
+                      setListing({ ...listing, bidEndTime: newDateTime.toISOString() });
+                      setDatePickerMode('time');
+                    } else {
+                      // After selecting time, close picker
+                      const currentDate = listing.bidEndTime
+                        ? new Date(listing.bidEndTime)
+                        : new Date();
+                      const newDateTime = new Date(currentDate);
+                      newDateTime.setHours(selectedDate.getHours());
+                      newDateTime.setMinutes(selectedDate.getMinutes());
+                      setListing({ ...listing, bidEndTime: newDateTime.toISOString() });
+                      setShowDatePicker(false);
+                    }
+                  }
+                }}
+              />
+            )}
+
+            {/* iOS - modal picker */}
+            {showDatePicker && Platform.OS === 'ios' && (
+              <Modal
+                transparent={true}
+                animationType="slide"
+                visible={showDatePicker}
+                onRequestClose={() => setShowDatePicker(false)}>
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.doneButton}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={listing.bidEndTime ? new Date(listing.bidEndTime) : new Date()}
+                      mode="datetime"
+                      display="spinner"
+                      onChange={(event: any, selectedDate?: Date) => {
+                        if (selectedDate) {
+                          setListing({ ...listing, bidEndTime: selectedDate.toISOString() });
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+          </View>
+        )}
+
         <LocationAutocomplete
           initialValue={listing.address}
           onLocationSelect={(address, coords) => {
@@ -278,6 +381,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
   imageSection: {
     marginBottom: 20,
   },
@@ -322,6 +431,29 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     paddingVertical: 5,
     borderRadius: 25,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  doneButton: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#007AFF',
   },
 });
 
