@@ -6,6 +6,7 @@ import {
   Dimensions,
   FlatList,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StatusBar,
   ActivityIndicator,
   Image,
@@ -36,6 +37,7 @@ const ReelsScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [activeReelIndex, setActiveReelIndex] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Fetch Reels
   const fetchReels = async () => {
@@ -89,6 +91,7 @@ const ReelsScreen = () => {
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setActiveReelIndex(viewableItems[0].index);
+      setIsPaused(false); // Reset pause state when switching reels
     }
   }).current;
 
@@ -188,17 +191,27 @@ const ReelsScreen = () => {
 
     return (
       <View style={[styles.reelContainer, { height: containerHeight }]}>
-        <Video
-          source={{ uri: videoUrl }}
-          style={styles.video}
-          resizeMode={ResizeMode.COVER}
-          isLooping
-          shouldPlay={isPlaying}
-          isMuted={false}
-        />
+        <TouchableWithoutFeedback onPress={() => setIsPaused(!isPaused)}>
+          <View style={StyleSheet.absoluteFill}>
+            <Video
+              source={{ uri: videoUrl }}
+              style={styles.video}
+              resizeMode={ResizeMode.COVER}
+              isLooping
+              shouldPlay={isPlaying && !isPaused}
+              isMuted={false}
+            />
+
+            {isPaused && (
+              <View style={styles.pauseOverlay}>
+                <Ionicons name="play" size={80} color="rgba(255, 255, 255, 0.7)" />
+              </View>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Content Overlay */}
-        <View style={styles.overlay}>
+        <View style={styles.overlay} pointerEvents="box-none">
           {/* Right Side Actions */}
           <View style={styles.rightActions}>
             <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleLike(item)}>
@@ -317,7 +330,6 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.1)', // Slight overlay for text readability check
     paddingBottom: 20,
     paddingHorizontal: 15,
   },
@@ -356,6 +368,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     lineHeight: 22,
+  },
+  pauseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
 });
 
