@@ -19,6 +19,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Speech from 'expo-speech';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMessages, sendMessage, deleteConversation } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
@@ -41,11 +43,15 @@ const ChatScreen = () => {
   const [text, setText] = useState('');
   const [media, setMedia] = useState<any[]>([]);
   const [isHD, setIsHD] = useState(false);
+  const [voiceFeedbackEnabled, setVoiceFeedbackEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // Use avatar from params, or try to find it from messages later if needed.
   // Ideally it should be passed in navigation.
   const [recipientAvatar, setRecipientAvatar] = useState(avatar || null);
+
+  const isAIChat = username === 'ai_assistant' || username?.includes('AI Assistant');
 
   const isUserOnline = !isGroup && onlineUsers.has(userId);
 
@@ -77,9 +83,32 @@ const ChatScreen = () => {
               onPress={() => navigation.navigate('GroupDetailsScreen', { conversationId: userId })}>
               <Ionicons name="create-outline" size={24} color="#000" />
             </TouchableOpacity>
-          ) : username === 'ai_assistant' || username?.includes('AI Assistant') ? (
-            <View style={{ marginRight: 16 }}>
-              <Ionicons name="hardware-chip-outline" size={24} color="#6200EE" />
+          ) : isAIChat ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => {
+                  const newValue = !voiceFeedbackEnabled;
+                  setVoiceFeedbackEnabled(newValue);
+                  AsyncStorage.setItem('ai_voice_feedback', newValue.toString());
+                  Toast.show({
+                    type: 'success',
+                    text1: newValue ? '🔊 Voice ON' : '🔇 Voice OFF',
+                    position: 'bottom',
+                    visibilityTime: 1500,
+                  });
+                }}
+                style={{ marginRight: 16 }}>
+                <MaterialIcons
+                  name={voiceFeedbackEnabled ? 'volume-up' : 'volume-off'}
+                  size={24}
+                  color={voiceFeedbackEnabled ? '#6200EE' : '#999'}
+                />
+              </TouchableOpacity>
+              {isSpeaking && (
+                <View style={{ marginRight: 16 }}>
+                  <MaterialIcons name="graphic-eq" size={24} color="#6200EE" />
+                </View>
+              )}
             </View>
           ) : (
             <>
@@ -109,7 +138,60 @@ const ChatScreen = () => {
         </View>
       ),
     });
-  }, [navigation, username, isUserOnline, userId, recipientAvatar, isGroup]);
+  }, [
+    navigation,
+    username,
+    isUserOnline,
+    userId,
+    recipientAvatar,
+    isGroup,
+    voiceFeedbackEnabled,
+    isSpeaking,
+  ]);
+
+  // Load voice preference on mount
+  useEffect(() => {
+    if (isAIChat) {
+      AsyncStorage.getItem('ai_voice_feedback').then((value) => {
+        if (value === 'true') {
+          setVoiceFeedbackEnabled(true);
+        }
+      });
+    }
+  }, [isAIChat]);
+
+  // Auto-speak AI responses
+  useEffect(() => {
+    if (!voiceFeedbackEnabled || !isAIChat) return;
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.sender?._id !== user?._id) {
+      // This is an AI response
+      speakText(lastMessage.text);
+    }
+  }, [messages, voiceFeedbackEnabled, isAIChat]);
+
+  const speakText = async (text: string) => {
+    if (!text) return;
+
+    try {
+      // Stop any ongoing speech first
+      await Speech.stop();
+      setIsSpeaking(true);
+
+      await Speech.speak(text, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.95,
+        onDone: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    } catch (err) {
+      console.error('Speech error:', err);
+      setIsSpeaking(false);
+    }
+  };
 
   if (!route.params) {
     return (
