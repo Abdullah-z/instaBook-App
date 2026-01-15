@@ -19,12 +19,14 @@ interface LocationAutocompleteProps {
   onLocationSelect: (address: string, coordinates: [number, number]) => void;
   initialValue?: string;
   placeholder?: string;
+  isLoading?: boolean;
 }
 
 const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   onLocationSelect,
   initialValue = '',
   placeholder = 'Enter location address...',
+  isLoading = false,
 }) => {
   const [query, setQuery] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -45,15 +47,37 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     setLoading(true);
     try {
-      // Using Photon API (OpenStreetMap based) - free and no key required
-      const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5`
-      );
+      let response;
+      try {
+        // 1. Try HTTPS first (standard)
+        response = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5&lang=en`,
+          { headers: { Accept: 'application/json' } }
+        );
+      } catch (e) {
+        // 2. Fallback to HTTP (helps on some networks with SSL/DNS issues)
+        console.log('HTTPS search failed, trying HTTP fallback...');
+        response = await fetch(
+          `http://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5&lang=en`,
+          { headers: { Accept: 'application/json' } }
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(`Cloud search error: ${response.status}`);
+      }
+
       const data = await response.json();
 
       const formattedSuggestions: Suggestion[] = data.features.map((feature: any) => {
         const p = feature.properties;
-        const parts = [p.name, p.street, p.city, p.state, p.country].filter(Boolean);
+        const parts = [
+          p.name,
+          p.street,
+          p.city || p.town || p.village,
+          p.state || p.county,
+          p.country,
+        ].filter(Boolean);
 
         return {
           description: parts.join(', '),
@@ -63,8 +87,10 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
       setSuggestions(formattedSuggestions);
       setShowSuggestions(formattedSuggestions.length > 0);
-    } catch (error) {
-      console.error('Location search error:', error);
+    } catch (error: any) {
+      console.error('Location search error details:', error);
+      // We don't alert here to avoid annoying the user during typing,
+      // but the log will help us debug.
     } finally {
       setLoading(false);
     }
@@ -86,18 +112,21 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   return (
     <View style={styles.container}>
       <TextInput
-        label="Location Address"
         value={query}
         onChangeText={handleTextChange}
         style={styles.input}
-        mode="outlined"
         placeholder={placeholder}
+        placeholderTextColor="#999"
+        mode="flat"
+        underlineColor="transparent"
+        activeUnderlineColor="transparent"
+        left={<TextInput.Icon icon="magnify" color="#666" />}
         right={
-          loading ? (
-            <TextInput.Icon icon={() => <ActivityIndicator size="small" />} />
-          ) : (
-            <TextInput.Icon icon="magnify" />
-          )
+          loading || isLoading ? (
+            <TextInput.Icon icon={() => <ActivityIndicator size="small" color="#000" />} />
+          ) : query.length > 0 ? (
+            <TextInput.Icon icon="close-circle" color="#ccc" onPress={() => handleTextChange('')} />
+          ) : null
         }
       />
 
@@ -108,10 +137,17 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
             keyExtractor={(item, index) => index.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
-                <Ionicons name="location-outline" size={20} color="#666" style={styles.icon} />
-                <Text style={styles.suggestionText} numberOfLines={2}>
-                  {item.description}
-                </Text>
+                <View style={styles.suggestionIconWrapper}>
+                  <Ionicons name="location" size={18} color="#D4F637" />
+                </View>
+                <View style={styles.suggestionTextWrapper}>
+                  <Text style={styles.suggestionTitle} numberOfLines={1}>
+                    {item.description.split(',')[0]}
+                  </Text>
+                  <Text style={styles.suggestionSub} numberOfLines={1}>
+                    {item.description.split(',').slice(1).join(',').trim()}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
             style={styles.list}
@@ -131,34 +167,65 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#fff',
+    borderRadius: 15,
+    height: 50,
+    fontSize: 15,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   suggestionsContainer: {
     position: 'absolute',
-    top: 55,
+    top: 60,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    maxHeight: 250,
+    borderRadius: 15,
+    maxHeight: 280,
     zIndex: 1001,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
   },
   list: {
-    borderRadius: 8,
+    paddingVertical: 5,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
-  icon: {
-    marginRight: 10,
+  suggestionIconWrapper: {
+    backgroundColor: '#000',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  suggestionText: {
-    fontSize: 14,
-    color: '#333',
+  suggestionTextWrapper: {
     flex: 1,
+  },
+  suggestionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  suggestionSub: {
+    fontSize: 12,
+    color: '#888',
   },
 });
 
