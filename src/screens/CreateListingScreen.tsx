@@ -15,12 +15,13 @@ import { TextInput, Button, Text, HelperText, SegmentedButtons } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import * as ExpoLocation from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createListingAPI, updateListingAPI } from '../api/listingAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { imageUpload } from '../utils/imageUpload';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { getRobustLocation } from '../utils/locationHelper';
 
 const CreateListingScreen = () => {
   const navigation = useNavigation<any>();
@@ -70,13 +71,22 @@ const CreateListingScreen = () => {
   };
 
   const getCurrentLocation = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
+    let { status } = await ExpoLocation.getForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      const result = await ExpoLocation.requestForegroundPermissionsAsync();
+      status = result.status;
+    }
+
     if (status !== 'granted') {
       Alert.alert('Permission Denied', 'Permission to access location was denied');
       return;
     }
 
-    let loc = await Location.getCurrentPositionAsync({});
+    let loc = await getRobustLocation();
+    if (!loc) {
+      Alert.alert('Error', 'Could not get location.');
+      return;
+    }
     setListing({
       ...listing,
       location: {
@@ -85,7 +95,7 @@ const CreateListingScreen = () => {
       },
     });
 
-    let reverse = await Location.reverseGeocodeAsync({
+    let reverse = await ExpoLocation.reverseGeocodeAsync({
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
     });

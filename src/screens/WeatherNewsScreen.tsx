@@ -18,7 +18,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
+import * as ExpoLocation from 'expo-location';
+import { getRobustLocation } from '../utils/locationHelper';
 import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import moment from 'moment';
@@ -368,21 +369,18 @@ const WeatherNewsScreen = () => {
   const getCurrentLocation = async () => {
     setIsLocationLoading(true);
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      let { status } = await ExpoLocation.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const result = await ExpoLocation.requestForegroundPermissionsAsync();
+        status = result.status;
+      }
+
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Permission to access location was denied');
         return;
       }
 
-      // 1. Try last known position for immediate result
-      let loc = await Location.getLastKnownPositionAsync({});
-
-      // 2. If no last known, get current with lowest accuracy for speed
-      if (!loc) {
-        loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Lowest,
-        });
-      }
+      let loc = await getRobustLocation();
 
       if (loc) {
         await fetchWeatherData('', unit, loc.coords.latitude, loc.coords.longitude);
@@ -404,7 +402,7 @@ const WeatherNewsScreen = () => {
 
     try {
       const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5`
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5&lang=en`
       );
       const data = await response.json();
 
