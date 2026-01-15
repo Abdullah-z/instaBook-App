@@ -15,8 +15,12 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';
 import { imageUpload } from '../utils/imageUpload';
+import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import * as ExpoLocation from 'expo-location';
+import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const EditPostScreen = () => {
   const navigation = useNavigation();
@@ -25,8 +29,14 @@ const EditPostScreen = () => {
 
   const [content, setContent] = useState(post.content);
   const [images, setImages] = useState<any[]>(post.images || []);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isHD, setIsHD] = useState(false);
+  const [address, setAddress] = useState(post.address || '');
+  const [locationCoords, setLocationCoords] = useState<[number, number] | null>(
+    post.location?.coordinates || null
+  );
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
 
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
@@ -56,6 +66,10 @@ const EditPostScreen = () => {
 
   const pickImages = async () => {
     try {
+      if (videoUri) {
+        Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
       const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission denied', 'You must allow access to media library.');
@@ -83,8 +97,44 @@ const EditPostScreen = () => {
     }
   };
 
+  const pickVideo = async () => {
+    try {
+      if (images.length > 0) {
+        Alert.alert('Limit Reached', 'You cannot add a video when images are selected.');
+        return;
+      }
+      if (videoUri) {
+        Alert.alert('Limit Reached', 'You can only upload one video at a time.');
+        return;
+      }
+
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permission denied', 'You must allow access to media library.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setVideoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('🔥 Video picker error:', error);
+      Alert.alert('Error', 'Something went wrong while picking video.');
+    }
+  };
+
   const takePhoto = async () => {
     try {
+      if (videoUri) {
+        Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
       const { granted } = await ImagePicker.requestCameraPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission denied', 'You must allow access to camera.');
@@ -114,27 +164,80 @@ const EditPostScreen = () => {
     setImages((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
+  const handleGetCurrentLocation = async () => {
+    try {
+      let { status } = await ExpoLocation.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const result = await ExpoLocation.requestForegroundPermissionsAsync();
+        status = result.status;
+      }
+
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'You must allow location access.');
+        return;
+      }
+
+      setLoading(true);
+      const loc = await getRobustLocation();
+      if (!loc) {
+        Alert.alert('Error', 'Could not get location.');
+        setLoading(false);
+        return;
+      }
+      const { latitude, longitude } = loc.coords;
+      const addr = await getReadableAddress(latitude, longitude);
+
+      setAddress(addr);
+      setLocationCoords([longitude, latitude]);
+      setShowLocationSearch(false);
+    } catch (error) {
+      console.error('📍 Location error:', error);
+      Alert.alert('Error getting location.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdate = async () => {
-    if (!content && images.length === 0) {
-      Alert.alert('Post must have content or image.');
+    if (!content && images.length === 0 && !videoUri && !address) {
+      Alert.alert('Post must have content, image, video or location.');
       return;
     }
 
     setLoading(true);
 
     try {
-      let media = [];
+      let media: any[] = [];
       const newImages = images.filter((img) => typeof img === 'string');
       const oldImages = images.filter((img) => typeof img !== 'string');
 
-      if (newImages.length > 0) {
+      if (videoUri) {
+        // Upload Video
+        // Check if it's a new video (uri string) or existing (object) - simplistic check for now
+        // EditPost primarily deals with existing posts.
+        // If user picked a NEW video, videoUri is a file URI string.
+        // Existing video support not explicitly requested to survive edits but we should consider it.
+        // For now, assuming user replaces content.
+        if (videoUri.startsWith('file://')) {
+          media = await imageUpload([{ uri: videoUri, type: 'video' }], isHD);
+        } else {
+          // It's an existing video URL? Not handling existing video *state* initialization yet.
+          // Assuming user adds NEW video.
+          media = [{ url: videoUri, resource_type: 'video' }];
+        }
+      } else if (newImages.length > 0) {
         const uploadedMedia = await imageUpload(newImages, isHD);
         media = [...oldImages, ...uploadedMedia];
       } else {
         media = oldImages;
       }
 
-      const updatedData = { content, images: media };
+      const updatedData = {
+        content,
+        images: media,
+        address,
+        location: locationCoords ? { type: 'Point', coordinates: locationCoords } : undefined,
+      };
       const res = await updatePostAPI(post._id, updatedData);
 
       if (onPostUpdate) {
@@ -175,9 +278,25 @@ const EditPostScreen = () => {
           <Text style={styles.iconText}>Camera</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={pickVideo} style={styles.iconButton}>
+          <Ionicons name="videocam-outline" size={24} color="#E91E63" />
+          <Text style={styles.iconText}>Video</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconButton}>
           <Ionicons name="logo-youtube" size={24} color="#F44336" />
           <Text style={styles.iconText}>YouTube</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setShowLocationSearch(!showLocationSearch)}
+          style={styles.iconButton}>
+          <Ionicons
+            name="location-outline"
+            size={24}
+            color={address ? '#FF5722' : '#FF9800'} // Reusing Orange for loc icon
+          />
+          <Text style={styles.iconText}>Location</Text>
         </TouchableOpacity>
 
         <View style={styles.hdToggleContainer}>
@@ -191,6 +310,49 @@ const EditPostScreen = () => {
         </View>
       </View>
 
+      {showLocationSearch && (
+        <View style={styles.locationSearchContainer}>
+          <LocationAutocomplete
+            onLocationSelect={(addr, coords) => {
+              setAddress(addr);
+              setLocationCoords(coords);
+            }}
+            initialValue={address}
+            placeholder="Search location..."
+          />
+          <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
+            <Ionicons name="locate" size={20} color="#007AFF" />
+            <Text style={styles.gpsBtnText}>Use GPS</Text>
+          </TouchableOpacity>
+          {address !== '' && (
+            <TouchableOpacity
+              onPress={() => {
+                setAddress('');
+                setLocationCoords(null);
+              }}
+              style={styles.clearLocBtn}>
+              <Text style={styles.clearLocText}>Clear Location</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {address !== '' && !showLocationSearch && (
+        <View style={styles.taggedLocationBadge}>
+          <Ionicons name="location" size={16} color="#FF5722" />
+          <Text style={styles.taggedLocationText} numberOfLines={1}>
+            {address}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setAddress('');
+              setLocationCoords(null);
+            }}>
+            <Ionicons name="close-circle" size={18} color="#999" style={{ marginLeft: 5 }} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.imageGrid}>
         {images.map((img, index) => (
           <View key={index} style={styles.imageWrapper}>
@@ -203,6 +365,34 @@ const EditPostScreen = () => {
             </TouchableOpacity>
           </View>
         ))}
+
+        {videoUri && (
+          <View style={[styles.imageWrapper, { width: 120, height: 120 }]}>
+            <Video
+              source={{ uri: videoUri }}
+              style={{ width: '100%', height: '100%', borderRadius: 6, backgroundColor: '#000' }}
+              resizeMode={ResizeMode.COVER}
+              isLooping={false}
+              useNativeControls={false}
+              shouldPlay={false}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+              <Ionicons name="play-circle" size={30} color="#fff" />
+            </View>
+            <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.removeBtn}>
+              <Text style={styles.removeText}>✖</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <TouchableOpacity
@@ -387,5 +577,50 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#666',
     marginRight: 4,
+  },
+  locationSearchContainer: {
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  gpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 5,
+  },
+  gpsBtnText: {
+    marginLeft: 5,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  clearLocBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-end',
+  },
+  clearLocText: {
+    color: '#FF3B30',
+    fontSize: 12,
+  },
+  taggedLocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0ED',
+    alignSelf: 'flex-start',
+    marginBottom: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFD7D0',
+  },
+  taggedLocationText: {
+    fontSize: 14,
+    color: '#FF5722',
+    marginLeft: 4,
+    maxWidth: 250,
   },
 });
