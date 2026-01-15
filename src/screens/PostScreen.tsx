@@ -84,8 +84,10 @@ const PostScreen = () => {
 
       // Set initial like/save state
       setLikes(res.post.likes.length);
-      setIsLiked(res.post.likes.some((like: any) => like._id === user._id || like === user._id));
-      setIsSaved(user.saved?.includes(res.post._id));
+      if (user) {
+        setIsLiked(res.post.likes.some((like: any) => like._id === user._id || like === user._id));
+        setIsSaved(user.saved?.includes(res.post._id) || false);
+      }
 
       // Setup comments
       const all = res.post.comments || [];
@@ -187,6 +189,7 @@ const PostScreen = () => {
     setIsLiked(true);
     setLikes((prev) => prev + 1);
     try {
+      if (!user) return;
       await likePostAPI(post._id);
       const msg = {
         id: user._id,
@@ -209,6 +212,7 @@ const PostScreen = () => {
     setIsLiked(false);
     setLikes((prev) => prev - 1);
     try {
+      if (!user) return;
       await unlikePostAPI(post._id);
       const msg = {
         id: user._id,
@@ -296,13 +300,19 @@ const PostScreen = () => {
               <View style={styles.headerLeft}>
                 {post?.user && (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('Profile', { id: post.user._id })}>
+                    onPress={() => (navigation as any).navigate('Profile', { id: post.user._id })}>
                     <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
                   </TouchableOpacity>
                 )}
                 <View style={styles.userInfo}>
                   <Text style={styles.username}>{post?.user?.username}</Text>
                   <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+                  {post.address ? (
+                    <View style={styles.locationContainer}>
+                      <Ionicons name="location" size={12} color="#65676B" />
+                      <Text style={styles.locationText}>{post.address}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -323,7 +333,7 @@ const PostScreen = () => {
                     <Menu.Item
                       onPress={() => {
                         closeMenu();
-                        navigation.navigate('EditPost', {
+                        (navigation as any).navigate('EditPost', {
                           post,
                           onPostUpdate: (updatedPost: any) => setPost(updatedPost),
                         });
@@ -349,7 +359,7 @@ const PostScreen = () => {
                   data={images}
                   onProgressChange={progress}
                   scrollAnimationDuration={500}
-                  renderItem={({ item }) => {
+                  renderItem={({ item }: { item: any }) => {
                     const isVideo = item?.resource_type === 'video' || item?.url?.endsWith('.mp4');
 
                     if (isVideo) {
@@ -388,6 +398,7 @@ const PostScreen = () => {
                     data={images}
                     containerStyle={{ gap: 6, marginTop: 10 }}
                     dotStyle={{ backgroundColor: '#ccc', width: 8, height: 8, borderRadius: 4 }}
+                    // @ts-ignore
                     dotActiveStyle={{
                       backgroundColor: 'black',
                       width: 10,
@@ -416,8 +427,8 @@ const PostScreen = () => {
                   <YoutubePlayer
                     height={240}
                     play={true}
-                    videoId={getYoutubeId(post.content)}
-                    onChangeState={(state) => {
+                    videoId={getYoutubeId(post.content) || ''}
+                    onChangeState={(state: string) => {
                       if (state === 'ended') {
                         setPlayVideo(false);
                       }
@@ -460,7 +471,7 @@ const PostScreen = () => {
                 </Text>
               </View>
 
-              {post.user !== user._id && (
+              {post.user && user && post.user._id !== user._id && (
                 <TouchableOpacity
                   onPress={handleToggleSave}
                   style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -491,7 +502,7 @@ const PostScreen = () => {
             commentText={commentText}
             setCommentText={setCommentText}
             onSubmit={handleSend}
-            currentUserId={user._id}
+            currentUserId={user?._id || ''}
           />
         )}
         contentContainerStyle={{ paddingBottom: 20 }}
@@ -526,7 +537,11 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
   userInfo: { marginLeft: 10 },
   username: { fontWeight: 'bold', fontSize: 16 },
+  timestampContainer: { flexDirection: 'row', alignItems: 'center' },
   timestamp: { fontSize: 12, color: '#888', marginTop: 2 },
+  locationContainer: { flexDirection: 'row', alignItems: 'center' },
+  locationText: { fontSize: 12, color: '#888', marginLeft: 2, marginTop: 2 },
+  dot: { fontSize: 12, color: '#888', marginTop: 2 },
   content: { fontSize: 15, marginBottom: 10 },
   headerTitle: { fontSize: 18, fontWeight: 'bold' },
   actions: {
