@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   TouchableWithoutFeedback,
+  StyleSheet,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
@@ -155,78 +156,133 @@ const CommentsScreen = ({ post }: { post: any }) => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Comments</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{comments.length + replyComments.length}</Text>
+          </View>
+        </View>
+
         {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#888" />
-            <Text style={{ marginTop: 10 }}>Loading comments...</Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#D4F637" />
+            <Text style={{ marginTop: 10, color: '#666' }}>Loading comments...</Text>
           </View>
         ) : (
           <>
-            {/* Scrollable Comment List */}
             <BottomSheetScrollView
               contentContainerStyle={{
-                padding: 12,
-                // enough room for input
+                paddingHorizontal: 16,
+                paddingBottom: 100, // Space for fixed input
+                paddingTop: 8,
               }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
-              <InputComment
-                value={commentText}
-                onChange={setCommentText}
-                onSubmit={handleSend}
-                placeholder="Write a comment..."
-                replyTo={replyingID}
-                onCancelReply={() => setReplyingID(null)}
-              />
-              {comments.map((c) => (
-                <CommentDisplay
-                  key={c._id}
-                  comment={c}
-                  replies={getNestedReplies(c._id)}
-                  onReply={(comment) => setReplyingID(comment._id)}
-                  onDelete={handleDelete}
-                  onEdit={(comment) => {
-                    setEditingID(comment._id);
-                    setCommentText(comment.content);
-                  }}
-                  editingID={editingID}
-                  replyingID={replyingID}
-                  commentText={commentText}
-                  setCommentText={setCommentText}
-                  onSubmit={handleSend}
-                  currentUserId={user._id}
-                />
-              ))}
+              {comments.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No comments yet. Be the first to chime in!</Text>
+                </View>
+              ) : (
+                comments.map((c) => (
+                  <CommentDisplay
+                    key={c._id}
+                    comment={c}
+                    replies={getNestedReplies(c._id)}
+                    onReply={(comment) => setReplyingID(comment._id)}
+                    onDelete={handleDelete}
+                    onEdit={(comment) => {
+                      setEditingID(comment._id);
+                      setCommentText(comment.content);
+                    }}
+                    editingID={editingID}
+                    replyingID={replyingID}
+                    commentText={commentText}
+                    setCommentText={setCommentText}
+                    onSubmit={handleSend}
+                    currentUserId={user?._id || ''}
+                  />
+                ))
+              )}
             </BottomSheetScrollView>
 
-            {/* Fixed Input Bar */}
-            {/* <View
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                borderTopWidth: 1,
-                borderColor: '#ddd',
-                paddingHorizontal: 10,
-                paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-                backgroundColor: '#fff',
-              }}>
+            {/* Fixed Input Bar at Bottom */}
+            <View
+              style={[
+                styles.inputContainer,
+                { bottom: Platform.OS === 'ios' ? keyboardHeight : 0 },
+              ]}>
               <InputComment
                 value={commentText}
                 onChange={setCommentText}
                 onSubmit={handleSend}
-                placeholder="Write a comment..."
+                placeholder={
+                  editingID ? 'Editing...' : replyingID ? 'Replying...' : 'Write a comment...'
+                }
                 replyTo={replyingID}
-                onCancelReply={() => setReplyingID(null)}
+                onCancelReply={() => {
+                  setReplyingID(null);
+                  setEditingID(null);
+                  setCommentText('');
+                }}
               />
-            </View> */}
+            </View>
           </>
         )}
       </View>
     </TouchableWithoutFeedback>
   );
 };
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#000',
+  },
+  countBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  emptyContainer: {
+    marginTop: 50,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 15,
+  },
+});
 
 export default CommentsScreen;
