@@ -48,6 +48,8 @@ export const createPostAPI = async (post: {
   content: string;
   images: any[];
   postType?: 'feed' | 'story' | 'both';
+  address?: string;
+  location?: { type: string; coordinates: number[] };
 }) => {
   const res = await API.post('/posts', post); // endpoint must be `/posts`
   return res.data;
@@ -60,7 +62,12 @@ export const deletePostAPI = async (postId: string) => {
 
 export const updatePostAPI = async (
   postId: string,
-  updatedData: { content: string; images: any[] }
+  updatedData: {
+    content: string;
+    images: any[];
+    address?: string;
+    location?: { type: string; coordinates: number[] };
+  }
 ) => {
   const res = await API.patch(`/post/${postId}`, updatedData);
   return res.data;
