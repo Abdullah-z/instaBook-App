@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 type Props = {
@@ -42,25 +42,32 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 6,
-    borderTopWidth: 1,
-    borderColor: '#ccc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    maxHeight: 120,
+    backgroundColor: '#F2F3F5',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    fontSize: 15,
+    maxHeight: 100,
+    color: '#000',
   },
   button: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 20,
-    marginLeft: 8,
+    backgroundColor: '#000',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
 });
