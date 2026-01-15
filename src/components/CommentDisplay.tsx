@@ -46,13 +46,14 @@ const CommentDisplay: React.FC<Props> = ({
       if (liked) {
         await unlikeCommentAPI(comment._id);
         setMainLikes((prev) =>
-          prev.filter((u) =>
+          prev.filter((u: any) =>
             typeof u === 'string' ? u !== currentUserId : u._id !== currentUserId
           )
         );
       } else {
         await likeCommentAPI(comment._id);
-        setMainLikes((prev) => [...prev, { _id: currentUserId }]);
+        const newUser: any = { _id: currentUserId };
+        setMainLikes((prev) => [...prev, newUser]);
       }
     } catch (err) {
       console.error('❌ Failed to toggle like:', err);
@@ -64,9 +65,9 @@ const CommentDisplay: React.FC<Props> = ({
     return (
       <View style={styles.header}>
         <Image source={{ uri: c.user.avatar }} style={styles.avatar} />
-        <View style={{ marginLeft: 8, flex: 1 }}>
+        <View style={styles.commentBubble}>
           <Text style={styles.username}>{c.user.username}</Text>
-          <Text style={styles.time}>{moment(c.createdAt).fromNow()}</Text>
+          <Text style={styles.content}>{c.content}</Text>
         </View>
         <View style={styles.likeSection}>
           <TouchableOpacity onPress={onLikeToggle}>
@@ -82,7 +83,7 @@ const CommentDisplay: React.FC<Props> = ({
     <View style={styles.commentContainer}>
       {renderHeader(comment, mainLikes, handleMainLikeToggle)}
 
-      <Text style={styles.content}>{comment.content}</Text>
+      <Text style={styles.time}>{moment(comment.createdAt).fromNow()}</Text>
 
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => onReply(comment)}>
@@ -94,7 +95,7 @@ const CommentDisplay: React.FC<Props> = ({
               <Text style={styles.actionText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDelete(comment)}>
-              <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
+              <Text style={[styles.actionText, { color: '#FF3B30' }]}>Delete</Text>
             </TouchableOpacity>
           </>
         )}
@@ -151,60 +152,74 @@ export default CommentDisplay;
 
 const styles = StyleSheet.create({
   commentContainer: {
-    marginBottom: 16,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    elevation: 1,
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#eee',
+  },
+  commentBubble: {
+    flex: 1,
+    marginLeft: 10,
+    backgroundColor: '#F2F3F5',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   username: {
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  time: {
-    fontSize: 12,
-    color: 'gray',
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#000',
+    marginBottom: 2,
   },
   content: {
-    marginTop: 6,
     fontSize: 14,
+    color: '#1C1E21',
+    lineHeight: 18,
+  },
+  time: {
+    fontSize: 11,
+    color: '#65676B',
+    marginTop: 4,
+    marginLeft: 48,
   },
   actions: {
     flexDirection: 'row',
-    marginTop: 8,
+    marginTop: 4,
+    marginLeft: 48,
+    alignItems: 'center',
   },
   actionText: {
     marginRight: 16,
-    fontSize: 13,
-    color: '#555',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#65676B',
   },
   replies: {
-    marginTop: 12,
-    paddingLeft: 16,
-    borderLeftWidth: 2,
-    borderLeftColor: '#eee',
-  },
-  replyCard: {
     marginTop: 10,
+    marginLeft: 48,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E4E6EB',
+    paddingLeft: 12,
   },
   likeSection: {
+    marginLeft: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: 30,
   },
   heart: {
-    fontSize: 20,
+    fontSize: 16,
   },
   likeCount: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#888',
+    marginTop: 2,
   },
 });
