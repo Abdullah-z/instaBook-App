@@ -31,6 +31,7 @@ const HomeScreen = () => {
   const [page, setPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -59,11 +60,13 @@ const HomeScreen = () => {
   const loadInitialPosts = async () => {
     try {
       if (!token) return;
+      setRefreshing(true);
       const res = await getPostsAPI(1, LIMIT);
       const posts = res.posts;
-      // We don't need to inject suggestions block manually if we have a separate stories/suggestions UI
+
       setVisiblePosts(posts);
       setPage(1);
+      setHasMore(posts.length >= LIMIT);
 
       const suggestRes = await getSuggestionsAPI();
       setSuggestedUsers(suggestRes.users || []);
@@ -72,11 +75,13 @@ const HomeScreen = () => {
       setStories(storiesRes.stories || []);
     } catch (err) {
       console.log('Error loading posts or suggestions:', err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
   const loadMore = async () => {
-    if (loadingMore) return;
+    if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
@@ -84,6 +89,11 @@ const HomeScreen = () => {
       if (res.posts.length > 0) {
         setVisiblePosts((prev) => [...prev, ...res.posts]);
         setPage(nextPage);
+        if (res.posts.length < LIMIT) {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
       }
     } catch (err) {
       console.log('Error loading more posts', err);
@@ -210,6 +220,11 @@ const HomeScreen = () => {
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Marketplace' as never)}>
             <Ionicons name="storefront-outline" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Map' as never)}>
+            <Ionicons name="map-outline" size={24} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
