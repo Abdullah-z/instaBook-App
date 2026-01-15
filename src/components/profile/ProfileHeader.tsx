@@ -178,6 +178,25 @@ const ProfileHeader = ({
               </TouchableOpacity>
             </>
           )}
+
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('UserPostMap', {
+                targetUserId: profile._id,
+              })
+            }
+            style={{
+              backgroundColor: '#fff',
+              borderWidth: 1,
+              borderColor: '#ccc',
+              paddingVertical: 10,
+              paddingHorizontal: 15,
+              borderRadius: 25,
+              elevation: 0,
+              alignItems: 'center',
+            }}>
+            <Ionicons name="location-outline" size={20} color="black" />
+          </TouchableOpacity>
         </View>
       </View>
 
