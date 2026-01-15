@@ -21,9 +21,10 @@ import { createPostAPI } from '../api/postAPI';
 import { imageUpload } from '../utils/imageUpload';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
+import * as ExpoLocation from 'expo-location';
 import { getMapPreview } from '../utils/getMapPreview';
-import { getReadableAddress } from '../utils/locationHelper';
+import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
+import LocationAutocomplete from './LocationAutocomplete';
 
 interface Props {
   onPostCreated: (newPost: any) => void;
@@ -35,12 +36,9 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   const [images, setImages] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [locationAdded, setLocationAdded] = useState<'none' | 'text' | 'image' | 'both'>('none');
   const [locationAddress, setLocationAddress] = useState('');
-  const [locationCoords, setLocationCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [locationCoords, setLocationCoords] = useState<[number, number] | null>(null);
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
 
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
@@ -131,79 +129,37 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
     }
   };
 
-  const handleShareLocation = async () => {
+  const handleGetCurrentLocation = async () => {
     try {
-      if (locationAdded !== 'none') {
-        Alert.alert('Location already added', 'Do you want to remove it?', [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: () => {
-              setImages((prev) => prev.filter((uri) => !uri.includes('locationiq.com')));
-              setLocationAddress('');
-              setLocationCoords(null);
-              setLocationAdded('none');
-            },
-          },
-        ]);
-        return;
+      let { status } = await ExpoLocation.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const result = await ExpoLocation.requestForegroundPermissionsAsync();
+        status = result.status;
       }
 
-      Alert.alert('Share Location As?', '', [
-        {
-          text: 'Text Only',
-          onPress: () => handleAddLocation('text'),
-        },
-        {
-          text: 'Image Only',
-          onPress: () => handleAddLocation('image'),
-        },
-        {
-          text: 'Both',
-          onPress: () => handleAddLocation('both'),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    } catch (err) {
-      console.error('📍 Location prompt error:', err);
-    }
-  };
-
-  const handleAddLocation = async (format: 'text' | 'image' | 'both') => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'You must allow location access.');
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
-      const address = await getReadableAddress(latitude, longitude);
-      const mapImageUrl = getMapPreview(latitude, longitude);
-
-      if (
-        (format === 'image' || format === 'both') &&
-        images.some((uri) => uri.includes('locationiq.com'))
-      ) {
-        Alert.alert('Location already added.');
+      setLoading(true);
+      const loc = await getRobustLocation();
+      if (!loc) {
+        Alert.alert('Error', 'Could not get current location.');
+        setLoading(false);
         return;
       }
+      const { latitude, longitude } = loc.coords;
+      const address = await getReadableAddress(latitude, longitude);
 
-      if (format === 'image' || format === 'both') {
-        setImages((prev) => [...prev, mapImageUrl]);
-      }
-
-      if (format === 'text' || format === 'both') {
-        setLocationAddress(address);
-        setLocationCoords({ latitude, longitude });
-      }
-
-      setLocationAdded(format);
+      setLocationAddress(address);
+      setLocationCoords([longitude, latitude]);
+      setShowLocationSearch(false);
     } catch (error) {
       console.error('📍 Location error:', error);
       Alert.alert('Error getting location.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,8 +239,8 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   };
 
   const handlePost = async () => {
-    if (!content && images.length === 0 && locationAdded === 'none') {
-      Alert.alert('Post must have content or image.');
+    if (!content && images.length === 0 && !locationAddress) {
+      Alert.alert('Post must have content, image or location.');
       return;
     }
 
@@ -300,21 +256,17 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         media = await imageUpload(images, isHD);
       }
 
-      let finalContent = content.trim();
-
-      if ((locationAdded === 'text' || locationAdded === 'both') && locationAddress) {
-        finalContent =
-          finalContent.length > 0
-            ? `${finalContent}\n\n\n📍 ${locationAddress}`
-            : `📍 ${locationAddress}`;
-      }
-
-      const res = await createPostAPI({ content: finalContent, images: media, postType });
+      const res = await createPostAPI({
+        content: content.trim(),
+        images: media,
+        postType,
+        address: locationAddress,
+        location: locationCoords ? { type: 'Point', coordinates: locationCoords } : undefined,
+      });
       onPostCreated(res.newPost);
       setContent('');
       setImages([]);
       setVideoUri(null);
-      setLocationAdded('none');
       setLocationAddress('');
       setLocationCoords(null);
       setIsHD(false);
@@ -328,7 +280,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   };
 
   const shouldShowPost =
-    content.trim().length > 0 || images.length > 0 || videoUri || locationAdded !== 'none';
+    content.trim().length > 0 || images.length > 0 || videoUri || locationAddress;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -353,11 +305,13 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
           <Ionicons name="videocam-outline" size={24} color="#E91E63" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleShareLocation} style={styles.iconInsideInput}>
+        <TouchableOpacity
+          onPress={() => setShowLocationSearch(!showLocationSearch)}
+          style={styles.iconInsideInput}>
           <Ionicons
             name="location-outline"
             size={24}
-            color={locationAdded !== 'none' ? '#FF5722' : '#aaa'}
+            color={locationAddress ? '#FF5722' : '#aaa'}
           />
         </TouchableOpacity>
 
@@ -387,6 +341,49 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             </TouchableOpacity>
           ))}
       </View>
+
+      {showLocationSearch && (
+        <View style={styles.locationSearchContainer}>
+          <LocationAutocomplete
+            onLocationSelect={(addr, coords) => {
+              setLocationAddress(addr);
+              setLocationCoords(coords);
+            }}
+            initialValue={locationAddress}
+            placeholder="Search location..."
+          />
+          <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
+            <Ionicons name="locate" size={20} color="#007AFF" />
+            <Text style={styles.gpsBtnText}>Use GPS</Text>
+          </TouchableOpacity>
+          {locationAddress !== '' && (
+            <TouchableOpacity
+              onPress={() => {
+                setLocationAddress('');
+                setLocationCoords(null);
+              }}
+              style={styles.clearLocBtn}>
+              <Text style={styles.clearLocText}>Clear Location</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {locationAddress !== '' && !showLocationSearch && (
+        <View style={styles.taggedLocationBadge}>
+          <Ionicons name="location" size={16} color="#FF5722" />
+          <Text style={styles.taggedLocationText} numberOfLines={1}>
+            {locationAddress}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setLocationAddress('');
+              setLocationCoords(null);
+            }}>
+            <Ionicons name="close-circle" size={18} color="#999" style={{ marginLeft: 5 }} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.postTypeContainer}>
         <Text style={styles.postTypeLabel}>Post to:</Text>
@@ -640,5 +637,50 @@ const styles = StyleSheet.create({
   postTypeTxtActive: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  locationSearchContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  gpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 5,
+  },
+  gpsBtnText: {
+    marginLeft: 5,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  clearLocBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-end',
+  },
+  clearLocText: {
+    color: '#FF3B30',
+    fontSize: 12,
+  },
+  taggedLocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0ED',
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#FFD7D0',
+  },
+  taggedLocationText: {
+    fontSize: 13,
+    color: '#FF5722',
+    marginLeft: 4,
+    maxWidth: 250,
   },
 });
