@@ -1,7 +1,7 @@
 // src/navigation/AppNavigator.tsx
 
 import React, { useContext } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 
 import LoginScreen from '../screens/LoginScreen';
@@ -34,8 +34,10 @@ import { SocketContext } from '../auth/SocketContext';
 import HeaderLogo from '../components/HeaderLogo';
 import ProfileHeaderIcon from '../components/ProfileHeaderIcon';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import MapScreen from '../screens/MapScreen';
+import UserPostMapScreen from '../screens/UserPostMapScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const { token, userType, logout, loading } = useContext(AuthContext);
@@ -51,7 +53,7 @@ const AppNavigator = () => {
 
   return (
     <>
-      <Stack.Navigator>
+      <Stack.Navigator detachInactiveScreens={false}>
         {token ? (
           <>
             <Stack.Screen
@@ -114,12 +116,22 @@ const AppNavigator = () => {
               options={{ title: 'Discover' }}
             />
             <Stack.Screen
+              name="Map"
+              component={MapScreen}
+              options={{ title: 'Map', headerShown: false }}
+            />
+            <Stack.Screen
+              name="UserPostMap"
+              component={UserPostMapScreen}
+              options={{ title: 'Post History', headerShown: false }}
+            />
+            <Stack.Screen
               name="StoryViewer"
               component={StoryViewer}
               options={{
                 presentation: 'modal',
                 headerShown: false,
-                contentStyle: { backgroundColor: 'black' },
+                cardStyle: { backgroundColor: 'black' },
               }}
             />
             <Stack.Screen
