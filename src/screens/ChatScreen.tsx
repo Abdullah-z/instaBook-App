@@ -14,6 +14,7 @@ import {
   ScrollView,
   Switch,
   Pressable,
+  Modal,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -28,6 +29,10 @@ import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { imageUpload } from '../utils/imageUpload';
 import moment from 'moment';
 import { promptSaveImage } from '../utils/MediaUtils';
+import * as ExpoLocation from 'expo-location';
+import LocationAutocomplete from '../components/LocationAutocomplete';
+import { Linking } from 'react-native';
+import { getRobustLocation } from '../utils/locationHelper';
 
 const ChatScreen = () => {
   const route = useRoute<any>();
@@ -45,6 +50,7 @@ const ChatScreen = () => {
   const [isHD, setIsHD] = useState(false);
   const [voiceFeedbackEnabled, setVoiceFeedbackEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   // Use avatar from params, or try to find it from messages later if needed.
@@ -298,9 +304,9 @@ const ChatScreen = () => {
     setMedia(newMedia);
   };
 
-  const handleSend = async () => {
+  const handleSend = async (locationData?: any) => {
     console.log('Sending message...');
-    if (!text.trim() && media.length === 0) return;
+    if (!text.trim() && media.length === 0 && !locationData) return;
     if (sending) return;
 
     // Check if socket is connected
@@ -328,6 +334,7 @@ const ChatScreen = () => {
         conversation: isGroup ? userId : null, // Assuming userId param IS conversationId for groups
         text: messageText,
         media: uploadedMedia,
+        location: locationData,
         createdAt: new Date().toISOString(),
       };
 
@@ -336,6 +343,7 @@ const ChatScreen = () => {
         conversationId: isGroup ? userId : undefined,
         text: messageText,
         media: uploadedMedia,
+        location: locationData,
       });
 
       // Add user message to UI
@@ -373,6 +381,70 @@ const ChatScreen = () => {
     } finally {
       setSending(false);
       setIsHD(false);
+      setLocationModalVisible(false);
+    }
+  };
+
+  const shareCurrentLocation = async () => {
+    console.log('📍 [CHAT-DEBUG] ===== Share Current Location Called =====');
+    try {
+      console.log('📍 [CHAT-DEBUG] Checking current permission status...');
+      let { status } = await ExpoLocation.getForegroundPermissionsAsync();
+      console.log('📍 [CHAT-DEBUG] Current permission status:', status);
+
+      if (status !== 'granted') {
+        console.log('📍 [CHAT-DEBUG] Permission not granted, requesting...');
+        const result = await ExpoLocation.requestForegroundPermissionsAsync();
+        status = result.status;
+        console.log('📍 [CHAT-DEBUG] New permission status:', status);
+      } else {
+        console.log('📍 [CHAT-DEBUG] Permission already granted, skipping request');
+      }
+
+      if (status !== 'granted') {
+        console.error('❌ [CHAT-DEBUG] Permission denied! Status:', status);
+        Alert.alert('Permission denied', 'Allow location access to share your location.');
+        return;
+      }
+
+      console.log('📍 [CHAT-DEBUG] Permission granted, calling getRobustLocation...');
+      const loc = await getRobustLocation();
+      console.log('📍 [CHAT-DEBUG] getRobustLocation returned:', loc ? 'SUCCESS' : 'NULL');
+
+      if (!loc) {
+        console.error('❌ [CHAT-DEBUG] Location is null!');
+        Alert.alert('Error', 'Failed to get current location');
+        return;
+      }
+
+      console.log('📍 [CHAT-DEBUG] Got location, reverse geocoding...');
+      // Reverse geocode to get address
+      const reverse = await ExpoLocation.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      let address = 'Shared Location';
+      if (reverse.length > 0) {
+        const r = reverse[0];
+        address = `${r.name || ''} ${r.street || ''}, ${r.city || ''}`.trim();
+      }
+
+      console.log('📍 [CHAT-DEBUG] Sending location message...');
+      handleSend({
+        lat: loc.coords.latitude,
+        lon: loc.coords.longitude,
+        address: address,
+      });
+      console.log('✅ [CHAT-DEBUG] Location shared successfully!');
+    } catch (err) {
+      console.error('💥 [CHAT-DEBUG] Exception caught:', err);
+      console.error('💥 [CHAT-DEBUG] Error type:', typeof err);
+      console.error(
+        '💥 [CHAT-DEBUG] Error message:',
+        err instanceof Error ? err.message : String(err)
+      );
+      Alert.alert('Error', 'Failed to get current location');
     }
   };
 
@@ -512,6 +584,67 @@ const ChatScreen = () => {
                     {item.text}
                   </Text>
                 )}
+                {item.location && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const url = Platform.select({
+                        ios: `maps:0,0?q=${item.location.lat},${item.location.lon}`,
+                        android: `geo:0,0?q=${item.location.lat},${item.location.lon}(${item.location.address})`,
+                      });
+                      if (url) Linking.openURL(url);
+                    }}
+                    onLongPress={() => {
+                      navigation.navigate('Map', {
+                        lat: item.location.lat,
+                        lon: item.location.lon,
+                      });
+                    }}
+                    style={styles.locationMessageContainer}>
+                    <View style={styles.locationPreview}>
+                      <Ionicons name="location" size={30} color="#1f6feb" />
+                      <View style={{ marginLeft: 10, flex: 1 }}>
+                        <Text style={styles.locationLabel}>Location</Text>
+                        <Text style={styles.locationAddress} numberOfLines={2}>
+                          {item.location.address}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.viewOnMapButton}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          navigation.navigate('Map', {
+                            lat: item.location.lat,
+                            lon: item.location.lon,
+                          });
+                        }}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 8,
+                          width: '100%',
+                          alignItems: 'center',
+                        }}>
+                        <Text style={styles.viewOnMapText}>View in App</Text>
+                      </TouchableOpacity>
+                      <View style={{ width: 1, height: '100%', backgroundColor: '#eee' }} />
+                      <TouchableOpacity
+                        onPress={() => {
+                          const url = Platform.select({
+                            ios: `maps:0,0?q=${item.location.lat},${item.location.lon}`,
+                            android: `geo:0,0?q=${item.location.lat},${item.location.lon}(${item.location.address})`,
+                          });
+                          if (url) Linking.openURL(url);
+                        }}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 8,
+                          width: '100%',
+                          alignItems: 'center',
+                        }}>
+                        <Text style={styles.viewOnMapText}>Open Maps</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </>
             )}
             <Text
@@ -583,10 +716,16 @@ const ChatScreen = () => {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="image" size={24} color="#666" />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.imageButton}
+          onPress={() => setLocationModalVisible(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="location" size={24} color="#666" />
+        </TouchableOpacity>
         <View style={styles.hdToggleContainer}>
           <Pressable onPress={() => setIsHD(!isHD)}>
             <Text
-              style={(styles.hdToggleText, { color: isHD ? '#4CAF50' : '#666', marginRight: 3 })}>
+              style={[styles.hdToggleText, { color: isHD ? '#4CAF50' : '#666', marginRight: 3 }]}>
               HD
             </Text>
           </Pressable>
@@ -613,7 +752,7 @@ const ChatScreen = () => {
             styles.sendButton,
             ((!text.trim() && media.length === 0) || sending) && styles.sendButtonDisabled,
           ]}
-          onPress={handleSend}
+          onPress={() => handleSend()}
           disabled={(!text.trim() && media.length === 0) || sending}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           {sending ? (
@@ -623,6 +762,47 @@ const ChatScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Location Selector Modal */}
+      <Modal
+        visible={locationModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setLocationModalVisible(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}>
+          <Pressable
+            style={styles.locationModalOverlay}
+            onPress={() => setLocationModalVisible(false)}>
+            <Pressable style={styles.locationModalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.locationModalHeader}>
+                <Text style={styles.locationModalTitle}>Share Location</Text>
+                <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.currentLocationButton} onPress={shareCurrentLocation}>
+                <Ionicons name="navigate" size={20} color="#fff" />
+                <Text style={styles.currentLocationButtonText}>Current Location</Text>
+              </TouchableOpacity>
+
+              <View style={{ height: 300, paddingBottom: 20 }}>
+                <LocationAutocomplete
+                  onLocationSelect={(address: string, coordinates: [number, number]) => {
+                    handleSend({
+                      lat: coordinates[1],
+                      lon: coordinates[0],
+                      address: address,
+                    });
+                  }}
+                />
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -829,6 +1009,78 @@ const styles = StyleSheet.create({
   hdToggleText: {
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  locationMessageContainer: {
+    marginTop: 5,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#eee',
+    width: 220,
+  },
+  locationPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  locationLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  locationAddress: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  viewOnMapButton: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  viewOnMapText: {
+    fontSize: 13,
+    color: '#1f6feb',
+    fontWeight: '600',
+  },
+  locationModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  locationModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  locationModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  locationModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  currentLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#000',
+    padding: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  currentLocationButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 10,
   },
 });
 
