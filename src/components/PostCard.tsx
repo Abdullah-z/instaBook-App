@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
 import { promptSaveImage } from '../utils/MediaUtils';
+import { shortenAddress } from '../utils/locationHelper';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -226,11 +227,11 @@ const PostCard = ({
         {/* ✅ Avatar + Username */}
         <View
           style={{
-            flex: 1,
             flexDirection: 'row',
             justifyContent: 'space-between',
             paddingHorizontal: 12,
             paddingTop: 12,
+            alignItems: 'center',
           }}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: post.user._id })}>
@@ -244,8 +245,18 @@ const PostCard = ({
             </TouchableOpacity>
             <View style={styles.userInfo}>
               <Text style={styles.username}>{post.user.username}</Text>
-
-              <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+              <View style={styles.timestampContainer}>
+                <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+                {post.address ? (
+                  <View style={styles.locationContainer}>
+                    <Text style={styles.dot}> • </Text>
+                    <Ionicons name="location" size={12} color="#65676B" />
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {shortenAddress(post.address)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
           </View>
 
@@ -497,8 +508,28 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     fontSize: 16,
+    color: '#050505',
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   timestamp: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#888',
+    marginLeft: 2,
+    marginTop: 2,
+  },
+  dot: {
     fontSize: 12,
     color: '#888',
     marginTop: 2,
