@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import moment from 'moment';
 import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
 import InputComment from './InputComment';
@@ -30,19 +30,24 @@ const ReplyDisplay: React.FC<Props> = ({
   setCommentText,
   onSubmit,
 }) => {
-  const [replyLikes, setReplyLikes] = useState<string[]>(
-    reply.likes.map((u: any) => (typeof u === 'string' ? u : u._id))
-  );
-  const replyHasLiked = replyLikes.includes(currentUserId);
+  const [replyLikes, setReplyLikes] = useState<any[]>(reply.likes || []);
+  const hasLiked = (likes: any[]) =>
+    likes.some((u) => (typeof u === 'string' ? u === currentUserId : u._id === currentUserId));
+
+  const replyHasLiked = hasLiked(replyLikes);
 
   const handleReplyLikeToggle = async () => {
     try {
       if (replyHasLiked) {
         await unlikeCommentAPI(reply._id);
-        setReplyLikes((prev) => prev.filter((id) => id !== currentUserId));
+        setReplyLikes((prev: any[]) =>
+          prev.filter((u: any) =>
+            typeof u === 'string' ? u !== currentUserId : u._id !== currentUserId
+          )
+        );
       } else {
         await likeCommentAPI(reply._id);
-        setReplyLikes((prev) => [...prev, currentUserId]);
+        setReplyLikes((prev: any[]) => [...prev, { _id: currentUserId }]);
       }
     } catch (err) {
       console.error('❌ Failed to toggle like on reply:', err);
@@ -50,53 +55,121 @@ const ReplyDisplay: React.FC<Props> = ({
   };
 
   return (
-    <View style={{ marginTop: 10 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-        <Image
-          source={{ uri: reply.user.avatar }}
-          style={{ width: 32, height: 32, borderRadius: 16 }}
-        />
-        <View style={{ marginLeft: 8, flex: 1 }}>
-          <Text style={{ fontWeight: 'bold' }}>{reply.user.username}</Text>
-          <Text style={{ fontSize: 12, color: 'gray' }}>{moment(reply.createdAt).fromNow()}</Text>
+    <View style={styles.replyContainer}>
+      <View style={styles.header}>
+        <Image source={{ uri: reply.user.avatar }} style={styles.avatar} />
+        <View style={styles.commentBubble}>
+          <Text style={styles.username}>{reply.user.username}</Text>
+          <Text style={styles.content}>{reply.content}</Text>
         </View>
-        <View style={{ alignItems: 'center' }}>
+        <View style={styles.likeSection}>
           <TouchableOpacity onPress={handleReplyLikeToggle}>
-            <Text style={{ fontSize: 20 }}>{replyHasLiked ? '❤️' : '🤍'}</Text>
+            <Text style={styles.heart}>{replyHasLiked ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
-          <Text style={{ fontSize: 12, color: '#888' }}>{replyLikes.length}</Text>
+          <Text style={styles.likeCount}>{replyLikes.length}</Text>
         </View>
       </View>
 
-      <Text style={{ fontSize: 14 }}>{reply.content}</Text>
-      <View style={{ flexDirection: 'row', marginTop: 8 }}>
+      <Text style={styles.time}>{moment(reply.createdAt).fromNow()}</Text>
+
+      <View style={styles.actions}>
         <TouchableOpacity onPress={() => onReply(reply)}>
-          <Text style={{ marginRight: 16, fontSize: 13, color: '#555' }}>Reply</Text>
+          <Text style={styles.actionText}>Reply</Text>
         </TouchableOpacity>
         {reply.user._id === currentUserId && (
           <>
             <TouchableOpacity onPress={() => onEdit(reply)}>
-              <Text style={{ marginRight: 16, fontSize: 13, color: '#555' }}>Edit</Text>
+              <Text style={styles.actionText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDelete(reply)}>
-              <Text style={{ fontSize: 13, color: 'red' }}>Delete</Text>
+              <Text style={[styles.actionText, { color: '#FF3B30' }]}>Delete</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
 
       {(editingID === reply._id || replyingID === reply._id) && (
-        <View style={{ marginTop: 8 }}>
+        <View style={{ marginTop: 10 }}>
           <InputComment
             value={commentText}
             onChange={setCommentText}
             onSubmit={onSubmit}
-            placeholder={editingID === reply._id ? 'Edit reply...' : 'Reply...'}
+            placeholder={editingID === reply._id ? 'Editing reply...' : 'Replying...'}
+            onCancelReply={() => {
+              setCommentText('');
+            }}
           />
         </View>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  replyContainer: {
+    marginTop: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#eee',
+  },
+  commentBubble: {
+    flex: 1,
+    marginLeft: 10,
+    backgroundColor: '#F2F3F5',
+    borderRadius: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  username: {
+    fontWeight: '700',
+    fontSize: 12,
+    color: '#000',
+    marginBottom: 2,
+  },
+  content: {
+    fontSize: 13,
+    color: '#1C1E21',
+    lineHeight: 16,
+  },
+  time: {
+    fontSize: 10,
+    color: '#65676B',
+    marginTop: 2,
+    marginLeft: 38,
+  },
+  actions: {
+    flexDirection: 'row',
+    marginTop: 2,
+    marginLeft: 38,
+    alignItems: 'center',
+  },
+  actionText: {
+    marginRight: 16,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#65676B',
+  },
+  likeSection: {
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+  },
+  heart: {
+    fontSize: 14,
+  },
+  likeCount: {
+    fontSize: 9,
+    color: '#888',
+    marginTop: 1,
+  },
+});
 
 export default ReplyDisplay;
