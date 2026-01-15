@@ -16,6 +16,7 @@ export const sendMessage = async (data: {
   text?: string;
   media?: any[];
   call?: any;
+  location?: { lat: number; lon: number; address: string };
 }) => {
   const res = await API.post('/message', data);
   return res.data;
