@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "745851419170",
+    "project_id": "instabook-a4803",
+    "storage_bucket": "instabook-a4803.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745851419170:android:4f6febb24b71ef032b687b",
+        "android_client_info": {
+          "package_name": "com.instabook.social"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQf450r9-7T1OTz1R5BY04SFIPNe8tFMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
