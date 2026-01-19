@@ -206,18 +206,40 @@ const MapScreen = () => {
     async ({
       syncState = false,
       silent = false,
-    }: { syncState?: boolean; silent?: boolean } = {}) => {
-      console.time('[Map Fetch]');
-      if (!silent) setLoading(true);
+      overrideRadius,
+      overrideLocation,
+    }: {
+      syncState?: boolean;
+      silent?: boolean;
+      overrideRadius?: number;
+      overrideLocation?: ExpoLocation.LocationObject | null;
+    } = {}) => {
+      const activeRadius = overrideRadius !== undefined ? overrideRadius : radius;
+      const activeLoc = overrideLocation !== undefined ? overrideLocation : deviceLocation;
+
+      // if (!silent) setLoading(true); // Removed to avoid loops, but we need to know if it runs
+      if (!silent) {
+        // Alert.alert('DEBUG [1]', `fetchLocations START\nRadius: ${activeRadius}\nLoc: ${!!activeLoc}`);
+        setLoading(true);
+      }
       try {
-        const lat = deviceLocation?.coords.latitude;
-        const lon = deviceLocation?.coords.longitude;
-        // console.log('[MapScreen] Fetching locations near:', lat, lon, 'Radius:', radius);
-        const data = await getSharedLocationsAPI(lat, lon, radius);
-        console.timeEnd('[Map Fetch]');
+        const lat = activeLoc?.coords.latitude;
+        const lon = activeLoc?.coords.longitude;
+
+        // Use a better check that allows 0, 0
+        if (lat === undefined || lon === undefined) {
+          if (!silent)
+            Alert.alert('Debug Error', 'fetchLocations aborted: current lat/lon is undefined');
+          return;
+        }
+
+        // if (!silent) Alert.alert('DEBUG [2]', `Calling API for radius ${activeRadius}`);
+        const data = await getSharedLocationsAPI(lat, lon, activeRadius);
+        // if (!silent) Alert.alert('DEBUG [3]', `API Success! Count: ${data?.length}`);
 
         if (Array.isArray(data)) {
-          // console.log('[MapScreen] Fetched locations count:', data.length);
+          // Success Alert for APK Debugging - Remove after verification
+          // Alert.alert('Fetch Success', `Found ${data.length} markers`);
           setSharedLocations(data);
         } else {
           console.warn('[MapScreen] API returned non-array data:', data);
@@ -237,6 +259,9 @@ const MapScreen = () => {
         }
       } catch (err: any) {
         console.error('Error fetching locations:', err);
+        // if (!silent) {
+        //   Alert.alert('Map Error', err.message || 'Failed to fetch locations');
+        // }
       } finally {
         if (!silent) setLoading(false);
       }
@@ -411,6 +436,7 @@ const MapScreen = () => {
     (async () => {
       console.log('🗺️ [MAP-DEBUG] ===== MapScreen useEffect Started =====');
       setLoading(true);
+      // Alert.alert('Debug', 'Mount IIFE Start');
       try {
         const isFocusedMode = route.params?.lat !== undefined && route.params?.lon !== undefined;
         console.log('🗺️ [MAP-DEBUG] isFocusedMode:', isFocusedMode);
@@ -445,33 +471,21 @@ const MapScreen = () => {
               initialLoc ? 'SUCCESS' : 'NULL'
             );
 
-            if (!initialLoc) {
-              console.error('❌ [MAP-DEBUG] No location returned!');
-              Alert.alert(
-                'Location Error',
-                'Could not acquire a GPS lock. Please ensure you are outdoors or near a window, and check that high accuracy is enabled in your device settings.'
-              );
+            setDeviceLocation(initialLoc);
+            // Alert.alert('Debug', `Location state set to: ${initialLoc.coords.latitude.toFixed(2)}`);
+            // Trigger fetch immediately with the fresh location
+            if (!isFocusedMode) {
+              fetchLocations({ overrideLocation: initialLoc });
             }
-          } else {
-            console.error('❌ [MAP-DEBUG] Permission denied! Status:', status);
-            Alert.alert(
-              'Permission Denied',
-              'Permission to access location was denied. Showing global markers.'
-            );
+          } else if (!deviceLocation) {
+            const fallback = {
+              coords: { latitude: 0, longitude: 0, altitude: 0, accuracy: 0, heading: 0, speed: 0 },
+              timestamp: Date.now(),
+            } as any;
+            setDeviceLocation(fallback);
+            Alert.alert('Debug', 'Location failed, set to 0,0 fallback');
           }
         }
-
-        // Handle deviceLocation state
-        if (initialLoc) {
-          setDeviceLocation(initialLoc);
-        } else if (!deviceLocation) {
-          // Fallback if permission denied or GPS failed
-          setDeviceLocation({
-            coords: { latitude: 0, longitude: 0, altitude: 0, accuracy: 0, heading: 0, speed: 0 },
-            timestamp: Date.now(),
-          } as any);
-        }
-
         // Initial fetch logic
         if (!isFocusedMode) {
           try {
@@ -490,6 +504,7 @@ const MapScreen = () => {
         }
       } catch (error) {
         console.log('Error in location setup:', error);
+        // Alert.alert('Location Setup Error', String(error));
       } finally {
         setLoading(false);
       }
@@ -516,14 +531,13 @@ const MapScreen = () => {
     return () => clearInterval(interval);
   }, [route.params?.lat, route.params?.lon]); // Only re-run if target coordinates change
 
-  // Trigger immediate fetch when radius or timePeriod/target changes
   useEffect(() => {
     const isFocusedMode = route.params?.lat !== undefined && route.params?.lon !== undefined;
-    if (deviceLocation && !isFocusedMode) {
-      // console.log('[MapScreen] Params changed (Radius/Period). Triggering immediate fetch.');
+    if (!isFocusedMode && deviceLocation) {
+      // Alert.alert('DEBUG [Effect]', `Radius changed to ${radius}`);
       fetchLocations();
     }
-  }, [radius]);
+  }, [radius, deviceLocation]); // Removed fetchLocations from deps to avoid re-runs on its recreation
 
   const handleVisibilityChange = async (value: string) => {
     setSharingVisibility(value);
@@ -682,7 +696,7 @@ const MapScreen = () => {
       }
     } catch (err: any) {
       console.error('[MapScreen] handleShareNow Error:', err);
-      Alert.alert('Error', err.message);
+      // Alert.alert('Error', err.message);
     } finally {
       console.log('[MapScreen] handleShareNow finally block');
       setLoading(false);
@@ -835,54 +849,79 @@ const MapScreen = () => {
             contentStyle={styles.radiusMenu}>
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(20000);
-                setRadiusMenuVisible(false);
+                try {
+                  // Alert.alert('DEBUG [Click]', 'Changing radius to 20000');
+                  setRadius(20000);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 20000 });
+                } catch (e) {
+                  // Alert.alert('Fatal Error', String(e));
+                }
               }}
               title="All"
               leadingIcon={radius >= 10000 ? 'check' : undefined}
             />
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(5);
-                setRadiusMenuVisible(false);
+                try {
+                  setRadius(5);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 5 });
+                } catch (e) {
+                  // Alert.alert('Error', String(e));
+                }
               }}
               title="5 km"
               leadingIcon={radius === 5 ? 'check' : undefined}
             />
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(20);
-                setRadiusMenuVisible(false);
+                try {
+                  setRadius(20);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 20 });
+                } catch (e) {
+                  // Alert.alert('Error', String(e));
+                }
               }}
               title="20 km"
               leadingIcon={radius === 20 ? 'check' : undefined}
             />
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(50);
-                setRadiusMenuVisible(false);
+                try {
+                  setRadius(50);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 50 });
+                } catch (e) {
+                  // Alert.alert('Error', String(e));
+                }
               }}
               title="50 km"
               leadingIcon={radius === 50 ? 'check' : undefined}
             />
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(100);
-                setRadiusMenuVisible(false);
+                try {
+                  setRadius(100);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 100 });
+                } catch (e) {
+                  // Alert.alert('Error', String(e));
+                }
               }}
               title="100 km"
               leadingIcon={radius === 100 ? 'check' : undefined}
             />
             <Menu.Item
               onPress={() => {
-                setLoading(true);
-                setRadius(500);
-                setRadiusMenuVisible(false);
+                try {
+                  setRadius(500);
+                  setRadiusMenuVisible(false);
+                  fetchLocations({ overrideRadius: 500 });
+                } catch (e) {
+                  // Alert.alert('Error', String(e));
+                }
               }}
               title="500 km"
               leadingIcon={radius === 500 ? 'check' : undefined}
