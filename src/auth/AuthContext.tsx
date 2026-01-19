@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../api/axios';
 import { setToken as setGlobalToken } from './tokenManager';
 
@@ -50,11 +51,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshToken = async () => {
     try {
-      const res = await API.post('/refresh_token');
+      const rf_token = await AsyncStorage.getItem('refresh_token');
+      if (!rf_token) throw new Error('No refresh token found');
+
+      const res = await API.post('/refresh_token', { refresh_token: rf_token });
 
       if (res.data.access_token) {
         setToken(res.data.access_token);
-        setGlobalToken(res.data.access_token); // ✅ here
+        setGlobalToken(res.data.access_token);
         setUser(res.data.user);
         setUserType(res.data.userType);
       } else {
@@ -63,9 +67,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       console.log('Refresh token failed', err);
       setToken(null);
-      setGlobalToken(null); // ✅ here
+      setGlobalToken(null);
       setUser(null);
       setUserType(null);
+      await AsyncStorage.removeItem('refresh_token');
     } finally {
       setLoading(false);
     }
@@ -85,6 +90,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setGlobalToken(res.data.access_token);
     setUser(res.data.user);
     setUserType(res.data.userType);
+    if (res.data.refresh_token) {
+      await AsyncStorage.setItem('refresh_token', res.data.refresh_token);
+    }
   };
 
   const register = async (data: any) => {
@@ -93,6 +101,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setGlobalToken(res.data.access_token);
     setUser(res.data.user);
     setUserType('user'); // Default to user
+    if (res.data.refresh_token) {
+      await AsyncStorage.setItem('refresh_token', res.data.refresh_token);
+    }
   };
   const logout = async () => {
     try {
@@ -101,9 +112,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Logout error', err);
     } finally {
       setToken(null);
-      setGlobalToken(null); // ✅ here
+      setGlobalToken(null);
       setUser(null);
       setUserType(null);
+      await AsyncStorage.removeItem('refresh_token');
     }
   };
 
