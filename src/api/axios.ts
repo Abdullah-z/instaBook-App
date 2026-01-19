@@ -3,6 +3,7 @@ import { getToken } from '../auth/tokenManager';
 
 const API = axios.create({
   baseURL: 'https://instabook-server-production.up.railway.app/api',
+  timeout: 15000,
 });
 
 API.interceptors.request.use(
