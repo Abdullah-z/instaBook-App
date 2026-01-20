@@ -32,8 +32,8 @@ export const imageUpload = async (mediaList: any[], isHD: boolean = false) => {
           console.log('🖼️ Compressing image...');
           const result = await ImageManipulator.manipulateAsync(
             uri,
-            [{ resize: { width: 1080 } }],
-            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            [{ resize: { width: 2000 } }], // Increased from 1080 to 2000 for better detail
+            { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG } // Increased quality from 0.7 to 0.9
           );
           uri = result.uri;
           console.log('✅ Image compressed');
