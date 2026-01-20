@@ -10,7 +10,9 @@ import {
   Alert,
   Linking,
   RefreshControl,
+  Modal as RNModal,
 } from 'react-native';
+import ImageView from 'react-native-image-viewing';
 import { Text, Button, Avatar, Divider, List, TextInput } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -45,6 +47,8 @@ const ListingDetailScreen = () => {
   const [bidAmount, setBidAmount] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
   const [placingBid, setPlacingBid] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -200,6 +204,10 @@ const ListingDetailScreen = () => {
             renderItem={({ item }) => (
               <TouchableOpacity
                 activeOpacity={0.9}
+                onPress={() => {
+                  setViewerIndex(listing.images.indexOf(item));
+                  setViewerVisible(true);
+                }}
                 onLongPress={() => promptSaveImage(item as string)}>
                 <Image source={{ uri: item as string }} style={styles.carouselImage} />
               </TouchableOpacity>
@@ -359,6 +367,15 @@ const ListingDetailScreen = () => {
           )}
         </View>
       </View>
+
+      <ImageView
+        images={listing.images ? listing.images.map((img: string) => ({ uri: img })) : []}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled={true}
+        doubleTapToZoomEnabled={true}
+      />
     </ScrollView>
   );
 };
