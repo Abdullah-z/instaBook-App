@@ -16,6 +16,7 @@ import {
   Pressable,
   Modal,
 } from 'react-native';
+import ImageView from 'react-native-image-viewing';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -51,6 +52,9 @@ const ChatScreen = () => {
   const [voiceFeedbackEnabled, setVoiceFeedbackEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImages, setViewerImages] = useState<any[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   // Use avatar from params, or try to find it from messages later if needed.
@@ -290,7 +294,7 @@ const ChatScreen = () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.8,
+      quality: 1,
     });
 
     if (!result.canceled) {
@@ -571,6 +575,14 @@ const ChatScreen = () => {
                         <TouchableOpacity
                           key={idx}
                           activeOpacity={0.9}
+                          onPress={() => {
+                            const images = item.media
+                              .filter((m: any) => m.url)
+                              .map((m: any) => ({ uri: m.url }));
+                            setViewerImages(images);
+                            setViewerIndex(idx);
+                            setViewerVisible(true);
+                          }}
                           onLongPress={() => promptSaveImage(img.url)}>
                           <Image source={{ uri: img.url }} style={styles.messageImage} />
                         </TouchableOpacity>
@@ -803,6 +815,15 @@ const ChatScreen = () => {
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ImageView
+        images={viewerImages}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled={true}
+        doubleTapToZoomEnabled={true}
+      />
     </KeyboardAvoidingView>
   );
 };
