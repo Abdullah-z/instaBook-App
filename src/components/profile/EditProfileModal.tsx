@@ -60,7 +60,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: type === 'avatar' ? [1, 1] : [16, 9],
-      quality: 0.8,
+      quality: 1,
     });
 
     if (!result.canceled && result.assets[0]) {
