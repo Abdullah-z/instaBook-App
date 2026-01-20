@@ -11,7 +11,9 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Modal as RNModal,
 } from 'react-native';
+import ImageView from 'react-native-image-viewing';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import {
@@ -70,6 +72,8 @@ const PostScreen = () => {
   const closeMenu = () => setMenuVisible(false);
 
   const [playVideo, setPlayVideo] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue(0);
@@ -377,10 +381,17 @@ const PostScreen = () => {
                     }
 
                     return (
-                      <Image
-                        source={{ uri: item.url }}
-                        style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                      />
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => {
+                          setViewerIndex(images.indexOf(item));
+                          setViewerVisible(true);
+                        }}>
+                        <Image
+                          source={{ uri: item.url }}
+                          style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                        />
+                      </TouchableOpacity>
                     );
                   }}
                   mode="parallax"
@@ -517,6 +528,15 @@ const PostScreen = () => {
         }
         replyTo={replyingID}
         onCancelReply={() => setReplyingID(null)}
+      />
+
+      <ImageView
+        images={images.filter((img: any) => img.url).map((img: any) => ({ uri: img.url }))}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled={true}
+        doubleTapToZoomEnabled={true}
       />
     </KeyboardAvoidingView>
   );
