@@ -7,7 +7,9 @@ import {
   StyleSheet,
   Dimensions,
   TouchableWithoutFeedback,
+  Modal as RNModal,
 } from 'react-native';
+import ImageView from 'react-native-image-viewing';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
@@ -131,6 +133,8 @@ const PostCard = ({
   const [menuVisible, setMenuVisible] = useState(false);
   const [playVideo, setPlayVideo] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0); // Track active slide for custom pagination
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   // Extract YouTube ID from content
   const youtubeId = post.content ? getYoutubeId(post.content) : null;
@@ -323,6 +327,10 @@ const PostCard = ({
                   return item?.url ? (
                     <TouchableOpacity
                       activeOpacity={0.9}
+                      onPress={() => {
+                        setViewerIndex(images.indexOf(item));
+                        setViewerVisible(true);
+                      }}
                       onLongPress={() => promptSaveImage(item.url)}>
                       <Image
                         source={{ uri: item.url }}
@@ -468,6 +476,15 @@ const PostCard = ({
           </TouchableOpacity>
         )}
       </View>
+
+      <ImageView
+        images={images.filter((img: any) => img.url).map((img: any) => ({ uri: img.url }))}
+        imageIndex={viewerIndex}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled={true}
+        doubleTapToZoomEnabled={true}
+      />
     </View>
   );
 };
