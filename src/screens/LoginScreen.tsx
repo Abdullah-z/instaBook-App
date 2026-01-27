@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { TextInput, Button, Text } from 'react-native-paper';
+import { TextInput, Button, Text, useTheme, Surface } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -14,6 +14,7 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLoginView, setIsLoginView] = useState(false);
+  const theme = useTheme();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -48,38 +49,45 @@ const LoginScreen = () => {
 
   if (isLoginView) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setIsLoginView(false)}>
-            <Text style={styles.backButton}>←</Text>
+            <Text style={[styles.backButton, { color: theme.colors.onSurface }]}>←</Text>
           </TouchableOpacity>
         </View>
 
+        {/* <Surface> */}
         <View style={styles.formContainer}>
-          <Text variant="headlineMedium" style={styles.title}>
+          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
             Welcome Back
           </Text>
-          <Text style={styles.subtitle}>Please enter your details to sign in.</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+            Please enter your details to sign in.
+          </Text>
 
           <TextInput
             label="Email"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
             mode="outlined"
-            outlineColor="#eee"
-            activeOutlineColor="#000"
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 50 }}
           />
           <TextInput
             label="Password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
             mode="outlined"
-            outlineColor="#eee"
-            activeOutlineColor="#000"
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 50 }}
             right={
               <TextInput.Icon
                 icon={showPassword ? 'eye-off' : 'eye'}
@@ -96,18 +104,19 @@ const LoginScreen = () => {
             onPress={handleLogin}
             loading={loading}
             disabled={loading}
-            style={styles.loginButton}
+            style={[styles.loginButton, { backgroundColor: theme.colors.primary }]}
             contentStyle={{ height: 50 }}
-            labelStyle={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+            labelStyle={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 16 }}>
             Login
           </Button>
         </View>
+        {/* </Surface> */}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
         {/* <View style={styles.logoContainer}>
           <View style={styles.logoBox}>
@@ -123,7 +132,7 @@ const LoginScreen = () => {
       <View style={styles.content}>
         <View style={styles.imageContainer}>
           {/* Placeholder for the collage illustration */}
-          <View style={styles.circle1}>
+          <View style={[styles.circle1, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Image
               source={{
                 uri: 'https://camo.githubusercontent.com/9105e4cd984bdf30d9027d64564d5541774e471fdfb84db12ef7a707b533dd61/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f31372e706e67',
@@ -131,7 +140,7 @@ const LoginScreen = () => {
               style={{ width: 200, height: 200 }}
             />
           </View>
-          <View style={styles.circle2}>
+          <View style={[styles.circle2, { backgroundColor: theme.colors.secondaryContainer }]}>
             <Image
               source={{
                 uri: 'https://camo.githubusercontent.com/7a6cfad569ac8a93acf81baab8218547473c367c38c0a783ab24031df7735579/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32352e706e67',
@@ -139,7 +148,7 @@ const LoginScreen = () => {
               style={{ width: 120, height: 120 }}
             />
           </View>
-          <View style={styles.circle3}>
+          <View style={[styles.circle3, { backgroundColor: theme.colors.tertiaryContainer }]}>
             <Image
               source={{
                 uri: 'https://camo.githubusercontent.com/46eb94ece1df6fc5ef7112d225f2bd1c152f586bd2216f54bb33ecc49e65ec4e/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32342e706e67',
@@ -149,8 +158,10 @@ const LoginScreen = () => {
           </View>
         </View>
 
-        <Text style={styles.heroTitle}>Best Social App to Make New Friends</Text>
-        <Text style={styles.heroSubtitle}>
+        <Text style={[styles.heroTitle, { color: theme.colors.onSurface }]}>
+          Best Social App to Make New Friends
+        </Text>
+        <Text style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}>
           With instaBook you will find new friends from various countries and regions of the world
         </Text>
 
@@ -158,18 +169,18 @@ const LoginScreen = () => {
           <Button
             mode="contained"
             onPress={() => navigation.navigate('Register')}
-            style={styles.getStartedButton}
+            style={[styles.getStartedButton, { backgroundColor: theme.colors.primary }]}
             contentStyle={{ height: 55 }}
-            labelStyle={{ color: '#000', fontWeight: 'bold', fontSize: 16 }}>
+            labelStyle={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 16 }}>
             Get Started
           </Button>
 
           <Button
             mode="outlined"
             onPress={() => setIsLoginView(true)}
-            style={styles.loginOutlineButton}
+            style={[styles.loginOutlineButton, { borderColor: theme.colors.outline }]}
             contentStyle={{ height: 55 }}
-            labelStyle={{ color: '#000', fontWeight: 'bold', fontSize: 16 }}>
+            labelStyle={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: 16 }}>
             Login
           </Button>
         </View>

@@ -13,7 +13,15 @@ import {
   Modal as RNModal,
 } from 'react-native';
 import ImageView from 'react-native-image-viewing';
-import { Text, Button, Avatar, Divider, List, TextInput } from 'react-native-paper';
+import {
+  Text,
+  Button,
+  Avatar,
+  Divider,
+  List,
+  TextInput,
+  useTheme as usePaperTheme,
+} from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import {
@@ -40,6 +48,7 @@ const ListingDetailScreen = () => {
   const { id } = route.params || {};
   const { user } = useContext(AuthContext);
   const { initiateCall } = useContext(VoiceCallContext);
+  const theme = usePaperTheme();
 
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -190,7 +199,7 @@ const ListingDetailScreen = () => {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {/* Image Carousel */}
       <View style={styles.carouselContainer}>
@@ -226,19 +235,34 @@ const ListingDetailScreen = () => {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.price}>${listing.price}</Text>
-        <Text style={styles.name}>{listing.name}</Text>
+        <Text style={[styles.price, { color: theme.colors.onSurface }]}>${listing.price}</Text>
+        <Text style={[styles.name, { color: theme.colors.onSurface }]}>{listing.name}</Text>
 
         {(listing.listingType === 'Bid' || listing.listingType === 'Both') && (
-          <View style={styles.bidInfoContainer}>
+          <View
+            style={[
+              styles.bidInfoContainer,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}>
             <View style={styles.bidRow}>
               <View>
-                <Text style={styles.bidLabel}>Current Bid</Text>
-                <Text style={styles.bidValue}>${listing.currentBid || 0}</Text>
+                <Text style={[styles.bidLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Current Bid
+                </Text>
+                <Text style={[styles.bidValue, { color: theme.colors.onSurface }]}>
+                  ${listing.currentBid || 0}
+                </Text>
               </View>
-              <View style={styles.timerContainer}>
-                <Ionicons name="time-outline" size={16} color="#ff4757" />
-                <Text style={styles.timerText}>{timeLeft}</Text>
+              <View
+                style={[
+                  styles.timerContainer,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.error },
+                ]}>
+                <Ionicons name="time-outline" size={16} color={theme.colors.error} />
+                <Text style={[styles.timerText, { color: theme.colors.error }]}>{timeLeft}</Text>
               </View>
             </View>
 
@@ -252,19 +276,23 @@ const ListingDetailScreen = () => {
               <View style={styles.placeBidContainer}>
                 <TextInput
                   placeholder="Enter bid amount"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
                   value={bidAmount}
                   onChangeText={setBidAmount}
                   keyboardType="numeric"
-                  style={styles.bidInput}
+                  style={[styles.bidInput, { backgroundColor: theme.colors.surface }]}
                   mode="outlined"
                   dense
+                  outlineColor={theme.colors.outline}
+                  activeOutlineColor={theme.colors.primary}
+                  textColor={theme.colors.onSurface}
                 />
                 <Button
                   mode="contained"
                   onPress={handlePlaceBid}
                   loading={placingBid}
-                  buttonColor="#D4F637"
-                  textColor="#000"
+                  buttonColor={theme.colors.primary}
+                  textColor={theme.colors.onPrimary}
                   style={styles.bidBtn}>
                   Bid
                 </Button>
@@ -273,38 +301,51 @@ const ListingDetailScreen = () => {
           </View>
         )}
 
-        <Text style={styles.time}>
+        <Text style={[styles.time, { color: theme.colors.onSurfaceVariant }]}>
           Listed {moment(listing.createdAt).format('MMM D, YYYY')} at{' '}
           {moment(listing.createdAt).format('h:mm A')}
         </Text>
 
         <Divider style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.description}>{listing.description}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Description</Text>
+        <Text style={[styles.description, { color: theme.colors.onSurface }]}>
+          {listing.description}
+        </Text>
 
         <Divider style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Location</Text>
-        <Text style={styles.address}>{listing.address}</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Location</Text>
+        <Text style={[styles.address, { color: theme.colors.onSurfaceVariant }]}>
+          {listing.address}
+        </Text>
 
-        <View style={styles.mapContainer}>
+        <View style={[styles.mapContainer, { borderColor: theme.colors.outlineVariant }]}>
           {listing.location?.coordinates ? (
             <LeafletMap
               latitude={listing.location.coordinates[1]}
               longitude={listing.location.coordinates[0]}
             />
           ) : (
-            <View style={[styles.map, styles.mapPlaceholder]}>
-              <Ionicons name="map-outline" size={30} color="#ccc" />
-              <Text style={styles.mapPlaceholderText}>Location not available</Text>
+            <View
+              style={[
+                styles.map,
+                styles.mapPlaceholder,
+                { backgroundColor: theme.colors.surfaceVariant },
+              ]}>
+              <Ionicons name="map-outline" size={30} color={theme.colors.onSurfaceVariant} />
+              <Text style={[styles.mapPlaceholderText, { color: theme.colors.onSurfaceVariant }]}>
+                Location not available
+              </Text>
             </View>
           )}
         </View>
 
         <Divider style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Seller Information</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+          Seller Information
+        </Text>
         <TouchableOpacity
           style={styles.sellerRow}
           onPress={() =>
@@ -315,12 +356,14 @@ const ListingDetailScreen = () => {
             source={{ uri: listing.user?.avatar || 'https://via.placeholder.com/50' }}
           />
           <View style={styles.sellerInfo}>
-            <Text style={styles.sellerName}>
+            <Text style={[styles.sellerName, { color: theme.colors.onSurface }]}>
               {listing.user?.fullname || listing.user?.username || 'Unknown Seller'}
             </Text>
-            <Text style={styles.joinedTime}>Seller on Marketplace</Text>
+            <Text style={[styles.joinedTime, { color: theme.colors.onSurfaceVariant }]}>
+              Seller on Marketplace
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#888" />
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
 
         <View style={styles.contactActions}>
@@ -331,15 +374,16 @@ const ListingDetailScreen = () => {
                 onPress={handleMessageSeller}
                 style={styles.actionBtn}
                 icon="message-outline"
-                buttonColor="#000">
+                buttonColor={theme.colors.primary}
+                textColor={theme.colors.onPrimary}>
                 Message
               </Button>
               <Button
                 mode="outlined"
                 onPress={handleCallSeller}
-                style={styles.actionBtn}
+                style={[styles.actionBtn, { borderColor: theme.colors.primary }]}
                 icon="phone-outline"
-                textColor="#000">
+                textColor={theme.colors.primary}>
                 Call
               </Button>
             </>
@@ -349,15 +393,15 @@ const ListingDetailScreen = () => {
                 mode="contained"
                 onPress={handleMarkAsSold}
                 style={styles.actionBtn}
-                buttonColor={listing.isSold ? '#ddd' : '#D4F637'}
-                textColor="#000">
+                buttonColor={listing.isSold ? theme.colors.surfaceVariant : theme.colors.primary}
+                textColor={listing.isSold ? theme.colors.onSurfaceVariant : theme.colors.onPrimary}>
                 {listing.isSold ? 'Mark as Available' : 'Mark as Sold'}
               </Button>
               <Button
                 mode="outlined"
                 onPress={() => navigation.navigate('CreateListing', { editListing: listing })}
-                style={styles.actionBtn}
-                textColor="#000">
+                style={[styles.actionBtn, { borderColor: theme.colors.primary }]}
+                textColor={theme.colors.primary}>
                 Edit
               </Button>
               <Button mode="text" onPress={handleDelete} style={styles.deleteBtn} textColor="red">

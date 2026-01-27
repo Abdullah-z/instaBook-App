@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import moment from 'moment';
 import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
 import InputComment from './InputComment';
@@ -30,6 +31,7 @@ const ReplyDisplay: React.FC<Props> = ({
   setCommentText,
   onSubmit,
 }) => {
+  const theme = useTheme();
   const [replyLikes, setReplyLikes] = useState<any[]>(reply.likes || []);
   const hasLiked = (likes: any[]) =>
     likes.some((u) => (typeof u === 'string' ? u === currentUserId : u._id === currentUserId));
@@ -58,28 +60,36 @@ const ReplyDisplay: React.FC<Props> = ({
     <View style={styles.replyContainer}>
       <View style={styles.header}>
         <Image source={{ uri: reply.user.avatar }} style={styles.avatar} />
-        <View style={styles.commentBubble}>
-          <Text style={styles.username}>{reply.user.username}</Text>
-          <Text style={styles.content}>{reply.content}</Text>
+        <View style={[styles.commentBubble, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+            {reply.user.username}
+          </Text>
+          <Text style={[styles.content, { color: theme.colors.onSurface }]}>{reply.content}</Text>
         </View>
         <View style={styles.likeSection}>
           <TouchableOpacity onPress={handleReplyLikeToggle}>
             <Text style={styles.heart}>{replyHasLiked ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
-          <Text style={styles.likeCount}>{replyLikes.length}</Text>
+          <Text style={[styles.likeCount, { color: theme.colors.onSurfaceVariant }]}>
+            {replyLikes.length}
+          </Text>
         </View>
       </View>
 
-      <Text style={styles.time}>{moment(reply.createdAt).fromNow()}</Text>
+      <Text style={[styles.time, { color: theme.colors.onSurfaceVariant }]}>
+        {moment(reply.createdAt).fromNow()}
+      </Text>
 
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => onReply(reply)}>
-          <Text style={styles.actionText}>Reply</Text>
+          <Text style={[styles.actionText, { color: theme.colors.onSurfaceVariant }]}>Reply</Text>
         </TouchableOpacity>
         {reply.user._id === currentUserId && (
           <>
             <TouchableOpacity onPress={() => onEdit(reply)}>
-              <Text style={styles.actionText}>Edit</Text>
+              <Text style={[styles.actionText, { color: theme.colors.onSurfaceVariant }]}>
+                Edit
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDelete(reply)}>
               <Text style={[styles.actionText, { color: '#FF3B30' }]}>Delete</Text>

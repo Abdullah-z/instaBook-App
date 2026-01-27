@@ -16,6 +16,7 @@ import {
   Platform,
   Switch,
 } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { Video, ResizeMode } from 'expo-av';
 import { createPostAPI } from '../api/postAPI';
 import { imageUpload } from '../utils/imageUpload';
@@ -25,6 +26,8 @@ import * as ExpoLocation from 'expo-location';
 import { getMapPreview } from '../utils/getMapPreview';
 import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
 import LocationAutocomplete from './LocationAutocomplete';
+import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {
   onPostCreated: (newPost: any) => void;
@@ -32,6 +35,7 @@ interface Props {
 }
 
 const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed' }) => {
+  const theme = useTheme();
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -45,6 +49,31 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   const [youtubeLink, setYoutubeLink] = useState('');
   const [isHD, setIsHD] = useState(false);
   const [postType, setPostType] = useState<'feed' | 'story' | 'both'>(initialPostType);
+
+  // Background & Text Style State
+  const [selectedBgId, setSelectedBgId] = useState('default');
+  const [textColor, setTextColor] = useState(theme.colors.onSurface);
+  const [fontSize, setFontSize] = useState(24);
+  const [showStyleControls, setShowStyleControls] = useState(false);
+
+  // Poll State
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+
+  const activeBg = POST_BACKGROUNDS.find((b) => b.id === selectedBgId) || POST_BACKGROUNDS[0];
+  const isDefaultBg = selectedBgId === 'default';
+
+  // Toggle text color default based on background
+  React.useEffect(() => {
+    if (selectedBgId !== 'default') {
+      setTextColor('#FFFFFF'); // Default to white for colored backgrounds
+      setFontSize(30); // Default larger font
+    } else {
+      setTextColor(theme.colors.onSurface);
+      setFontSize(24);
+    }
+  }, [selectedBgId, theme.colors.onSurface]);
 
   const handleAddYoutubeLink = () => {
     if (!youtubeLink.trim()) {
@@ -238,10 +267,40 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
     setImages((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
+  const addPollOption = () => {
+    if (pollOptions.length < 5) {
+      setPollOptions([...pollOptions, '']);
+    }
+  };
+
+  const updatePollOption = (text: string, index: number) => {
+    const newOptions = [...pollOptions];
+    newOptions[index] = text;
+    setPollOptions(newOptions);
+  };
+
+  const removePollOption = (index: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_, i) => i !== index));
+    }
+  };
+
   const handlePost = async () => {
-    if (!content && images.length === 0 && !locationAddress) {
-      Alert.alert('Post must have content, image or location.');
+    if (!content && images.length === 0 && !locationAddress && !pollQuestion) {
+      Alert.alert('Post must have content, image, location, or poll.');
       return;
+    }
+
+    if (showPollCreator) {
+      if (!pollQuestion.trim()) {
+        Alert.alert('Error', 'Please enter a poll question.');
+        return;
+      }
+      const validOptions = pollOptions.filter((opt) => opt.trim().length > 0);
+      if (validOptions.length < 2) {
+        Alert.alert('Error', 'Please provide at least 2 poll options.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -262,15 +321,22 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         postType,
         address: locationAddress,
         location: locationCoords ? { type: 'Point', coordinates: locationCoords } : undefined,
+        background: selectedBgId !== 'default' ? selectedBgId : undefined,
+        textStyle: {
+          fontSize,
+          color: textColor,
+          fontWeight: 'bold',
+        },
+        poll_question: showPollCreator ? pollQuestion.trim() : undefined,
+        poll_options: showPollCreator
+          ? pollOptions.filter((opt) => opt.trim().length > 0).map((opt) => ({ text: opt.trim() }))
+          : undefined,
       });
       onPostCreated(res.newPost);
-      setContent('');
-      setImages([]);
-      setVideoUri(null);
-      setLocationAddress('');
-      setLocationCoords(null);
-      setIsHD(false);
       setPostType('feed');
+      setPollQuestion('');
+      setPollOptions(['', '']);
+      setShowPollCreator(false);
     } catch (err: any) {
       console.error('❌ Error creating post:', err);
       Alert.alert('Failed to post', err?.response?.data?.msg || 'Unknown error');
@@ -280,70 +346,281 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   };
 
   const shouldShowPost =
-    content.trim().length > 0 || images.length > 0 || videoUri || locationAddress;
+    content.trim().length > 0 ||
+    images.length > 0 ||
+    videoUri ||
+    locationAddress ||
+    pollQuestion.trim().length > 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="What's on your mind?"
-          value={content}
-          onChangeText={setContent}
-          multiline
-        />
-
-        <TouchableOpacity onPress={pickImages} style={styles.iconInsideInput}>
-          <Ionicons name="image-outline" size={24} color="#4CAF50" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={takePhoto} style={styles.iconInsideInput}>
-          <Ionicons name="camera-outline" size={24} color="#FF9800" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={pickVideo} style={styles.iconInsideInput}>
-          <Ionicons name="videocam-outline" size={24} color="#E91E63" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setShowLocationSearch(!showLocationSearch)}
-          style={styles.iconInsideInput}>
-          <Ionicons
-            name="location-outline"
-            size={24}
-            color={locationAddress ? '#FF5722' : '#aaa'}
+    <ScrollView
+      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.inputSection}>
+        {!isDefaultBg ? (
+          <LinearGradient
+            colors={activeBg.colors as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.input,
+              { justifyContent: 'center', alignItems: 'center', minHeight: 200 },
+            ]}>
+            <TextInput
+              style={{
+                fontSize: fontSize,
+                color: textColor,
+                fontWeight: 'bold',
+                textAlign: 'center',
+                width: '100%',
+              }}
+              placeholder="What's on your mind?"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+          </LinearGradient>
+        ) : (
+          <TextInput
+            style={[
+              styles.input,
+              {
+                fontSize: fontSize,
+                color: textColor,
+                backgroundColor: theme.colors.surface,
+                minHeight: 120,
+              },
+            ]}
+            placeholder="What's on your mind?"
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            value={content}
+            onChangeText={setContent}
+            multiline
           />
-        </TouchableOpacity>
+        )}
+      </View>
 
-        <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconInsideInput}>
-          <Ionicons name="logo-youtube" size={24} color="#F44336" />
-        </TouchableOpacity>
+      <View
+        style={[
+          styles.toolbar,
+          { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
+        ]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity onPress={pickImages} style={styles.toolbarIcon} disabled={!isDefaultBg}>
+            <Ionicons name="image-outline" size={26} color={!isDefaultBg ? '#ccc' : '#4CAF50'} />
+          </TouchableOpacity>
 
-        <View style={styles.hdToggleContainer}>
-          <Text style={styles.hdToggleText}>HD</Text>
-          <Switch
-            value={isHD}
-            onValueChange={setIsHD}
-            trackColor={{ false: '#767577', true: '#4CAF50' }}
-            thumbColor={isHD ? '#fff' : '#f4f3f4'}
-            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-          />
-        </View>
+          <TouchableOpacity onPress={takePhoto} style={styles.toolbarIcon} disabled={!isDefaultBg}>
+            <Ionicons name="camera-outline" size={26} color={!isDefaultBg ? '#ccc' : '#FF9800'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={pickVideo} style={styles.toolbarIcon} disabled={!isDefaultBg}>
+            <Ionicons name="videocam-outline" size={26} color={!isDefaultBg ? '#ccc' : '#E91E63'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowStyleControls(!showStyleControls)}
+            style={styles.toolbarIcon}>
+            <Ionicons name="color-palette-outline" size={26} color="#9C27B0" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowLocationSearch(!showLocationSearch)}
+            style={styles.toolbarIcon}>
+            <Ionicons
+              name="location-outline"
+              size={26}
+              color={locationAddress ? '#FF5722' : '#aaa'}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.toolbarIcon}>
+            <Ionicons name="logo-youtube" size={26} color={theme.colors.error} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowPollCreator(!showPollCreator)}
+            style={styles.toolbarIcon}>
+            <Ionicons name="stats-chart" size={26} color="#FF9800" />
+          </TouchableOpacity>
+
+          <View style={styles.toolbarHdToggle}>
+            <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>HD</Text>
+            <Switch
+              value={isHD}
+              onValueChange={setIsHD}
+              trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+              thumbColor={theme.colors.surface}
+              style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+            />
+          </View>
+        </ScrollView>
 
         {shouldShowPost &&
           (loading ? (
             <View style={styles.loadingIndicator}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={theme.colors.primary} />
             </View>
           ) : (
             <TouchableOpacity onPress={handlePost} style={styles.postIcon}>
-              <MaterialIcons name="send" size={24} color="#007AFF" />
+              <MaterialIcons name="send" size={28} color={theme.colors.primary} />
             </TouchableOpacity>
           ))}
       </View>
 
+      {/* Poll Creator */}
+      {showPollCreator && (
+        <View style={styles.pollCreatorContainer}>
+          <TextInput
+            style={[
+              styles.pollQuestionInput,
+              { color: theme.colors.onSurface, borderBottomColor: theme.colors.outlineVariant },
+            ]}
+            placeholder="Ask a question..."
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            value={pollQuestion}
+            onChangeText={setPollQuestion}
+            multiline
+          />
+          {pollOptions.map((option, index) => (
+            <View
+              key={index}
+              style={[
+                styles.pollOptionInputRow,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+              ]}>
+              <Ionicons name="radio-button-off" size={20} color={theme.colors.onSurfaceVariant} />
+              <TextInput
+                style={[styles.pollOptionInput, { color: theme.colors.onSurface }]}
+                placeholder={`Option ${index + 1}`}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                value={option}
+                onChangeText={(text) => updatePollOption(text, index)}
+              />
+              {pollOptions.length > 2 && (
+                <TouchableOpacity onPress={() => removePollOption(index)}>
+                  <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          {pollOptions.length < 5 && (
+            <TouchableOpacity onPress={addPollOption} style={styles.addOptionBtn}>
+              <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+              <Text style={[styles.addOptionTxt, { color: theme.colors.primary }]}>Add Option</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Style Controls */}
+      {showStyleControls && (
+        <View
+          style={[
+            styles.styleControlsContainer,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+          ]}>
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Background
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleScroll}>
+            {POST_BACKGROUNDS.map((bg) => (
+              <TouchableOpacity
+                key={bg.id}
+                onPress={() => setSelectedBgId(bg.id)}
+                style={[
+                  styles.styleOption,
+                  selectedBgId === bg.id && [
+                    styles.styleOptionActive,
+                    { borderColor: theme.colors.primary },
+                  ],
+                ]}>
+                {bg.colors.length > 1 ? (
+                  <LinearGradient colors={bg.colors as any} style={styles.colorCircle} />
+                ) : (
+                  <View
+                    style={[
+                      styles.colorCircle,
+                      {
+                        backgroundColor: bg.colors[0],
+                        borderWidth: 1,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                    ]}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Text Color
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleScroll}>
+            {TEXT_COLORS.map((color) => (
+              <TouchableOpacity
+                key={color}
+                onPress={() => setTextColor(color)}
+                style={[
+                  styles.styleOption,
+                  textColor === color && [
+                    styles.styleOptionActive,
+                    { borderColor: theme.colors.primary },
+                  ],
+                ]}>
+                <View
+                  style={[
+                    styles.colorCircle,
+                    {
+                      backgroundColor: color,
+                      borderWidth: 1,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Font Size
+          </Text>
+          <View style={styles.fontSizeContainer}>
+            {FONT_SIZES.map((size) => (
+              <TouchableOpacity
+                key={size}
+                onPress={() => setFontSize(size)}
+                style={[
+                  styles.fontSizeBtn,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                  fontSize === size && [
+                    styles.fontSizeBtnActive,
+                    { backgroundColor: theme.colors.primary },
+                  ],
+                ]}>
+                <Text
+                  style={{
+                    fontSize: 14 + (size - 16) / 2,
+                    fontWeight: 'bold',
+                    color: fontSize === size ? theme.colors.onPrimary : theme.colors.onSurface,
+                  }}>
+                  A
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {showLocationSearch && (
-        <View style={styles.locationSearchContainer}>
+        <View
+          style={[
+            styles.locationSearchContainer,
+            {
+              backgroundColor: theme.colors.surfaceVariant,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}>
           <LocationAutocomplete
             onLocationSelect={(addr, coords) => {
               setLocationAddress(addr);
@@ -353,8 +630,8 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             placeholder="Search location..."
           />
           <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
-            <Ionicons name="locate" size={20} color="#007AFF" />
-            <Text style={styles.gpsBtnText}>Use GPS</Text>
+            <Ionicons name="locate" size={20} color={theme.colors.primary} />
+            <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Use GPS</Text>
           </TouchableOpacity>
           {locationAddress !== '' && (
             <TouchableOpacity
@@ -363,16 +640,24 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
                 setLocationCoords(null);
               }}
               style={styles.clearLocBtn}>
-              <Text style={styles.clearLocText}>Clear Location</Text>
+              <Text style={[styles.clearLocText, { color: theme.colors.error }]}>
+                Clear Location
+              </Text>
             </TouchableOpacity>
           )}
         </View>
       )}
 
       {locationAddress !== '' && !showLocationSearch && (
-        <View style={styles.taggedLocationBadge}>
-          <Ionicons name="location" size={16} color="#FF5722" />
-          <Text style={styles.taggedLocationText} numberOfLines={1}>
+        <View
+          style={[
+            styles.taggedLocationBadge,
+            { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error },
+          ]}>
+          <Ionicons name="location" size={16} color={theme.colors.error} />
+          <Text
+            style={[styles.taggedLocationText, { color: theme.colors.onErrorContainer }]}
+            numberOfLines={1}>
             {locationAddress}
           </Text>
           <TouchableOpacity
@@ -380,32 +665,91 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
               setLocationAddress('');
               setLocationCoords(null);
             }}>
-            <Ionicons name="close-circle" size={18} color="#999" style={{ marginLeft: 5 }} />
+            <Ionicons
+              name="close-circle"
+              size={18}
+              color={theme.colors.onSurfaceVariant}
+              style={{ marginLeft: 5 }}
+            />
           </TouchableOpacity>
         </View>
       )}
 
       <View style={styles.postTypeContainer}>
-        <Text style={styles.postTypeLabel}>Post to:</Text>
+        <Text style={[styles.postTypeLabel, { color: theme.colors.onSurface }]}>Post to:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TouchableOpacity
-            style={[styles.postTypeBtn, postType === 'feed' && styles.postTypeBtnActive]}
+            style={[
+              styles.postTypeBtn,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outlineVariant,
+              },
+              postType === 'feed' && [
+                styles.postTypeBtnActive,
+                { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+              ],
+            ]}
             onPress={() => setPostType('feed')}>
-            <Text style={[styles.postTypeTxt, postType === 'feed' && styles.postTypeTxtActive]}>
+            <Text
+              style={[
+                styles.postTypeTxt,
+                { color: theme.colors.onSurfaceVariant },
+                postType === 'feed' && [
+                  styles.postTypeTxtActive,
+                  { color: theme.colors.onPrimary },
+                ],
+              ]}>
               Feed
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.postTypeBtn, postType === 'story' && styles.postTypeBtnActive]}
+            style={[
+              styles.postTypeBtn,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outlineVariant,
+              },
+              postType === 'story' && [
+                styles.postTypeBtnActive,
+                { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+              ],
+            ]}
             onPress={() => setPostType('story')}>
-            <Text style={[styles.postTypeTxt, postType === 'story' && styles.postTypeTxtActive]}>
+            <Text
+              style={[
+                styles.postTypeTxt,
+                { color: theme.colors.onSurfaceVariant },
+                postType === 'story' && [
+                  styles.postTypeTxtActive,
+                  { color: theme.colors.onPrimary },
+                ],
+              ]}>
               Story
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.postTypeBtn, postType === 'both' && styles.postTypeBtnActive]}
+            style={[
+              styles.postTypeBtn,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outlineVariant,
+              },
+              postType === 'both' && [
+                styles.postTypeBtnActive,
+                { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+              ],
+            ]}
             onPress={() => setPostType('both')}>
-            <Text style={[styles.postTypeTxt, postType === 'both' && styles.postTypeTxtActive]}>
+            <Text
+              style={[
+                styles.postTypeTxt,
+                { color: theme.colors.onSurfaceVariant },
+                postType === 'both' && [
+                  styles.postTypeTxtActive,
+                  { color: theme.colors.onPrimary },
+                ],
+              ]}>
               Both
             </Text>
           </TouchableOpacity>
@@ -458,11 +802,21 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         animationType="fade"
         onRequestClose={() => setShowYoutubeInput(false)}>
         <View style={styles.modalBg}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Add YouTube Link</Text>
+          <View style={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+              Add YouTube Link
+            </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderColor: theme.colors.outlineVariant,
+                  color: theme.colors.onSurface,
+                },
+              ]}
               placeholder="Paste YouTube URL here..."
+              placeholderTextColor={theme.colors.onSurfaceVariant}
               value={youtubeLink}
               onChangeText={setYoutubeLink}
               autoCapitalize="none"
@@ -471,10 +825,14 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
               <TouchableOpacity
                 onPress={() => setShowYoutubeInput(false)}
                 style={styles.modalBtnCancel}>
-                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+                <Text style={[styles.modalBtnTextCancel, { color: theme.colors.onSurfaceVariant }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddYoutubeLink} style={styles.modalBtnAdd}>
-                <Text style={styles.modalBtnTextAdd}>Add</Text>
+              <TouchableOpacity
+                onPress={handleAddYoutubeLink}
+                style={[styles.modalBtnAdd, { backgroundColor: theme.colors.primary }]}>
+                <Text style={[styles.modalBtnTextAdd, { color: theme.colors.onPrimary }]}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -489,28 +847,35 @@ export default CreatePostBox;
 const styles = StyleSheet.create({
   container: {
     padding: 10,
-    backgroundColor: '#fff',
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  inputSection: {
+    padding: 15,
   },
   input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 120,
+    width: '100%',
+    padding: 10,
     fontSize: 16,
+    borderRadius: 12,
   },
-  iconInsideInput: {
-    paddingLeft: 10,
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  toolbarIcon: {
+    marginRight: 20,
+    padding: 4,
+  },
+  toolbarHdToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
   },
   postIcon: {
-    paddingLeft: 10,
+    marginLeft: 10,
+    padding: 4,
   },
   imageGrid: {
     flexDirection: 'row',
@@ -554,7 +919,6 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     elevation: 5,
@@ -567,7 +931,6 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
@@ -583,17 +946,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   modalBtnTextCancel: {
-    color: '#555',
     fontWeight: '600',
   },
   modalBtnAdd: {
-    backgroundColor: '#4CAF50',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
   },
   modalBtnTextAdd: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   hdToggleContainer: {
@@ -604,7 +964,6 @@ const styles = StyleSheet.create({
   hdToggleText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#666',
     marginRight: 2,
   },
   postTypeContainer: {
@@ -615,36 +974,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 5,
-    color: '#555',
   },
   postTypeBtn: {
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#eee',
   },
-  postTypeBtnActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
+  postTypeBtnActive: {},
   postTypeTxt: {
     fontSize: 14,
-    color: '#555',
   },
   postTypeTxtActive: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   locationSearchContainer: {
     marginTop: 10,
     padding: 10,
-    backgroundColor: '#f9f9f9',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#eee',
   },
   gpsBtn: {
     flexDirection: 'row',
@@ -654,7 +1003,6 @@ const styles = StyleSheet.create({
   },
   gpsBtnText: {
     marginLeft: 5,
-    color: '#007AFF',
     fontWeight: '600',
   },
   clearLocBtn: {
@@ -662,25 +1010,101 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   clearLocText: {
-    color: '#FF3B30',
     fontSize: 12,
   },
   taggedLocationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF0ED',
     alignSelf: 'flex-start',
     marginTop: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#FFD7D0',
   },
   taggedLocationText: {
     fontSize: 13,
-    color: '#FF5722',
     marginLeft: 4,
     maxWidth: 250,
   },
+  pollCreatorContainer: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pollQuestionInput: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    paddingVertical: 5,
+  },
+  pollOptionInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+  },
+  pollOptionInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+  },
+  addOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    paddingVertical: 5,
+  },
+  addOptionTxt: {
+    marginLeft: 5,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  styleControlsContainer: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  styleLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  styleScroll: {
+    marginBottom: 12,
+    flexDirection: 'row',
+  },
+  styleOption: {
+    marginRight: 10,
+    padding: 2,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  styleOptionActive: {},
+  colorCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  fontSizeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fontSizeBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 18,
+  },
+  fontSizeBtnActive: {},
 });

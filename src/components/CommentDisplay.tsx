@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import moment from 'moment';
 import { CommentType } from '../types/types';
 import InputComment from './InputComment';
@@ -33,6 +34,7 @@ const CommentDisplay: React.FC<Props> = ({
   onSubmit,
   currentUserId,
 }) => {
+  const theme = useTheme();
   const [showCount, setShowCount] = useState(1);
   const visibleReplies = replies.slice(replies.length - showCount);
   const [mainLikes, setMainLikes] = useState(comment.likes || []);
@@ -65,15 +67,19 @@ const CommentDisplay: React.FC<Props> = ({
     return (
       <View style={styles.header}>
         <Image source={{ uri: c.user.avatar }} style={styles.avatar} />
-        <View style={styles.commentBubble}>
-          <Text style={styles.username}>{c.user.username}</Text>
-          <Text style={styles.content}>{c.content}</Text>
+        <View style={[styles.commentBubble, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+            {c.user.username}
+          </Text>
+          <Text style={[styles.content, { color: theme.colors.onSurface }]}>{c.content}</Text>
         </View>
         <View style={styles.likeSection}>
           <TouchableOpacity onPress={onLikeToggle}>
             <Text style={styles.heart}>{liked ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
-          <Text style={styles.likeCount}>{likesArray.length}</Text>
+          <Text style={[styles.likeCount, { color: theme.colors.onSurfaceVariant }]}>
+            {likesArray.length}
+          </Text>
         </View>
       </View>
     );
@@ -83,16 +89,20 @@ const CommentDisplay: React.FC<Props> = ({
     <View style={styles.commentContainer}>
       {renderHeader(comment, mainLikes, handleMainLikeToggle)}
 
-      <Text style={styles.time}>{moment(comment.createdAt).fromNow()}</Text>
+      <Text style={[styles.time, { color: theme.colors.onSurfaceVariant }]}>
+        {moment(comment.createdAt).fromNow()}
+      </Text>
 
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => onReply(comment)}>
-          <Text style={styles.actionText}>Reply</Text>
+          <Text style={[styles.actionText, { color: theme.colors.onSurfaceVariant }]}>Reply</Text>
         </TouchableOpacity>
         {comment.user._id === currentUserId && (
           <>
             <TouchableOpacity onPress={() => onEdit(comment)}>
-              <Text style={styles.actionText}>Edit</Text>
+              <Text style={[styles.actionText, { color: theme.colors.onSurfaceVariant }]}>
+                Edit
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onDelete(comment)}>
               <Text style={[styles.actionText, { color: '#FF3B30' }]}>Delete</Text>
@@ -114,7 +124,7 @@ const CommentDisplay: React.FC<Props> = ({
 
       {/* Replies */}
       {visibleReplies.length > 0 && (
-        <View style={styles.replies}>
+        <View style={[styles.replies, { borderLeftColor: theme.colors.outlineVariant }]}>
           {visibleReplies.map((reply) => (
             <ReplyDisplay
               key={reply._id}
@@ -133,12 +143,12 @@ const CommentDisplay: React.FC<Props> = ({
 
           {replies.length - showCount > 0 ? (
             <TouchableOpacity onPress={() => setShowCount(showCount + 10)}>
-              <Text style={{ color: 'crimson', marginTop: 6 }}>Load more...</Text>
+              <Text style={{ color: theme.colors.primary, marginTop: 6 }}>Load more...</Text>
             </TouchableOpacity>
           ) : (
             replies.length > 1 && (
               <TouchableOpacity onPress={() => setShowCount(1)}>
-                <Text style={{ color: 'crimson', marginTop: 6 }}>Hide...</Text>
+                <Text style={{ color: theme.colors.primary, marginTop: 6 }}>Hide...</Text>
               </TouchableOpacity>
             )
           )}
@@ -162,12 +172,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#eee',
   },
   commentBubble: {
     flex: 1,
     marginLeft: 10,
-    backgroundColor: '#F2F3F5',
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -175,17 +183,14 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: '700',
     fontSize: 13,
-    color: '#000',
     marginBottom: 2,
   },
   content: {
     fontSize: 14,
-    color: '#1C1E21',
     lineHeight: 18,
   },
   time: {
     fontSize: 11,
-    color: '#65676B',
     marginTop: 4,
     marginLeft: 48,
   },
@@ -199,13 +204,11 @@ const styles = StyleSheet.create({
     marginRight: 16,
     fontSize: 12,
     fontWeight: '600',
-    color: '#65676B',
   },
   replies: {
     marginTop: 10,
     marginLeft: 48,
     borderLeftWidth: 1,
-    borderLeftColor: '#E4E6EB',
     paddingLeft: 12,
   },
   likeSection: {
@@ -219,7 +222,6 @@ const styles = StyleSheet.create({
   },
   likeCount: {
     fontSize: 10,
-    color: '#888',
     marginTop: 2,
   },
 });

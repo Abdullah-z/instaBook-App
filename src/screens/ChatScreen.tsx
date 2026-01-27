@@ -16,6 +16,7 @@ import {
   Pressable,
   Modal,
 } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import ImageView from 'react-native-image-viewing';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -32,8 +33,20 @@ import moment from 'moment';
 import { promptSaveImage } from '../utils/MediaUtils';
 import * as ExpoLocation from 'expo-location';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import * as Notifications from 'expo-notifications';
 import { Linking } from 'react-native';
 import { getRobustLocation } from '../utils/locationHelper';
+
+// Configure notifications handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 const ChatScreen = () => {
   const route = useRoute<any>();
@@ -41,6 +54,7 @@ const ChatScreen = () => {
   const { user } = useContext(AuthContext);
   const { socket, onlineUsers } = useContext(SocketContext);
   const { initiateCall } = useContext(VoiceCallContext);
+  const theme = useTheme();
   const { userId, username, avatar, isGroup } = route.params;
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -69,7 +83,7 @@ const ChatScreen = () => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.onSurface }}>
             {username || 'Chat'}
           </Text>
           {!isGroup && (
@@ -91,7 +105,7 @@ const ChatScreen = () => {
             <TouchableOpacity
               style={{ marginRight: 16 }}
               onPress={() => navigation.navigate('GroupDetailsScreen', { conversationId: userId })}>
-              <Ionicons name="create-outline" size={24} color="#000" />
+              <Ionicons name="create-outline" size={24} color={theme.colors.onSurface} />
             </TouchableOpacity>
           ) : isAIChat ? (
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -111,12 +125,12 @@ const ChatScreen = () => {
                 <MaterialIcons
                   name={voiceFeedbackEnabled ? 'volume-up' : 'volume-off'}
                   size={24}
-                  color={voiceFeedbackEnabled ? '#6200EE' : '#999'}
+                  color={voiceFeedbackEnabled ? theme.colors.primary : theme.colors.outline}
                 />
               </TouchableOpacity>
               {isSpeaking && (
                 <View style={{ marginRight: 16 }}>
-                  <MaterialIcons name="graphic-eq" size={24} color="#6200EE" />
+                  <MaterialIcons name="graphic-eq" size={24} color={theme.colors.primary} />
                 </View>
               )}
             </View>
@@ -129,7 +143,7 @@ const ChatScreen = () => {
                     recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
                   initiateCall(userId, username, safeAvatar);
                 }}>
-                <MaterialIcons name="call" size={24} color="#1f6feb" />
+                <MaterialIcons name="call" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ marginRight: 16 }}
@@ -138,7 +152,7 @@ const ChatScreen = () => {
                     recipientAvatar && typeof recipientAvatar === 'string' ? recipientAvatar : '';
                   initiateCall(userId, username, safeAvatar, true);
                 }}>
-                <MaterialIcons name="videocam" size={26} color="#1f6feb" />
+                <MaterialIcons name="videocam" size={26} color={theme.colors.primary} />
               </TouchableOpacity>
             </>
           )}
@@ -180,6 +194,79 @@ const ChatScreen = () => {
       speakText(lastMessage.text);
     }
   }, [messages, voiceFeedbackEnabled, isAIChat]);
+
+  const handleAICommands = async (messageText: string, aiCommand?: string) => {
+    const commandToUse = aiCommand || messageText;
+    if (!commandToUse) return;
+
+    // 1. App Navigation
+    if (commandToUse.includes('COMMAND:NAVIGATE:')) {
+      const match = commandToUse.match(/COMMAND:NAVIGATE:(\w+)/);
+      if (match) {
+        const screenName = match[1];
+        console.log('🤖 AI requesting navigation to:', screenName);
+
+        const routeMap: { [key: string]: string } = {
+          Marketplace: 'Marketplace',
+          Map: 'Map',
+          Discover: 'Discover',
+          Notifications: 'Notifications',
+          Profile: 'Profile',
+          CreatePost: 'CreatePostScreen',
+          CreateListing: 'CreateListingScreen',
+        };
+
+        const targetRoute = routeMap[screenName];
+        if (targetRoute) {
+          setTimeout(() => {
+            navigation.navigate(targetRoute as never);
+            Toast.show({
+              type: 'info',
+              text1: `Navigating to ${screenName}`,
+              position: 'bottom',
+            });
+          }, 1500);
+        }
+      }
+    }
+
+    // 2. Smart Reminders (Local Notifications)
+    if (commandToUse.includes('COMMAND:REMINDER:')) {
+      const match = commandToUse.match(/COMMAND:REMINDER:(\d+):(.+)/);
+      if (match) {
+        const minutes = parseInt(match[1]);
+        const reminderText = match[2];
+        console.log(`⏰ AI scheduling local reminder: "${reminderText}" in ${minutes}m`);
+
+        try {
+          // Request permission if not already granted
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status === 'granted') {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: '📌 Pipel Reminder',
+                body: reminderText,
+                data: { screen: 'ChatScreen' },
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: minutes * 60,
+                repeats: false,
+              },
+            });
+            console.log('✅ Local notification scheduled');
+            Toast.show({
+              type: 'success',
+              text1: 'Reminder set!',
+              text2: `I'll remind you in ${minutes} minutes.`,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to schedule local notification:', err);
+        }
+      }
+    }
+  };
 
   const speakText = async (text: string) => {
     if (!text) return;
@@ -274,6 +361,12 @@ const ChatScreen = () => {
             : msgSenderId === userId || msgRecipientId === userId
         ) {
           setMessages((prev) => [...prev, msg]);
+
+          // Handle AI Navigation if applicable
+          if (isAIChat && msgSenderId === userId) {
+            handleAICommands(msg.text, msg.aiCommand);
+          }
+
           setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
           }, 100);
@@ -348,6 +441,7 @@ const ChatScreen = () => {
         text: messageText,
         media: uploadedMedia,
         location: locationData,
+        clientTime: new Date().toString(), // Pass local time for AI
       });
 
       // Add user message to UI
@@ -358,6 +452,7 @@ const ChatScreen = () => {
       if (res.aiMessage) {
         setTimeout(() => {
           setMessages((prev) => [...prev, res.aiMessage]);
+          handleAICommands(res.aiMessage.text, res.aiMessage.aiCommand);
         }, 500); // Slight delay for natural feel
       }
 
@@ -505,27 +600,53 @@ const ChatScreen = () => {
 
     return (
       <View style={styles.callLogContent}>
-        <View
-          style={[
-            styles.callIconContainer,
-            { backgroundColor: isSent ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.05)' },
-          ]}>
-          <Ionicons name={iconName} size={24} color={iconColor} />
+        <View style={[styles.callIconContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Ionicons
+            name={iconName}
+            size={24}
+            color={isSent ? theme.colors.primary : theme.colors.onSurface}
+          />
         </View>
         <View style={styles.callInfo}>
-          <Text style={[styles.callStatus, isSent ? styles.sentText : styles.receivedText]}>
+          <Text
+            style={[
+              styles.callStatus,
+              isSent ? { color: theme.colors.onPrimary } : { color: theme.colors.onSurface },
+            ]}>
             {statusText}
           </Text>
           {durationText ? (
-            <Text style={[styles.callDuration, isSent ? styles.sentText : styles.receivedText]}>
+            <Text
+              style={[
+                styles.callDuration,
+                isSent
+                  ? { color: theme.colors.onPrimary, opacity: 0.8 }
+                  : { color: theme.colors.onSurface, opacity: 0.7 },
+              ]}>
               {durationText}
             </Text>
           ) : (
-            call.status === 'missed' && <Text style={styles.callActionText}>Tap to call back</Text>
+            call.status === 'missed' && (
+              <Text style={[styles.callActionText, { color: theme.colors.primary }]}>
+                Tap to call back
+              </Text>
+            )
           )}
         </View>
       </View>
     );
+  };
+
+  const cleanMessageText = (text: string) => {
+    if (!text) return '';
+    const cleaned = text
+      .replace(/COMMAND:NAVIGATE:\w+/g, '')
+      .replace(/COMMAND:REMINDER:\d+:.+/g, '')
+      .replace(/AI_IMAGE_URL:https?:\/\/[^\s]+/g, '')
+      .replace(/\[METADATA:.*?\]/g, '') // Also clean the new metadata tags for user view
+      .trim();
+
+    return cleaned;
   };
 
   const renderMessage = ({ item }: { item: any }) => {
@@ -551,7 +672,13 @@ const ChatScreen = () => {
       <View
         style={[styles.messageContainer, isSent ? styles.sentContainer : styles.receivedContainer]}>
         {!isSent && route.params.isGroup && (
-          <Text style={{ fontSize: 10, color: '#666', marginBottom: 2, marginLeft: 12 }}>
+          <Text
+            style={{
+              fontSize: 10,
+              color: theme.colors.onSurfaceVariant,
+              marginBottom: 2,
+              marginLeft: 12,
+            }}>
             {senderName}
           </Text>
         )}
@@ -563,7 +690,13 @@ const ChatScreen = () => {
             />
           )}
 
-          <View style={[styles.messageBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
+          <View
+            style={[
+              styles.messageBubble,
+              isSent
+                ? [styles.sentBubble, { backgroundColor: theme.colors.primary }]
+                : [styles.receivedBubble, { backgroundColor: theme.colors.surfaceVariant }],
+            ]}>
             {item.call ? (
               renderCallLog(item.call, isSent)
             ) : (
@@ -590,54 +723,205 @@ const ChatScreen = () => {
                     )}
                   </View>
                 )}
-                {item.text && (
-                  <Text
-                    style={[styles.messageText, isSent ? styles.sentText : styles.receivedText]}>
-                    {item.text}
-                  </Text>
+                {item.text && item.text.includes('AI_IMAGE_URL:') && (
+                  <View style={styles.aiImageContainer}>
+                    {(() => {
+                      const match = item.text.match(/AI_IMAGE_URL:(https?:\/\/[^\s]+)/);
+                      const imageUrl = match ? match[1] : null;
+                      return imageUrl ? (
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => {
+                            setViewerImages([{ uri: imageUrl }]);
+                            setViewerIndex(0);
+                            setViewerVisible(true);
+                          }}
+                          onLongPress={() => promptSaveImage(imageUrl)}>
+                          <Image source={{ uri: imageUrl }} style={styles.aiGeneratedImage} />
+                          <View style={styles.aiImageBadge}>
+                            <Ionicons name="sparkles" size={12} color="#fff" />
+                            <Text style={styles.aiImageBadgeText}>AI Generated</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : null;
+                    })()}
+                  </View>
                 )}
-                {item.location && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const url = Platform.select({
-                        ios: `maps:0,0?q=${item.location.lat},${item.location.lon}`,
-                        android: `geo:0,0?q=${item.location.lat},${item.location.lon}(${item.location.address})`,
-                      });
-                      if (url) Linking.openURL(url);
-                    }}
-                    onLongPress={() => {
-                      navigation.navigate('Map', {
-                        lat: item.location.lat,
-                        lon: item.location.lon,
-                      });
-                    }}
-                    style={styles.locationMessageContainer}>
-                    <View style={styles.locationPreview}>
-                      <Ionicons name="location" size={30} color="#1f6feb" />
-                      <View style={{ marginLeft: 10, flex: 1 }}>
-                        <Text style={styles.locationLabel}>Location</Text>
-                        <Text style={styles.locationAddress} numberOfLines={2}>
-                          {item.location.address}
+                {(item.text && cleanMessageText(item.text) !== '') || item.aiCommand ? (
+                  <Text
+                    style={[
+                      styles.messageText,
+                      isSent
+                        ? [styles.sentText, { color: theme.colors.onPrimary }]
+                        : [styles.receivedText, { color: theme.colors.onSurface }],
+                    ]}>
+                    {cleanMessageText(item.text) || 'Command executed.'}
+                  </Text>
+                ) : null}
+                {item.searchResults && item.searchResults.length > 0 && (
+                  <View style={styles.searchResultsContainer}>
+                    {item.searchResults.map((result: any, index: number) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.resultCard,
+                          {
+                            backgroundColor: theme.colors.surface,
+                            borderColor: theme.colors.outlineVariant,
+                          },
+                        ]}>
+                        <View style={styles.resultHeader}>
+                          {result.type === 'user' && (
+                            <Image source={{ uri: result.avatar }} style={styles.resultAvatar} />
+                          )}
+                          <View style={styles.resultInfo}>
+                            <Text
+                              style={[styles.resultTitle, { color: theme.colors.onSurface }]}
+                              numberOfLines={1}>
+                              {result.type === 'user'
+                                ? result.fullname
+                                : result.name || result.content.substring(0, 30) + '...'}
+                            </Text>
+                            {result.type === 'user' && (
+                              <Text
+                                style={[
+                                  styles.resultSubtitle,
+                                  { color: theme.colors.onSurfaceVariant },
+                                ]}>
+                                @{result.username}
+                              </Text>
+                            )}
+                            {result.type === 'listing' && (
+                              <Text style={[styles.resultPrice, { color: theme.colors.primary }]}>
+                                ${result.price}
+                              </Text>
+                            )}
+                            {result.type === 'post' && (
+                              <Text
+                                style={[
+                                  styles.resultSubtitle,
+                                  { color: theme.colors.onSurfaceVariant },
+                                ]}>
+                                by @{result.author}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        {result.type === 'listing' && result.description && (
+                          <Text style={styles.resultDescription} numberOfLines={2}>
+                            {result.description}
+                          </Text>
+                        )}
+                        {result.type === 'listing' && (
+                          <View style={{ marginBottom: 8 }}>
+                            {result.address && (
+                              <View
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  marginBottom: 4,
+                                }}>
+                                <Ionicons
+                                  name="location-outline"
+                                  size={12}
+                                  color={theme.colors.onSurfaceVariant}
+                                />
+                                <Text
+                                  style={[
+                                    styles.resultSubtitle,
+                                    { marginLeft: 4, color: theme.colors.onSurfaceVariant },
+                                  ]}>
+                                  {result.address}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                        {result.image && (result.type === 'post' || result.type === 'listing') && (
+                          <Image source={{ uri: result.image }} style={styles.resultImage} />
+                        )}
+                        <TouchableOpacity
+                          style={[styles.resultButton, { backgroundColor: theme.colors.primary }]}
+                          onPress={() => {
+                            console.log(`🚀 [AI-NAV] Navigating to ${result.type}:`, result._id);
+                            if (result.type === 'user') {
+                              navigation.navigate(
+                                'Profile' as never,
+                                { userId: result._id } as never
+                              );
+                            } else if (result.type === 'listing') {
+                              navigation.navigate(
+                                'ListingDetail' as never,
+                                { id: result._id } as never
+                              );
+                            } else if (result.type === 'post') {
+                              navigation.navigate(
+                                'PostDetail' as never,
+                                { postId: result._id } as never
+                              );
+                            }
+                          }}>
+                          <Text
+                            style={[styles.resultButtonText, { color: theme.colors.onPrimary }]}>
+                            {result.type === 'user'
+                              ? 'View Profile'
+                              : result.type === 'post'
+                                ? 'View Post'
+                                : 'View Product'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {item.weatherData && (
+                  <View style={styles.weatherCard}>
+                    <View style={styles.weatherHeader}>
+                      <Ionicons
+                        name={
+                          item.weatherData.condition?.toLowerCase().includes('cloud')
+                            ? 'cloudy'
+                            : item.weatherData.condition?.toLowerCase().includes('rain')
+                              ? 'rainy'
+                              : item.weatherData.condition?.toLowerCase().includes('clear')
+                                ? 'sunny'
+                                : item.weatherData.condition?.toLowerCase().includes('snow')
+                                  ? 'snow'
+                                  : item.weatherData.condition?.toLowerCase().includes('thunder')
+                                    ? 'thunderstorm'
+                                    : 'partly-sunny'
+                        }
+                        size={40}
+                        color="#FFD700"
+                      />
+                      <View style={{ marginLeft: 15 }}>
+                        <Text style={styles.weatherCity}>{item.weatherData.city}</Text>
+                        <Text style={styles.weatherTemp}>
+                          {Math.round(item.weatherData.temp)}°C
                         </Text>
                       </View>
                     </View>
-                    <View style={styles.viewOnMapButton}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          navigation.navigate('Map', {
-                            lat: item.location.lat,
-                            lon: item.location.lon,
-                          });
-                        }}
-                        style={{
-                          flex: 1,
-                          paddingVertical: 8,
-                          width: '100%',
-                          alignItems: 'center',
-                        }}>
-                        <Text style={styles.viewOnMapText}>View in App</Text>
-                      </TouchableOpacity>
-                      <View style={{ width: 1, height: '100%', backgroundColor: '#eee' }} />
+                    <View style={styles.weatherDetails}>
+                      <Text style={styles.weatherCondition}>{item.weatherData.condition}</Text>
+                      <Text style={styles.weatherHumidity}>
+                        Humidity: {item.weatherData.humidity}%
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {item.location &&
+                  item.location.lat &&
+                  item.location.lon &&
+                  !item.weatherData &&
+                  (!item.searchResults || item.searchResults.length === 0) && (
+                    <View
+                      style={[
+                        styles.locationMessageContainer,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.outlineVariant,
+                        },
+                      ]}>
                       <TouchableOpacity
                         onPress={() => {
                           const url = Platform.select({
@@ -646,17 +930,92 @@ const ChatScreen = () => {
                           });
                           if (url) Linking.openURL(url);
                         }}
-                        style={{
-                          flex: 1,
-                          paddingVertical: 8,
-                          width: '100%',
-                          alignItems: 'center',
-                        }}>
-                        <Text style={styles.viewOnMapText}>Open Maps</Text>
+                        style={[
+                          styles.locationPreview,
+                          { backgroundColor: theme.colors.surfaceVariant },
+                        ]}>
+                        <View
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 12,
+                            backgroundColor: theme.colors.primaryContainer,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}>
+                          <Ionicons
+                            name="location-sharp"
+                            size={24}
+                            color={theme.colors.onPrimaryContainer}
+                          />
+                        </View>
+                        <View style={{ marginLeft: 12, flex: 1 }}>
+                          <Text style={[styles.locationLabel, { color: theme.colors.onSurface }]}>
+                            Location
+                          </Text>
+                          <Text
+                            style={[
+                              styles.locationAddress,
+                              { color: theme.colors.onSurfaceVariant },
+                            ]}
+                            numberOfLines={2}>
+                            {item.location.address}
+                          </Text>
+                        </View>
                       </TouchableOpacity>
+                      <View
+                        style={[
+                          styles.viewOnMapButton,
+                          {
+                            borderTopColor: theme.colors.outlineVariant,
+                          },
+                        ]}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            navigation.navigate(
+                              'Map' as never,
+                              {
+                                lat: item.location.lat,
+                                lon: item.location.lon,
+                              } as never
+                            );
+                          }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            alignItems: 'center',
+                          }}>
+                          <Text style={[styles.viewOnMapText, { color: theme.colors.primary }]}>
+                            View in App
+                          </Text>
+                        </TouchableOpacity>
+                        <View
+                          style={{
+                            width: 1,
+                            height: '100%',
+                            backgroundColor: theme.colors.outlineVariant,
+                          }}
+                        />
+                        <TouchableOpacity
+                          onPress={() => {
+                            const url = Platform.select({
+                              ios: `maps:0,0?q=${item.location.lat},${item.location.lon}`,
+                              android: `geo:0,0?q=${item.location.lat},${item.location.lon}(${item.location.address})`,
+                            });
+                            if (url) Linking.openURL(url);
+                          }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            alignItems: 'center',
+                          }}>
+                          <Text style={[styles.viewOnMapText, { color: theme.colors.primary }]}>
+                            Open Maps
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </TouchableOpacity>
-                )}
+                  )}
               </>
             )}
             <Text
@@ -671,106 +1030,114 @@ const ChatScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#D4F637" />
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 100}>
-      {messages.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubble-outline" size={60} color="#ccc" />
-          <Text style={styles.emptyText}>No messages yet</Text>
-          <Text style={styles.emptySubtext}>Send a message to start the conversation</Text>
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={groupMessagesByDate(messages)}
-          renderItem={renderMessage}
-          keyExtractor={(item, index) => item._id || index.toString()}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 120}>
+      <FlatList
+        ref={flatListRef}
+        data={groupMessagesByDate(messages)}
+        renderItem={renderMessage}
+        keyExtractor={(item, index) => item._id || index.toString()}
+        contentContainerStyle={styles.messagesList}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="chatbubbles-outline" size={80} color={theme.colors.outline} />
+              <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                No messages yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+                Send a message to start the conversation!
+              </Text>
+            </View>
+          ) : null
+        }
+      />
 
       {/* Image Preview */}
       {media.length > 0 && (
-        <ScrollView horizontal style={styles.mediaPreview}>
-          {media.map((item, index) => (
-            <View key={index} style={styles.previewImageContainer}>
-              {item.uri ? (
-                <Image source={{ uri: item.uri }} style={styles.previewImage} />
-              ) : (
-                <View style={[styles.previewImage, { backgroundColor: '#eee' }]} />
-              )}
-              <TouchableOpacity
-                style={styles.deleteMediaButton}
-                onPress={() => handleDeleteMedia(index)}>
-                <Ionicons name="close-circle" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
+        <View
+          style={[
+            styles.mediaPreview,
+            { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
+          ]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {media.map((item, index) => (
+              <View key={index} style={styles.previewImageContainer}>
+                {item.uri ? (
+                  <Image source={{ uri: item.uri }} style={styles.previewImage} />
+                ) : (
+                  <View style={[styles.previewImage, { backgroundColor: '#eee' }]} />
+                )}
+                <TouchableOpacity
+                  style={styles.deleteMediaButton}
+                  onPress={() => handleDeleteMedia(index)}>
+                  <Ionicons name="close-circle" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       {/* Input Area */}
-      <View style={styles.inputContainer}>
-        <TouchableOpacity
-          style={styles.imageButton}
-          onPress={handlePickImage}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="image" size={24} color="#666" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.imageButton}
-          onPress={() => setLocationModalVisible(true)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="location" size={24} color="#666" />
-        </TouchableOpacity>
-        <View style={styles.hdToggleContainer}>
-          <Pressable onPress={() => setIsHD(!isHD)}>
-            <Text
-              style={[styles.hdToggleText, { color: isHD ? '#4CAF50' : '#666', marginRight: 3 }]}>
-              HD
-            </Text>
-          </Pressable>
-
-          {/* <Switch
-            value={isHD}
-            onValueChange={setIsHD}
-            trackColor={{ false: '#767577', true: '#4CAF50' }}
-            thumbColor={isHD ? '#fff' : '#f4f3f4'}
-            style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
-          /> */}
+      <View
+        style={[
+          styles.inputContainer,
+          { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
+        ]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+          <View style={styles.hdToggleContainer}>
+            <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>HD</Text>
+            <Switch
+              value={isHD}
+              onValueChange={setIsHD}
+              trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+              thumbColor={theme.colors.surface}
+              style={{ transform: [{ scaleX: 0.55 }, { scaleY: 0.55 }] }}
+            />
+          </View>
+          <TouchableOpacity style={{ padding: 8 }} onPress={handlePickImage}>
+            <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={{ padding: 8 }} onPress={() => setLocationModalVisible(true)}>
+            <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
         </View>
+
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface },
+          ]}
+          placeholder="Type a message..."
+          placeholderTextColor={theme.colors.onSurfaceVariant}
           value={text}
           onChangeText={setText}
-          placeholder="Type a message..."
-          placeholderTextColor="#999"
           multiline
-          maxLength={500}
         />
+
         <TouchableOpacity
           style={[
             styles.sendButton,
-            ((!text.trim() && media.length === 0) || sending) && styles.sendButtonDisabled,
+            { backgroundColor: theme.colors.primary },
+            (!text.trim() && media.length === 0) || sending ? styles.sendButtonDisabled : null,
           ]}
-          onPress={() => handleSend()}
-          disabled={(!text.trim() && media.length === 0) || sending}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          onPress={() => handleSend()}>
           {sending ? (
-            <ActivityIndicator size="small" color="#000" />
+            <ActivityIndicator color={theme.colors.onPrimary} size="small" />
           ) : (
-            <Ionicons name="send" size={20} color="#000" />
+            <Ionicons name="send" size={18} color={theme.colors.onPrimary} />
           )}
         </TouchableOpacity>
       </View>
@@ -783,33 +1150,47 @@ const ChatScreen = () => {
         onRequestClose={() => setLocationModalVisible(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={{ flex: 1 }}>
           <Pressable
             style={styles.locationModalOverlay}
             onPress={() => setLocationModalVisible(false)}>
-            <Pressable style={styles.locationModalContent} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.locationModalHeader}>
-                <Text style={styles.locationModalTitle}>Share Location</Text>
-                <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
+            <Pressable
+              style={[styles.locationModalContent, { backgroundColor: theme.colors.surface }]}
+              onPress={(e) => e.stopPropagation()}>
+              <View
+                style={[styles.locationModalContent, { backgroundColor: theme.colors.background }]}>
+                <View style={styles.locationModalHeader}>
+                  <Text style={[styles.locationModalTitle, { color: theme.colors.onSurface }]}>
+                    Share Location
+                  </Text>
+                  <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={theme.colors.onSurface} />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.currentLocationButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={shareCurrentLocation}>
+                  <Ionicons name="location" size={20} color={theme.colors.onPrimary} />
+                  <Text
+                    style={[styles.currentLocationButtonText, { color: theme.colors.onPrimary }]}>
+                    Share Current Location
+                  </Text>
                 </TouchableOpacity>
-              </View>
 
-              <TouchableOpacity style={styles.currentLocationButton} onPress={shareCurrentLocation}>
-                <Ionicons name="navigate" size={20} color="#fff" />
-                <Text style={styles.currentLocationButtonText}>Current Location</Text>
-              </TouchableOpacity>
-
-              <View style={{ height: 300, paddingBottom: 20 }}>
-                <LocationAutocomplete
-                  onLocationSelect={(address: string, coordinates: [number, number]) => {
-                    handleSend({
-                      lat: coordinates[1],
-                      lon: coordinates[0],
-                      address: address,
-                    });
-                  }}
-                />
+                <View style={{ height: 400 }}>
+                  <LocationAutocomplete
+                    onLocationSelect={(address: string, coordinates: [number, number]) => {
+                      console.log('📍 [LOCATION-AUTOCOMPLETE] Selected:', address, coordinates);
+                      handleSend({
+                        lat: coordinates[1],
+                        lon: coordinates[0],
+                        address: address,
+                      });
+                    }}
+                  />
+                </View>
               </View>
             </Pressable>
           </Pressable>
@@ -854,16 +1235,14 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
   },
   sentBubble: {
-    backgroundColor: '#D4F637',
-    borderBottomRightRadius: 4,
+    borderTopRightRadius: 4,
   },
   receivedBubble: {
-    backgroundColor: '#f0f0f0',
-    borderBottomLeftRadius: 4,
+    borderTopLeftRadius: 4,
   },
   mediaContainer: {
     marginBottom: 8,
@@ -878,28 +1257,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
-  sentText: {
-    color: '#000',
-  },
-  receivedText: {
-    color: '#333',
-  },
+  sentText: {},
+  receivedText: {},
   timestamp: {
     fontSize: 10,
     marginTop: 4,
   },
   sentTimestamp: {
-    color: '#000',
     opacity: 0.6,
     textAlign: 'right',
   },
-  receivedTimestamp: {
-    color: '#666',
-  },
+  receivedTimestamp: {},
   mediaPreview: {
     maxHeight: 100,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
@@ -922,12 +1293,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
   },
   imageButton: {
     width: 40,
@@ -938,20 +1306,17 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 12,
-    maxHeight: 100,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginRight: 10,
+    maxHeight: 120,
     fontSize: 15,
-    color: '#333',
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#D4F637',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -968,28 +1333,27 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
   },
   emptySubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
   },
   dateSeparator: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 24,
   },
   dateLabel: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   dateText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   callLogContent: {
     flexDirection: 'row',
@@ -1032,40 +1396,34 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   locationMessageContainer: {
-    marginTop: 5,
-    borderRadius: 12,
+    marginTop: 8,
+    borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    width: 260,
     borderWidth: 1,
-    borderColor: '#eee',
-    width: 220,
   },
   locationPreview: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    padding: 16,
   },
   locationLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
   },
   locationAddress: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 16,
   },
   viewOnMapButton: {
     borderTopWidth: 1,
-    borderTopColor: '#eee',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
   },
   viewOnMapText: {
-    fontSize: 13,
-    color: '#1f6feb',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   locationModalOverlay: {
     flex: 1,
@@ -1102,6 +1460,153 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     marginLeft: 10,
+  },
+  searchResultsContainer: {
+    marginTop: 10,
+    width: 240,
+  },
+  resultCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  resultAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  resultInfo: {
+    flex: 1,
+  },
+  resultTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  resultSubtitle: {
+    fontSize: 12,
+  },
+  resultPrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginTop: 2,
+  },
+  resultImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginVertical: 8,
+    resizeMode: 'cover',
+  },
+  resultDescription: {
+    fontSize: 12,
+    color: '#444',
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  resultButton: {
+    backgroundColor: '#000',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  resultButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  aiImageContainer: {
+    width: 240,
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  aiGeneratedImage: {
+    width: '100%',
+    height: 240,
+    resizeMode: 'cover',
+  },
+  aiImageBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  aiImageBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  weatherCard: {
+    backgroundColor: '#1f6feb',
+    borderRadius: 15,
+    padding: 15,
+    marginTop: 10,
+    width: 220,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  weatherHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  weatherCity: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  weatherTemp: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  weatherDetails: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    paddingTop: 10,
+  },
+  weatherCondition: {
+    color: '#fff',
+    fontSize: 14,
+    textTransform: 'capitalize',
+  },
+  weatherHumidity: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.8,
   },
 });
 

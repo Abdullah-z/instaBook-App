@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { BottomNavigation, Avatar } from 'react-native-paper';
+import { BottomNavigation, Avatar, useTheme } from 'react-native-paper';
 import { View, Text } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -7,6 +7,7 @@ import MessagesScreen from '../screens/MessagesScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import ReelsScreen from '../screens/ReelsScreen';
 import WeatherNewsScreen from '../screens/WeatherNewsScreen';
+import EventsScreen from '../screens/EventsScreen';
 import { AuthContext } from '../auth/AuthContext';
 import CreatePostBox from '../components/CreatePostBox';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 const MainTabNavigator = () => {
   const { user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const theme = useTheme();
 
   const [index, setIndex] = React.useState(0);
 
@@ -69,7 +71,7 @@ const MainTabNavigator = () => {
   const renderSceneWithCreate = ({ route, jumpTo }: any) => {
     if (route.key === 'create') {
       return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
           <CreatePostBox onPostCreated={() => setIndex(0)} />
         </View>
       );
@@ -82,10 +84,14 @@ const MainTabNavigator = () => {
       navigationState={{ index, routes }}
       onIndexChange={handleIndexChange}
       renderScene={renderSceneWithCreate}
-      barStyle={{ backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee' }}
-      activeColor="#000"
-      inactiveColor="#888"
-      theme={{ colors: { secondaryContainer: '#D4F637' } }}
+      barStyle={{
+        backgroundColor: theme.colors.surface,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.outlineVariant,
+      }}
+      activeColor={theme.colors.primary}
+      inactiveColor={theme.colors.onSurfaceVariant}
+      theme={{ colors: { secondaryContainer: theme.colors.secondaryContainer } }}
     />
   );
 };

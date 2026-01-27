@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
 } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
@@ -22,6 +23,7 @@ import { CommentType } from '../types/types';
 const CommentsScreen = ({ post }: { post: any }) => {
   const { user } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
+  const theme = useTheme();
 
   const [comments, setComments] = useState<CommentType[]>([]);
   const [replyComments, setReplyComments] = useState<CommentType[]>([]);
@@ -156,19 +158,23 @@ const CommentsScreen = ({ post }: { post: any }) => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Comments</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{comments.length + replyComments.length}</Text>
+        <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
+          <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Comments</Text>
+          <View style={[styles.countBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Text style={[styles.countText, { color: theme.colors.onSurfaceVariant }]}>
+              {comments.length + replyComments.length}
+            </Text>
           </View>
         </View>
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#D4F637" />
-            <Text style={{ marginTop: 10, color: '#666' }}>Loading comments...</Text>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={{ marginTop: 10, color: theme.colors.onSurfaceVariant }}>
+              Loading comments...
+            </Text>
           </View>
         ) : (
           <>
@@ -182,7 +188,9 @@ const CommentsScreen = ({ post }: { post: any }) => {
               showsVerticalScrollIndicator={false}>
               {comments.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No comments yet. Be the first to chime in!</Text>
+                  <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                    No comments yet. Be the first to chime in!
+                  </Text>
                 </View>
               ) : (
                 comments.map((c) => (
@@ -211,7 +219,11 @@ const CommentsScreen = ({ post }: { post: any }) => {
             <View
               style={[
                 styles.inputContainer,
-                { bottom: Platform.OS === 'ios' ? keyboardHeight : 0 },
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderTopColor: theme.colors.outlineVariant,
+                  bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+                },
               ]}>
               <InputComment
                 value={commentText}

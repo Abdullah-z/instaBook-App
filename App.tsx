@@ -20,17 +20,23 @@ import { OrangeLight } from './src/constants/themes/OrangeLight';
 import { OrangeDark } from './src/constants/themes/OrangeDark';
 import { RedDark } from './src/constants/themes/RedDark';
 import { PurpleDark } from './src/constants/themes/PurpleDark';
-import { useData, usePushNotifications } from './src/hooks';
+import { DataProvider, useData, usePushNotifications } from './src/hooks';
 import * as Notifications from 'expo-notifications';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
-  return <MainApp />;
+  return (
+    <DataProvider>
+      <MainApp />
+    </DataProvider>
+  );
 }
 
 function MainApp() {
-  const { isDark, themeColor } = useData();
+  const { isDark, themeColor, themeLoaded } = useData();
+
+  if (!themeLoaded) return null; // Or a splash screen
 
   const themeMap = {
     b: isDark ? BlueDark : BlueLight,
@@ -41,7 +47,7 @@ function MainApp() {
     o: isDark ? OrangeDark : OrangeLight,
   };
 
-  const theme = themeMap[themeColor] || themeMap['r'];
+  const theme = themeMap[themeColor as keyof typeof themeMap] || themeMap['r'];
 
   return (
     <AuthProvider>

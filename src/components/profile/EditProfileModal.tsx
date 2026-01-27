@@ -11,12 +11,14 @@ import {
   StyleSheet,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from '../../auth/AuthContext';
 import { updateUserProfile } from '../../api/userAPI';
 import { imageUpload } from '../../utils/imageUpload';
+import { Avatar, useTheme } from 'react-native-paper';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -26,6 +28,7 @@ interface EditProfileModalProps {
 }
 
 const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModalProps) => {
+  const theme = useTheme();
   const { user, setUser } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -149,11 +152,18 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.colors.surface,
+              borderBottomColor: theme.colors.outlineVariant,
+            },
+          ]}>
           <TouchableOpacity onPress={onClose} disabled={loading}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="close" size={28} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <View
             style={{
@@ -162,23 +172,27 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
+              Edit Profile
+            </Text>
             <View style={styles.hdToggleContainer}>
-              <Text style={styles.hdToggleText}>HD</Text>
+              <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>
+                HD
+              </Text>
               <Switch
                 value={isHD}
                 onValueChange={setIsHD}
-                trackColor={{ false: '#767577', true: '#D4F637' }}
-                thumbColor={isHD ? '#fff' : '#f4f3f4'}
+                trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+                thumbColor={theme.colors.surface}
                 style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
               />
             </View>
           </View>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
             {loading ? (
-              <ActivityIndicator color="#D4F637" />
+              <ActivityIndicator color={theme.colors.primary} />
             ) : (
-              <Ionicons name="checkmark" size={28} color="#D4F637" />
+              <Ionicons name="checkmark" size={28} color={theme.colors.primary} />
             )}
           </TouchableOpacity>
         </View>
@@ -199,8 +213,13 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
           {/* Avatar */}
           <View style={styles.avatarContainer}>
             <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            <TouchableOpacity style={styles.changeAvatarBtn} onPress={() => pickImage('avatar')}>
-              <Ionicons name="camera" size={16} color="#fff" />
+            <TouchableOpacity
+              style={[
+                styles.changeAvatarBtn,
+                { backgroundColor: theme.colors.primary, borderColor: theme.colors.surface },
+              ]}
+              onPress={() => pickImage('avatar')}>
+              <Ionicons name="camera" size={16} color={theme.colors.onPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -208,50 +227,84 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
           <View style={styles.formContainer}>
             {/* Full Name */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Full Name</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Full Name</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.colors.surfaceVariant,
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
                   value={formData.fullname}
                   onChangeText={(text) => setFormData({ ...formData, fullname: text })}
                   placeholder="Enter your full name"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
                   maxLength={25}
                 />
-                <Text style={styles.charCount}>{formData.fullname.length}/25</Text>
+                <Text style={[styles.charCount, { color: theme.colors.onSurfaceVariant }]}>
+                  {formData.fullname.length}/25
+                </Text>
               </View>
             </View>
 
             {/* Mobile */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Mobile</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Mobile</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    color: theme.colors.onSurface,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}
                 value={formData.mobile}
                 onChangeText={(text) => setFormData({ ...formData, mobile: text })}
                 placeholder="Enter your mobile number"
+                placeholderTextColor={theme.colors.onSurfaceVariant}
                 keyboardType="phone-pad"
               />
             </View>
 
             {/* Address */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Address</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Address</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    color: theme.colors.onSurface,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}
                 value={formData.address}
                 onChangeText={(text) => setFormData({ ...formData, address: text })}
                 placeholder="Enter your address"
+                placeholderTextColor={theme.colors.onSurfaceVariant}
               />
             </View>
 
             {/* Website */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Website</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Website</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    color: theme.colors.onSurface,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}
                 value={formData.website}
                 onChangeText={(text) => setFormData({ ...formData, website: text })}
                 placeholder="Enter your website"
+                placeholderTextColor={theme.colors.onSurfaceVariant}
                 keyboardType="url"
                 autoCapitalize="none"
               />
@@ -259,43 +312,82 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
 
             {/* Story/Bio */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Bio</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Bio</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.colors.surfaceVariant,
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
                   value={formData.story}
                   onChangeText={(text) => setFormData({ ...formData, story: text })}
                   placeholder="Tell us about yourself"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
                   multiline
                   numberOfLines={4}
                   maxLength={200}
                 />
-                <Text style={styles.charCount}>{formData.story.length}/200</Text>
+                <Text style={[styles.charCount, { color: theme.colors.onSurfaceVariant }]}>
+                  {formData.story.length}/200
+                </Text>
               </View>
             </View>
 
             {/* Gender */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Gender</Text>
+              <Text style={[styles.label, { color: theme.colors.onSurface }]}>Gender</Text>
               <View style={styles.genderContainer}>
                 <TouchableOpacity
-                  style={[styles.genderBtn, formData.gender === 'male' && styles.genderBtnActive]}
+                  style={[
+                    styles.genderBtn,
+                    {
+                      backgroundColor: theme.colors.surfaceVariant,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                    formData.gender === 'male' && [
+                      styles.genderBtnActive,
+                      { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                    ],
+                  ]}
                   onPress={() => setFormData({ ...formData, gender: 'male' })}>
                   <Text
                     style={[
                       styles.genderText,
-                      formData.gender === 'male' && styles.genderTextActive,
+                      { color: theme.colors.onSurfaceVariant },
+                      formData.gender === 'male' && [
+                        styles.genderTextActive,
+                        { color: theme.colors.onPrimary },
+                      ],
                     ]}>
                     Male
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.genderBtn, formData.gender === 'female' && styles.genderBtnActive]}
+                  style={[
+                    styles.genderBtn,
+                    {
+                      backgroundColor: theme.colors.surfaceVariant,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                    formData.gender === 'female' && [
+                      styles.genderBtnActive,
+                      { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                    ],
+                  ]}
                   onPress={() => setFormData({ ...formData, gender: 'female' })}>
                   <Text
                     style={[
                       styles.genderText,
-                      formData.gender === 'female' && styles.genderTextActive,
+                      { color: theme.colors.onSurfaceVariant },
+                      formData.gender === 'female' && [
+                        styles.genderTextActive,
+                        { color: theme.colors.onPrimary },
+                      ],
                     ]}>
                     Female
                   </Text>

@@ -7,8 +7,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
+  Image,
 } from 'react-native';
-import { Avatar } from 'react-native-paper';
+import { Avatar, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getConversations } from '../api/messageAPI';
@@ -20,6 +21,7 @@ const MessagesScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
   const { onlineUsers } = useContext(SocketContext);
+  const theme = useTheme();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +54,7 @@ const MessagesScreen = () => {
 
     return (
       <TouchableOpacity
-        style={styles.conversationItem}
+        style={[styles.conversationItem, { backgroundColor: theme.colors.surface }]}
         onPress={() =>
           navigation.navigate('Chat', { userId: otherUser._id, username: otherUser.username })
         }>
@@ -60,19 +62,30 @@ const MessagesScreen = () => {
           {otherUser.avatar &&
           typeof otherUser.avatar === 'string' &&
           otherUser.avatar.trim() !== '' ? (
-            <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+            <Image
+              source={{ uri: otherUser.avatar }}
+              style={{ width: 56, height: 56, borderRadius: 28 }}
+            />
           ) : (
             <Avatar.Icon size={56} icon="account" />
           )}
-          {isOnline && <View style={styles.onlineIndicator} />}
+          {isOnline && (
+            <View style={[styles.onlineIndicator, { borderColor: theme.colors.surface }]} />
+          )}
         </View>
 
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={styles.username}>{otherUser.username}</Text>
-            <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
+            <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+              {otherUser.username}
+            </Text>
+            <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+              {moment(item.updatedAt).fromNow()}
+            </Text>
           </View>
-          <Text style={styles.lastMessage} numberOfLines={1}>
+          <Text
+            style={[styles.lastMessage, { color: theme.colors.onSurfaceVariant }]}
+            numberOfLines={1}>
             {item.call
               ? `${item.call.status === 'missed' ? 'Missed' : item.call.status === 'rejected' ? 'Declined' : ''} ${item.call.video ? 'video' : 'voice'} call`.trim()
               : item.text || (item.media?.length > 0 ? 'Sent an image' : '')}
@@ -84,83 +97,101 @@ const MessagesScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#D4F637" />
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant },
+        ]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Messages</Text>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateGroupScreen' as never)}
             style={{ marginRight: 15 }}>
-            <Ionicons name="people-outline" size={24} color="#000" />
+            <Ionicons name="people-outline" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Search', { isChatSearch: true })}>
-            <Ionicons name="search" size={24} color="#000" />
+            <Ionicons name="search" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Conversations List */}
       <TouchableOpacity
-        style={[styles.conversationItem, { borderBottomWidth: 4, borderBottomColor: '#f8f9fa' }]}
+        style={[
+          styles.conversationItem,
+          {
+            backgroundColor: 'rgba(187, 134, 252, 0.08)',
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(187, 134, 252, 0.1)',
+            marginHorizontal: 12,
+            marginTop: 12,
+            borderRadius: 24,
+            padding: 12,
+          },
+        ]}
         onPress={async () => {
           try {
             const { getAIUser } = require('../api/userAPI');
             const res = await getAIUser();
             if (res.user) {
-              // Check if conversation already exists
-              const existingAI = conversations.find((conv: any) => {
-                const other = conv.recipients?.find((r: any) => r._id !== user?._id);
-                return other?._id === res.user._id;
+              navigation.navigate('Chat', {
+                userId: res.user._id,
+                username: res.user.username,
+                avatar: res.user.avatar,
               });
-
-              if (existingAI) {
-                // Use existing conversation - still pass the AI user ID
-                navigation.navigate('Chat', {
-                  userId: res.user._id,
-                  username: res.user.username,
-                  avatar: res.user.avatar,
-                });
-              } else {
-                // Create new
-                navigation.navigate('Chat', {
-                  userId: res.user._id,
-                  username: res.user.username,
-                  avatar: res.user.avatar,
-                });
-              }
             }
           } catch (e) {
             console.error(e);
           }
         }}>
         <View style={styles.avatarContainer}>
-          <Avatar.Image
-            size={56}
+          <View
             style={{
-              backgroundColor: '#fff',
-            }}
-            source={{
-              uri: 'https://static.vecteezy.com/system/resources/previews/055/687/055/non_2x/rectangle-gemini-google-icon-symbol-logo-free-png.png',
-            }}
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: theme.colors.surface,
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: 2,
+              borderColor: '#BB86FC',
+            }}>
+            <Image
+              style={{ width: 40, height: 40 }}
+              source={{
+                uri: 'https://static.vecteezy.com/system/resources/previews/055/687/055/non_2x/rectangle-gemini-google-icon-symbol-logo-free-png.png',
+              }}
+            />
+          </View>
+          <View
+            style={[
+              styles.onlineIndicator,
+              { backgroundColor: '#BB86FC', borderColor: theme.colors.surface },
+            ]}
           />
-          <View style={[styles.onlineIndicator, { backgroundColor: '#BB86FC' }]} />
         </View>
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={[styles.username, { color: '#6200EE' }]}>AI Assistant ✨</Text>
-            <Text style={[styles.timestamp, { color: '#BB86FC', fontWeight: 'bold' }]}>
+            <Text style={[styles.username, { color: '#BB86FC', fontSize: 16, fontWeight: '900' }]}>
+              AI Assistant ✨
+            </Text>
+            <Text
+              style={[styles.timestamp, { color: '#BB86FC', fontWeight: 'bold', fontSize: 11 }]}>
               Always Online
             </Text>
           </View>
-          <Text style={styles.lastMessage} numberOfLines={1}>
+          <Text
+            style={[styles.lastMessage, { color: theme.colors.onSurface, fontWeight: '500' }]}
+            numberOfLines={1}>
             Ask me anything...
           </Text>
         </View>
@@ -168,9 +199,13 @@ const MessagesScreen = () => {
 
       {conversations.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>No messages yet</Text>
-          <Text style={styles.emptySubtext}>Start a conversation with someone!</Text>
+          <Ionicons name="chatbubbles-outline" size={80} color={theme.colors.outline} />
+          <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+            No messages yet
+          </Text>
+          <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+            Start a conversation with someone!
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -179,7 +214,7 @@ const MessagesScreen = () => {
             if (item.isGroup) {
               return (
                 <TouchableOpacity
-                  style={styles.conversationItem}
+                  style={[styles.conversationItem, { backgroundColor: theme.colors.surface }]}
                   onPress={() =>
                     navigation.navigate('Chat', {
                       userId: item._id,
@@ -190,7 +225,10 @@ const MessagesScreen = () => {
                   }>
                   <View style={styles.avatarContainer}>
                     {item.groupAvatar ? (
-                      <Avatar.Image size={56} source={{ uri: item.groupAvatar }} />
+                      <Image
+                        source={{ uri: item.groupAvatar }}
+                        style={{ width: 56, height: 56, borderRadius: 28 }}
+                      />
                     ) : (
                       <Avatar.Icon size={56} icon="account-group" />
                     )}
@@ -198,10 +236,16 @@ const MessagesScreen = () => {
 
                   <View style={styles.conversationContent}>
                     <View style={styles.conversationHeader}>
-                      <Text style={styles.username}>{item.groupName}</Text>
-                      <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
+                      <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+                        {item.groupName}
+                      </Text>
+                      <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+                        {moment(item.updatedAt).fromNow()}
+                      </Text>
                     </View>
-                    <Text style={styles.lastMessage} numberOfLines={1}>
+                    <Text
+                      style={[styles.lastMessage, { color: theme.colors.onSurfaceVariant }]}
+                      numberOfLines={1}>
                       {item.text || 'No messages yet'}
                     </Text>
                   </View>
@@ -221,7 +265,7 @@ const MessagesScreen = () => {
 
             return (
               <TouchableOpacity
-                style={styles.conversationItem}
+                style={[styles.conversationItem, { backgroundColor: theme.colors.surface }]}
                 onPress={() =>
                   navigation.navigate('Chat', {
                     userId: otherUser._id,
@@ -231,19 +275,30 @@ const MessagesScreen = () => {
                 }>
                 <View style={styles.avatarContainer}>
                   {otherUser.avatar ? (
-                    <Avatar.Image size={56} source={{ uri: otherUser.avatar }} />
+                    <Image
+                      source={{ uri: otherUser.avatar }}
+                      style={{ width: 56, height: 56, borderRadius: 28 }}
+                    />
                   ) : (
                     <Avatar.Icon size={56} icon="account" />
                   )}
-                  {isOnline && <View style={styles.onlineIndicator} />}
+                  {isOnline && (
+                    <View style={[styles.onlineIndicator, { borderColor: theme.colors.surface }]} />
+                  )}
                 </View>
 
                 <View style={styles.conversationContent}>
                   <View style={styles.conversationHeader}>
-                    <Text style={styles.username}>{otherUser.username}</Text>
-                    <Text style={styles.timestamp}>{moment(item.updatedAt).fromNow()}</Text>
+                    <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+                      {otherUser.username}
+                    </Text>
+                    <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+                      {moment(item.updatedAt).fromNow()}
+                    </Text>
                   </View>
-                  <Text style={styles.lastMessage} numberOfLines={1}>
+                  <Text
+                    style={[styles.lastMessage, { color: theme.colors.onSurfaceVariant }]}
+                    numberOfLines={1}>
                     {item.call
                       ? `${
                           item.call.status === 'missed'
@@ -278,7 +333,6 @@ const MessagesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   centerContainer: {
     flex: 1,
@@ -292,23 +346,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingTop: 30,
+    paddingTop: 40,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
   },
   listContent: {
     paddingBottom: 20,
   },
   conversationItem: {
     flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   avatarContainer: {
     position: 'relative',
@@ -322,7 +372,6 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
-    borderColor: '#fff',
   },
   conversationContent: {
     flex: 1,
@@ -337,15 +386,12 @@ const styles = StyleSheet.create({
   },
   username: {
     fontWeight: 'bold',
-    color: '#333',
     fontSize: 16,
   },
   timestamp: {
-    color: '#999',
     fontSize: 12,
   },
   lastMessage: {
-    color: '#666',
     fontSize: 14,
   },
   emptyContainer: {
@@ -358,12 +404,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
   },
   emptySubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
   },
 });

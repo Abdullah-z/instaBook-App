@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 
 type Props = {
@@ -19,18 +20,29 @@ const InputComment = ({
   replyTo,
   onCancelReply,
 }: Props) => {
+  const theme = useTheme();
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
+      ]}>
       <TextInput
         placeholder={placeholder}
+        placeholderTextColor={theme.colors.onSurfaceVariant}
         value={value}
         onChangeText={onChange}
         multiline
-        style={styles.input}
+        style={[
+          styles.input,
+          { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface },
+        ]}
       />
 
-      <TouchableOpacity style={styles.button} onPress={onSubmit}>
-        <MaterialIcons name="send" size={22} color="white" />
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.colors.primary }]}
+        onPress={onSubmit}>
+        <MaterialIcons name="send" size={22} color={theme.colors.onPrimary} />
       </TouchableOpacity>
     </View>
   );
@@ -44,20 +56,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    borderTopWidth: 1,
   },
   input: {
     flex: 1,
-    backgroundColor: '#F2F3F5',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     fontSize: 15,
     maxHeight: 100,
-    color: '#000',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
   },
   button: {
-    backgroundColor: '#000',
     width: 38,
     height: 38,
     borderRadius: 19,

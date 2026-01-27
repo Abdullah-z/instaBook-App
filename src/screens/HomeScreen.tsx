@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.tsx
-import React, { useEffect, useState, useContext, useRef, useCallback, useMemo, use } from 'react';
+import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Text } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
 import { deletePostAPI, getPostsAPI, getSuggestionsAPI, getStoriesAPI } from '../api/postAPI';
@@ -36,10 +36,11 @@ const HomeScreen = () => {
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'Home' | 'For You'>('Home');
+  const theme = useTheme();
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['80%'], []);
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   const openComments = (post: any) => {
     setSelectedPost(post);
@@ -138,28 +139,34 @@ const HomeScreen = () => {
                 onPress={() => {
                   // Navigate to story viewer
                   if (hasStory) {
-                    navigation.navigate('StoryViewer' as never, { userStories: item } as never);
+                    navigation.navigate('StoryViewer', { userStories: item });
                   } else if (item.isMe) {
-                    navigation.navigate(
-                      'CreatePostScreen' as never,
-                      { initialPostType: 'story' } as never
-                    );
+                    navigation.navigate('CreatePostScreen', { initialPostType: 'story' });
                   }
                 }}>
                 <View
                   style={[
                     styles.storyRing,
-                    hasStory && { borderColor: '#D4F637' },
-                    !hasStory && { borderColor: '#ddd' },
+                    hasStory && { borderColor: theme.colors.primary },
+                    !hasStory && { borderColor: theme.colors.outlineVariant },
                   ]}>
                   <Image source={{ uri: avatarUrl }} style={styles.storyAvatar} />
                   {item.isMe && !hasStory && (
-                    <View style={styles.addStoryBadge}>
-                      <Text style={{ color: '#fff', fontSize: 10 }}>+</Text>
+                    <View
+                      style={[
+                        styles.addStoryBadge,
+                        {
+                          backgroundColor: theme.colors.primary,
+                          borderColor: theme.colors.surface,
+                        },
+                      ]}>
+                      <Text style={{ color: theme.colors.onPrimary, fontSize: 10 }}>+</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.storyUsername} numberOfLines={1}>
+                <Text
+                  style={[styles.storyUsername, { color: theme.colors.onSurface }]}
+                  numberOfLines={1}>
                   {username}
                 </Text>
               </TouchableOpacity>
@@ -201,9 +208,9 @@ const HomeScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f2f3f5' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Custom Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.logoContainer}>
           {/* <View style={styles.logoBox}>
             <Text style={styles.logoP}>P.</Text>
@@ -214,38 +221,46 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Search' as never)}>
-            <Ionicons name="search" size={24} color="#000" />
+            <Ionicons name="search" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Marketplace' as never)}>
-            <Ionicons name="storefront-outline" size={24} color="#000" />
+            <Ionicons name="storefront-outline" size={24} color={theme.colors.onSurface} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Events' as never)}>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Map' as never)}>
-            <Ionicons name="map-outline" size={24} color="#000" />
+            <Ionicons name="map-outline" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Discover' as never)}>
-            <Ionicons name="compass-outline" size={24} color="#000" />
+            <Ionicons name="compass-outline" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={() => navigation.navigate('Notifications' as never)}>
             <View>
-              <Ionicons name="notifications" size={24} color="#000" />
+              <Ionicons name="notifications" size={24} color={theme.colors.onSurface} />
               {unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: theme.colors.error, borderColor: theme.colors.surface },
+                  ]}>
+                  <Text style={[styles.badgeText, { color: theme.colors.onError }]}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
                 </View>
               )}
             </View>
           </TouchableOpacity>
-          {/* <TouchableOpacity style={styles.iconBtn}>
-            <Text>💬</Text>
-          </TouchableOpacity> */}
         </View>
       </View>
 
@@ -274,13 +289,15 @@ const HomeScreen = () => {
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        backgroundStyle={{ backgroundColor: theme.colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
         onChange={(index) => setIsSheetOpen(index >= 0)}>
         <BottomSheetScrollView>
           {isSheetOpen && selectedPost ? (
             <CommentsScreen post={selectedPost} />
           ) : (
             <View style={{ padding: 20 }}>
-              <Text>Loading...</Text>
+              <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
             </View>
           )}
         </BottomSheetScrollView>

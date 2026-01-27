@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { Avatar } from 'react-native-paper';
+import { Avatar, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getNotifications, markAsRead, deleteAllNotifications } from '../api/notificationAPI';
@@ -20,6 +20,7 @@ const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const theme = useTheme();
 
   console.log(notifications);
 
@@ -117,23 +118,39 @@ const NotificationsScreen = () => {
 
   const renderNotification = ({ item }: { item: any }) => (
     <TouchableOpacity
-      style={[styles.notificationItem, !item.isRead && styles.unreadItem]}
+      style={[
+        styles.notificationItem,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outlineVariant,
+        },
+        !item.isRead && {
+          backgroundColor: theme.dark
+            ? theme.colors.secondaryContainer + '26' // 15% opacity for Dark Mode
+            : theme.colors.secondaryContainer + '0D', // 5% opacity for Light Mode
+        },
+      ]}
       onPress={() => handleNotificationPress(item)}>
       <Avatar.Image size={50} source={{ uri: item.user?.avatar }} />
 
       <View style={styles.notificationContent}>
         <View style={styles.notificationText}>
-          <Text style={styles.username}>{item.user?.username}</Text>
-          <Text style={styles.text}> {item.text}</Text>
+          <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+            {item.user?.username}
+          </Text>
+          <Text style={[styles.text, { color: theme.colors.onSurfaceVariant }]}> {item.text}</Text>
         </View>
         {item.content && (
-          <Text style={styles.content} numberOfLines={1}>
+          <Text
+            style={[styles.content, { color: theme.colors.onSurfaceVariant }]}
+            numberOfLines={1}>
             {item.content}
           </Text>
         )}
         <View style={styles.footer}>
-          <Text style={styles.timestamp}>{moment(item.createdAt).fromNow()}</Text>
-          {!item.isRead && <View style={styles.unreadDot} />}
+          <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+            {moment(item.createdAt).fromNow()}
+          </Text>
         </View>
       </View>
 
@@ -152,13 +169,17 @@ const NotificationsScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant },
+        ]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Notifications</Text>
         {notifications.length > 0 && (
           <TouchableOpacity onPress={handleDeleteAll}>
-            <Text style={styles.deleteButton}>Delete All</Text>
+            <Text style={[styles.deleteButton, { color: theme.colors.error }]}>Delete All</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -166,8 +187,10 @@ const NotificationsScreen = () => {
       {/* Notifications List */}
       {notifications.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="notifications-off-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>No notifications yet</Text>
+          <Ionicons name="notifications-off-outline" size={80} color={theme.colors.outline} />
+          <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+            No notifications yet
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -226,8 +249,10 @@ const styles = StyleSheet.create({
   notificationItem: {
     flexDirection: 'row',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderWidth: 1,
+    borderRadius: 24,
+    marginHorizontal: 16,
+    marginVertical: 4,
     backgroundColor: '#fff',
   },
   unreadItem: {
