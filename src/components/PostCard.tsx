@@ -15,7 +15,7 @@ import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
 import { SocketContext } from '../auth/SocketContext';
-import { Avatar, Menu, IconButton } from 'react-native-paper';
+import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { useSharedValue } from 'react-native-reanimated';
@@ -24,6 +24,10 @@ import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
 import { promptSaveImage } from '../utils/MediaUtils';
 import { shortenAddress } from '../utils/locationHelper';
+import { POST_BACKGROUNDS } from '../constants/postTheme';
+import { LinearGradient } from 'expo-linear-gradient';
+import PollView from './PollView';
+import HashtagText from './HashtagText';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -135,6 +139,7 @@ const PostCard = ({
   const [activeSlide, setActiveSlide] = useState(0); // Track active slide for custom pagination
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const theme = useTheme();
 
   // Extract YouTube ID from content
   const youtubeId = post.content ? getYoutubeId(post.content) : null;
@@ -226,15 +231,19 @@ const PostCard = ({
   }, [post.likes, user]);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardContent}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+      ]}>
+      <View style={[styles.cardContent, { backgroundColor: theme.colors.surface }]}>
         {/* ✅ Avatar + Username */}
         <View
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
-            paddingHorizontal: 12,
-            paddingTop: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
             alignItems: 'center',
           }}>
           <View style={styles.headerLeft}>
@@ -248,14 +257,24 @@ const PostCard = ({
               )}
             </TouchableOpacity>
             <View style={styles.userInfo}>
-              <Text style={styles.username}>{post.user.username}</Text>
+              <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+                {post.user.username}
+              </Text>
               <View style={styles.timestampContainer}>
-                <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+                <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+                  {moment(post.createdAt).fromNow()}
+                </Text>
                 {post.address ? (
                   <View style={styles.locationContainer}>
                     <Text style={styles.dot}> • </Text>
-                    <Ionicons name="location" size={12} color="#65676B" />
-                    <Text style={styles.locationText} numberOfLines={1}>
+                    <Ionicons
+                      name="location-outline"
+                      size={11}
+                      color={theme.colors.onSurfaceVariant}
+                    />
+                    <Text
+                      style={[styles.locationText, { color: theme.colors.onSurfaceVariant }]}
+                      numberOfLines={1}>
                       {shortenAddress(post.address)}
                     </Text>
                   </View>
@@ -268,7 +287,13 @@ const PostCard = ({
             <Menu
               visible={menuVisible}
               onDismiss={closeMenu}
-              anchor={<IconButton icon="dots-vertical" onPress={openMenu} />}>
+              anchor={
+                <IconButton
+                  icon="dots-horizontal"
+                  onPress={openMenu}
+                  iconColor={theme.colors.onSurfaceVariant}
+                />
+              }>
               <Menu.Item
                 onPress={() => {
                   closeMenu();
@@ -295,13 +320,99 @@ const PostCard = ({
         </View>
 
         {/* ✅ Post content */}
-        {disableNavigation ? (
-          <Text style={styles.content}>{post.content}</Text>
+        {post.background && post.background !== 'default' ? (
+          <TouchableOpacity
+            onPress={() =>
+              !disableNavigation && navigation.navigate('PostDetail', { postId: post._id, post })
+            }
+            activeOpacity={disableNavigation ? 1 : 0.8}>
+            <LinearGradient
+              colors={
+                (POST_BACKGROUNDS.find((b) => b.id === post.background)?.colors || [
+                  theme.colors.surface,
+                  theme.colors.surface,
+                ]) as any
+              }
+              style={{
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: 20,
+                paddingVertical: 50, // Even more room
+                marginBottom: 10,
+              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <HashtagText
+                style={{
+                  fontSize: post.textStyle?.fontSize || 24,
+                  lineHeight: (post.textStyle?.fontSize || 24) * 1.5, // 1.5x line height
+                  color: post.textStyle?.color || '#FFFFFF',
+                  fontWeight: post.textStyle?.fontWeight || 'bold',
+                  textAlign: 'center',
+                  includeFontPadding: false,
+                  textAlignVertical: 'center',
+                }}>
+                {post.content}
+              </HashtagText>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : disableNavigation ? (
+          <HashtagText
+            style={[
+              styles.content,
+              { color: theme.colors.onSurface },
+              post.textStyle && {
+                fontSize: post.textStyle.fontSize,
+                lineHeight: post.textStyle.fontSize * 1.2,
+                color:
+                  post.textStyle.color &&
+                  post.textStyle.color !== '#FFFFFF' &&
+                  post.textStyle.color !== '#fff' &&
+                  post.textStyle.color !== '#000000' &&
+                  post.textStyle.color !== '#000' &&
+                  !post.textStyle.color.startsWith('rgb(32, 27, 22)') // Specific fix for the user's report
+                    ? post.textStyle.color
+                    : theme.colors.onSurface,
+              },
+            ]}>
+            {post.content}
+          </HashtagText>
         ) : (
           <TouchableOpacity
             onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}>
-            <Text style={styles.content}>{post.content}</Text>
+            <HashtagText
+              style={[
+                styles.content,
+                { color: theme.colors.onSurface },
+                post.textStyle && {
+                  fontSize: post.textStyle.fontSize,
+                  lineHeight: post.textStyle.fontSize * 1.2,
+                  color:
+                    post.textStyle.color &&
+                    post.textStyle.color !== '#FFFFFF' &&
+                    post.textStyle.color !== '#fff' &&
+                    post.textStyle.color !== '#000000' &&
+                    post.textStyle.color !== '#000' &&
+                    !post.textStyle.color.startsWith('rgb(32, 27, 22)')
+                      ? post.textStyle.color
+                      : theme.colors.onSurface,
+                },
+              ]}>
+              {post.content}
+            </HashtagText>
           </TouchableOpacity>
+        )}
+
+        {/* ✅ Poll section */}
+        {post.poll_question && (
+          <View style={{ paddingHorizontal: 15 }}>
+            <PollView
+              postId={post._id}
+              question={post.poll_question}
+              options={post.poll_options}
+              onUpdate={onPostUpdate}
+            />
+          </View>
         )}
 
         {/* Media Section: Images OR YouTube Video */}
@@ -321,7 +432,18 @@ const PostCard = ({
                   const isVideo = item?.resource_type === 'video' || item?.url?.endsWith('.mp4');
 
                   if (isVideo) {
-                    return <VideoItem item={item} />;
+                    return (
+                      <View
+                        style={{
+                          borderRadius: 20,
+                          overflow: 'hidden',
+                          marginHorizontal: 16,
+                          borderWidth: 1,
+                          borderColor: theme.colors.outlineVariant + '33',
+                        }}>
+                        <VideoItem item={item} />
+                      </View>
+                    );
                   }
 
                   return item?.url ? (
@@ -331,14 +453,30 @@ const PostCard = ({
                         setViewerIndex(images.indexOf(item));
                         setViewerVisible(true);
                       }}
-                      onLongPress={() => promptSaveImage(item.url)}>
+                      onLongPress={() => promptSaveImage(item.url)}
+                      style={{ paddingHorizontal: 16 }}>
                       <Image
                         source={{ uri: item.url }}
-                        style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          resizeMode: 'cover',
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          borderColor: theme.colors.outlineVariant + '33',
+                        }}
                       />
                     </TouchableOpacity>
                   ) : (
-                    <View style={{ width: '100%', height: '100%', backgroundColor: '#eee' }} />
+                    <View
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: '#eee',
+                        borderRadius: 20,
+                        marginHorizontal: 16,
+                      }}
+                    />
                   );
                 }}
                 mode="parallax"
@@ -359,7 +497,8 @@ const PostCard = ({
                         ref.current?.scrollTo({ count: index - activeSlide, animated: true })
                       }
                       style={{
-                        backgroundColor: activeSlide === index ? 'black' : '#ccc',
+                        backgroundColor:
+                          activeSlide === index ? theme.colors.primary : theme.colors.outline,
                         width: activeSlide === index ? 10 : 8,
                         height: activeSlide === index ? 10 : 8,
                         borderRadius: 5,
@@ -412,31 +551,35 @@ const PostCard = ({
         ) : null}
 
         {/* ✅ Like / Comment / Save */}
-        <View style={[styles.actions, { paddingHorizontal: 12 }]}>
+        <View style={styles.actions}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <TouchableOpacity onPress={isLiked ? handleUnlike : handleLike}>
-              <Text style={{ fontSize: 16 }}>{isLiked ? '❤️ Unlike' : '🤍 Like'}</Text>
+            <TouchableOpacity
+              onPress={isLiked ? handleUnlike : handleLike}
+              style={styles.actionButton}>
+              <Ionicons
+                name={isLiked ? 'heart' : 'heart-outline'}
+                size={24}
+                color={isLiked ? theme.colors.error : theme.colors.onSurfaceVariant}
+              />
+              <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                {likes}
+              </Text>
             </TouchableOpacity>
 
-            <Text style={{ marginLeft: 10 }}>{likes} likes</Text>
-
-            <TouchableOpacity
-              onPress={() => onOpenComments(post)}
-              style={styles.viewCommentsButton}>
-              <Text style={styles.viewCommentsText}>
-                💬 {comments.length} comment{comments.length !== 1 ? 's' : ''}
+            <TouchableOpacity onPress={() => onOpenComments(post)} style={styles.actionButton}>
+              <Ionicons name="chatbubble-outline" size={22} color={theme.colors.onSurfaceVariant} />
+              <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                {comments.length}
               </Text>
             </TouchableOpacity>
           </View>
 
           {post.user?._id !== user?._id && (
-            <TouchableOpacity
-              onPress={handleToggleSave}
-              style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={handleToggleSave} style={styles.iconButton}>
               <Ionicons
                 name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                size={20}
-                color={isSaved ? 'red' : 'black'}
+                size={22}
+                color={isSaved ? theme.colors.primary : theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
           )}
@@ -449,7 +592,14 @@ const PostCard = ({
               console.log('📣 onOpenComments called for post:', post._id);
               onOpenComments(post);
             }}
-            style={[styles.commentCard, { paddingHorizontal: 12, paddingBottom: 12 }]}>
+            style={[
+              styles.commentCard,
+              {
+                paddingHorizontal: 12,
+                paddingBottom: 12,
+                borderTopColor: theme.colors.outlineVariant,
+              },
+            ]}>
             <View style={styles.commentRow}>
               {firstComment.user.avatar &&
               typeof firstComment.user.avatar === 'string' &&
@@ -459,14 +609,21 @@ const PostCard = ({
                 <Avatar.Icon size={30} icon="account" />
               )}
               <View style={{ marginLeft: 8, flex: 1 }}>
-                <Text style={styles.commentUsername}>{firstComment.user.username}</Text>
-                <Text numberOfLines={1}>{firstComment.content}</Text>
+                <Text style={[styles.commentUsername, { color: theme.colors.onSurface }]}>
+                  {firstComment.user.username}
+                </Text>
+                <Text numberOfLines={1} style={{ color: theme.colors.onSurface }}>
+                  {firstComment.content}
+                </Text>
                 <View style={styles.commentMeta}>
-                  <Text style={styles.commentMetaText}>
+                  <Text style={[styles.commentMetaText, { color: theme.colors.onSurfaceVariant }]}>
                     {moment(firstComment.createdAt).fromNow()}
                   </Text>
-                  <Text style={styles.commentMetaText}> • </Text>
-                  <Text style={styles.commentMetaText}>
+                  <Text style={[styles.commentMetaText, { color: theme.colors.onSurfaceVariant }]}>
+                    {' '}
+                    •{' '}
+                  </Text>
+                  <Text style={[styles.commentMetaText, { color: theme.colors.onSurfaceVariant }]}>
                     {firstComment.likes.length} like
                     {firstComment.likes.length !== 1 ? 's' : ''}
                   </Text>
@@ -493,20 +650,19 @@ export default PostCard;
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 10, // Increased margin to prevent visual overlap
-    marginHorizontal: 12,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    marginVertical: 10,
+    marginHorizontal: 16,
+    borderRadius: 28, // Expressive roundness
+    borderWidth: 1, // Subtle border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardContent: {
-    borderRadius: 16,
-    overflow: 'hidden', // Inner container clips the content
-    backgroundColor: '#fff', // Ensure solid background to hide anything behind
+    borderRadius: 28,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -519,21 +675,19 @@ const styles = StyleSheet.create({
   },
 
   userInfo: {
-    marginLeft: 10,
+    marginLeft: 12,
     justifyContent: 'center',
   },
   username: {
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#050505',
+    fontSize: 15,
   },
   timestampContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   timestamp: {
-    fontSize: 12,
-    color: '#888',
+    fontSize: 11,
     marginTop: 2,
   },
   locationContainer: {
@@ -542,36 +696,50 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: '#888',
     marginLeft: 2,
     marginTop: 2,
   },
   dot: {
     fontSize: 12,
-    color: '#888',
     marginTop: 2,
   },
   content: {
     fontSize: 15,
+    lineHeight: 22,
     marginBottom: 10,
-    paddingHorizontal: 12, // Added local padding
+    paddingHorizontal: 16,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  actionCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  iconButton: {
+    padding: 4,
   },
   viewCommentsButton: {
     marginLeft: 20,
   },
   viewCommentsText: {
     fontSize: 14,
-    color: '#555',
   },
   commentCard: {
     paddingTop: 10,
     borderTopWidth: 1,
-    borderColor: '#eee',
   },
   commentRow: {
     flexDirection: 'row',
@@ -586,6 +754,5 @@ const styles = StyleSheet.create({
   },
   commentMetaText: {
     fontSize: 12,
-    color: '#888',
   },
 });
