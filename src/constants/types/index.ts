@@ -1,6 +1,6 @@
 import i18n from 'i18n-js';
-import {ImageSourcePropType} from 'react-native';
-import {ITheme} from './theme';
+import { ImageSourcePropType } from 'react-native';
+import { ITheme } from './theme';
 
 export * from './components';
 export * from './theme';
@@ -10,8 +10,8 @@ export interface IUser {
   name?: string;
   department?: string;
   avatar?: string;
-  stats?: {posts?: number; followers?: number; following?: number};
-  social?: {twitter?: string; dribbble?: string};
+  stats?: { posts?: number; followers?: number; following?: number };
+  social?: { twitter?: string; dribbble?: string };
   about?: string;
 }
 
@@ -24,7 +24,7 @@ export interface IArticleOptions {
   title?: string;
   description?: string;
   type?: 'room' | 'apartment' | 'house'; // private room | entire apartment | entire house
-  sleeping?: {total?: number; type?: 'sofa' | 'bed'};
+  sleeping?: { total?: number; type?: 'sofa' | 'bed' };
   guests?: number;
   price?: number;
   user?: IUser;
@@ -64,26 +64,20 @@ export interface IUseData {
   handleIsDark: (isDark?: boolean) => void;
   theme: ITheme;
   setTheme: (theme?: ITheme) => void;
-  user: IUser;
-  users: IUser[];
-  handleUser: (data?: IUser) => void;
-  handleUsers: (data?: IUser[]) => void;
-  basket: IBasket;
-  handleBasket: (data?: IBasket) => void;
-  following: IProduct[];
-  setFollowing: (data?: IProduct[]) => void;
-  trending: IProduct[];
-  setTrending: (data?: IProduct[]) => void;
-  categories: ICategory[];
-  setCategories: (data?: ICategory[]) => void;
-  recommendations: IArticle[];
-  setRecommendations: (data?: IArticle[]) => void;
-  articles: IArticle[];
-  setArticles: (data?: IArticle[]) => void;
-  article: IArticle;
-  handleArticle: (data?: IArticle) => void;
-  notifications: INotification[];
-  handleNotifications: (data?: INotification[]) => void;
+  user: any;
+  themeColor: string;
+  setThemeColor: (color: string) => void;
+  userData: any;
+  setUserData: (data: any) => void;
+  userID: string | null;
+  setUserID: (id: string | null) => void;
+  token: string | null;
+  setToken: (token: string | null) => void;
+  avatar: string | null;
+  setAvatar: (avatar: string | null) => void;
+  fullName: string | null;
+  setFullName: (name: string | null) => void;
+  themeLoaded: boolean;
 }
 
 export interface ITranslate {
@@ -131,12 +125,5 @@ export interface INotification {
   read?: boolean;
   business?: boolean;
   createdAt?: number | Date;
-  type:
-    | 'document'
-    | 'documentation'
-    | 'payment'
-    | 'notification'
-    | 'profile'
-    | 'extras'
-    | 'office';
+  type: 'document' | 'documentation' | 'payment' | 'notification' | 'profile' | 'extras' | 'office';
 }
