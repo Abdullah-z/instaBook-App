@@ -50,6 +50,10 @@ export const createPostAPI = async (post: {
   postType?: 'feed' | 'story' | 'both';
   address?: string;
   location?: { type: string; coordinates: number[] };
+  background?: string;
+  textStyle?: { fontSize: number; color: string; fontWeight: string };
+  poll_question?: string;
+  poll_options?: { text: string }[];
 }) => {
   const res = await API.post('/posts', post); // endpoint must be `/posts`
   return res.data;
@@ -67,6 +71,10 @@ export const updatePostAPI = async (
     images: any[];
     address?: string;
     location?: { type: string; coordinates: number[] };
+    background?: string;
+    textStyle?: { fontSize: number; color: string; fontWeight: string };
+    poll_question?: string;
+    poll_options?: { text: string }[];
   }
 ) => {
   const res = await API.patch(`/post/${postId}`, updatedData);
@@ -74,5 +82,15 @@ export const updatePostAPI = async (
 };
 export const getPostAPI = async (postId: string) => {
   const res = await API.get(`/post/${postId}`);
+  return res.data;
+};
+
+export const votePollAPI = async (postId: string, optionIndex: number) => {
+  const res = await API.patch(`/post/${postId}/vote`, { optionIndex });
+  return res.data;
+};
+
+export const searchPostAPI = async (query: string) => {
+  const res = await API.get(`/search_post?content=${encodeURIComponent(query)}`);
   return res.data;
 };
