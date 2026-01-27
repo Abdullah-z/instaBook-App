@@ -2,6 +2,9 @@ import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import Animated from 'react-native-reanimated';
 import { View, Text, Image, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from 'react-native-paper';
+import { POST_BACKGROUNDS } from '../../constants/postTheme';
 
 const windowWidth = Dimensions.get('window').width;
 const imageSize = windowWidth / 3;
@@ -9,6 +12,7 @@ const imageSize = windowWidth / 3;
 interface PostGridProps {
   posts: any[];
   onLoadMore?: () => void;
+  isLoading?: boolean;
   isLoadingMore?: boolean;
   loadMoreVisible?: boolean;
   scrollEnabled?: boolean;
@@ -26,6 +30,7 @@ const getYoutubeId = (url: string) => {
 const PostGrid = ({
   posts,
   onLoadMore,
+  isLoading,
   isLoadingMore,
   loadMoreVisible,
   scrollEnabled = true,
@@ -34,6 +39,7 @@ const PostGrid = ({
   contentContainerStyle,
 }: PostGridProps) => {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
 
   return (
     <Animated.FlatList
@@ -50,12 +56,46 @@ const PostGrid = ({
           isNativeVideo =
             item.images[0].resource_type === 'video' || item.images[0].url.endsWith('.mp4');
 
-          // If it's a Cloudinary video, we can get a thumbnail by changing the extension
           if (isNativeVideo && imageUrl.includes('cloudinary.com')) {
             imageUrl = imageUrl.replace(/\.[^/.]+$/, '.jpg');
           }
         } else if (youtubeId) {
           imageUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+        }
+
+        if (!item.images?.[0]?.url && !youtubeId) {
+          const bgColors =
+            item.background && item.background !== 'default'
+              ? POST_BACKGROUNDS.find((b) => b.id === item.background)?.colors || ['#ccc', '#ccc']
+              : ['#ffffff', '#ffffff'];
+          return (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PostDetail', { postId: item._id, post: item })}>
+              <LinearGradient
+                colors={bgColors as any}
+                style={{
+                  width: imageSize,
+                  height: imageSize,
+                  margin: 0.5,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  padding: 8,
+                }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <Text
+                  numberOfLines={4}
+                  style={{
+                    color: item.textStyle?.color || '#fff',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                  }}>
+                  {item.content}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
         }
 
         const isVideo = isNativeVideo || youtubeId;
@@ -94,27 +134,37 @@ const PostGrid = ({
       onScroll={onScroll}
       contentContainerStyle={contentContainerStyle}
       scrollEnabled={scrollEnabled}
+      ListEmptyComponent={() => (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          {isLoading ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          ) : (
+            <Text style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+              No posts yet
+            </Text>
+          )}
+        </View>
+      )}
       ListFooterComponent={() => (
         <View style={{ padding: 20 }}>
-          {posts && posts.length === 0 && (
-            <Text style={{ textAlign: 'center', marginVertical: 20 }}>No posts yet</Text>
-          )}
-          {isLoadingMore ? (
-            <ActivityIndicator />
-          ) : loadMoreVisible ? (
-            <TouchableOpacity
-              onPress={onLoadMore}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                borderWidth: 1,
-                borderColor: '#17a2b8',
-                borderRadius: 5,
-                alignSelf: 'center',
-              }}>
-              <Text style={{ color: '#17a2b8', fontWeight: 'bold' }}>Load more.</Text>
-            </TouchableOpacity>
-          ) : null}
+          {loadMoreVisible &&
+            !isLoading &&
+            (isLoadingMore ? (
+              <ActivityIndicator color={theme.colors.primary} />
+            ) : (
+              <TouchableOpacity
+                onPress={onLoadMore}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderWidth: 1,
+                  borderColor: theme.colors.primary,
+                  borderRadius: 20,
+                  alignSelf: 'center',
+                }}>
+                <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Load more</Text>
+              </TouchableOpacity>
+            ))}
         </View>
       )}
     />
