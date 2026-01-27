@@ -11,7 +11,14 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { TextInput, Button, Text, HelperText, SegmentedButtons } from 'react-native-paper';
+import {
+  TextInput,
+  Button,
+  Text,
+  HelperText,
+  SegmentedButtons,
+  useTheme,
+} from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,6 +32,7 @@ import { getRobustLocation } from '../utils/locationHelper';
 
 const CreateListingScreen = () => {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
   const route = useRoute<any>();
   const editListing = route.params?.editListing;
   const { token } = useContext(AuthContext);
@@ -189,56 +197,75 @@ const CreateListingScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}>
+      style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>What are you selling?</Text>
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>What are you selling?</Text>
 
         <View style={styles.imageSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
-              <Ionicons name="camera-outline" size={32} color="#888" />
-              <Text style={styles.addImageText}>Add Photos</Text>
+            <TouchableOpacity
+              style={[styles.addImageBtn, { borderColor: theme.colors.outlineVariant }]}
+              onPress={pickImage}>
+              <Ionicons name="camera-outline" size={32} color={theme.colors.onSurfaceVariant} />
+              <Text style={[styles.addImageText, { color: theme.colors.onSurfaceVariant }]}>
+                Add Photos
+              </Text>
             </TouchableOpacity>
             {images.map((img, index) => (
               <View key={index} style={styles.imageWrapper}>
                 <Image source={{ uri: img.uri }} style={styles.previewImage} />
-                <TouchableOpacity style={styles.removeBtn} onPress={() => removeImage(index)}>
-                  <Ionicons name="close-circle" size={24} color="red" />
+                <TouchableOpacity
+                  style={[styles.removeBtn, { backgroundColor: theme.colors.surface }]}
+                  onPress={() => removeImage(index)}>
+                  <Ionicons name="close-circle" size={24} color={theme.colors.error} />
                 </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
-          <HelperText type="info">Select up to 5 photos. First photo is your cover.</HelperText>
+          <HelperText type="info" style={{ color: theme.colors.onSurfaceVariant }}>
+            Select up to 5 photos. First photo is your cover.
+          </HelperText>
         </View>
 
         <TextInput
           label="Item Name"
           value={listing.name}
           onChangeText={(text) => setListing({ ...listing, name: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
           mode="outlined"
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
         />
 
         <TextInput
           label="Description"
           value={listing.description}
           onChangeText={(text) => setListing({ ...listing, description: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
           multiline
           numberOfLines={4}
           mode="outlined"
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
         />
 
         <TextInput
           label="Price ($)"
           value={listing.price}
           onChangeText={(text) => setListing({ ...listing, price: text.replace(/[^0-9.]/g, '') })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
           keyboardType="numeric"
           mode="outlined"
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
         />
 
-        <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Listing Type</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 10, color: theme.colors.onSurface }]}>
+          Listing Type
+        </Text>
         <SegmentedButtons
           value={listing.listingType}
           onValueChange={(value) => setListing({ ...listing, listingType: value })}
@@ -252,7 +279,9 @@ const CreateListingScreen = () => {
 
         {(listing.listingType === 'Bid' || listing.listingType === 'Both') && (
           <View style={styles.input}>
-            <Text style={styles.sectionTitle}>Auction End Time</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Auction End Time
+            </Text>
             <Button
               mode="outlined"
               onPress={() => {
@@ -260,7 +289,8 @@ const CreateListingScreen = () => {
                 setShowDatePicker(true);
               }}
               icon="calendar"
-              style={{ marginBottom: 10 }}>
+              style={{ marginBottom: 10, borderColor: theme.colors.outline }}
+              textColor={theme.colors.onSurface}>
               {new Date(listing.bidEndTime).toLocaleString()}
             </Button>
 
@@ -311,10 +341,16 @@ const CreateListingScreen = () => {
                 visible={showDatePicker}
                 onRequestClose={() => setShowDatePicker(false)}>
                 <View style={styles.modalOverlay}>
-                  <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
+                  <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+                    <View
+                      style={[
+                        styles.modalHeader,
+                        { borderBottomColor: theme.colors.outlineVariant },
+                      ]}>
                       <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                        <Text style={styles.doneButton}>Done</Text>
+                        <Text style={[styles.doneButton, { color: theme.colors.primary }]}>
+                          Done
+                        </Text>
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
@@ -360,9 +396,12 @@ const CreateListingScreen = () => {
           label="Phone Number"
           value={listing.phone}
           onChangeText={(text) => setListing({ ...listing, phone: text })}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
           keyboardType="phone-pad"
           mode="outlined"
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
         />
 
         <Button
@@ -371,8 +410,8 @@ const CreateListingScreen = () => {
           loading={loading || uploadingImages}
           disabled={loading || uploadingImages}
           style={styles.submitBtn}
-          buttonColor="#D4F637"
-          textColor="#000">
+          buttonColor={theme.colors.primary}
+          textColor={theme.colors.onPrimary}>
           Post Listing
         </Button>
       </ScrollView>
@@ -383,7 +422,6 @@ const CreateListingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 20,
   },
   title: {
@@ -434,7 +472,6 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 15,
-    backgroundColor: '#fff',
   },
   submitBtn: {
     marginTop: 10,
@@ -448,7 +485,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
@@ -458,7 +494,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
   },
   doneButton: {
     fontSize: 17,
