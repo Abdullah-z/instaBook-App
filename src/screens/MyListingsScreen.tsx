@@ -15,13 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getMyListingsAPI, deleteListingAPI } from '../api/listingAPI';
 import moment from 'moment';
-import { Button } from 'react-native-paper';
+import { Button, useTheme } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 40) / 2;
 
 const MyListingsScreen = () => {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,19 +70,28 @@ const MyListingsScreen = () => {
 
   const renderListingItem = ({ item }: { item: any }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+      ]}
       onPress={() => navigation.navigate('ListingDetail', { id: item._id })}>
-      <Image source={{ uri: item.images[0] }} style={styles.cardImage} />
+      <Image
+        source={{ uri: item.images[0] }}
+        style={[styles.cardImage, { backgroundColor: theme.colors.surfaceVariant }]}
+      />
       <View style={styles.cardContent}>
-        <Text style={styles.cardPrice}>${item.price}</Text>
-        <Text style={styles.cardName} numberOfLines={1}>
+        <Text style={[styles.cardPrice, { color: theme.colors.primary }]}>${item.price}</Text>
+        <Text style={[styles.cardName, { color: theme.colors.onSurface }]} numberOfLines={1}>
           {item.name}
         </Text>
         <View
-          style={[styles.statusBadge, { backgroundColor: item.isSold ? '#ff4444' : '#44bb44' }]}>
+          style={[
+            styles.statusBadge,
+            { backgroundColor: item.isSold ? theme.colors.error : theme.colors.primary },
+          ]}>
           <Text style={styles.statusText}>{item.isSold ? 'SOLD' : 'AVAILABLE'}</Text>
         </View>
-        <Text style={{ fontSize: 10, color: '#666', marginTop: 4 }}>
+        <Text style={{ fontSize: 10, color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
           {moment(item.createdAt).format('MMM D, YYYY')}
           {'\n'}
           {moment(item.createdAt).format('h:mm A')}
@@ -89,7 +99,7 @@ const MyListingsScreen = () => {
         <View style={styles.cardActions}>
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateListing', { editListing: item })}>
-            <Ionicons name="create-outline" size={20} color="#333" />
+            <Ionicons name="create-outline" size={20} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleDelete(item._id)}>
             <Ionicons name="trash-outline" size={20} color="red" />
@@ -100,10 +110,10 @@ const MyListingsScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#D4F637" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -115,14 +125,16 @@ const MyListingsScreen = () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="cart-outline" size={80} color="#ccc" />
-              <Text style={styles.emptyText}>You haven't listed anything yet</Text>
+              <Ionicons name="cart-outline" size={80} color={theme.colors.outline} />
+              <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                You haven't listed anything yet
+              </Text>
               <Button
                 mode="contained"
                 onPress={() => navigation.navigate('CreateListing')}
                 style={{ marginTop: 20 }}
-                buttonColor="#D4F637"
-                textColor="#000">
+                buttonColor={theme.colors.primary}
+                textColor={theme.colors.onPrimary}>
                 Start Selling
               </Button>
             </View>
@@ -136,7 +148,6 @@ const MyListingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   listContent: {
     padding: 10,
@@ -144,11 +155,9 @@ const styles = StyleSheet.create({
   card: {
     width: COLUMN_WIDTH,
     margin: 5,
-    backgroundColor: '#fff',
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#eee',
   },
   cardImage: {
     width: '100%',
@@ -165,7 +174,6 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 14,
-    color: '#333',
     marginTop: 2,
   },
   statusBadge: {
