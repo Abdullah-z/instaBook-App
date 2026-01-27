@@ -1,11 +1,12 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, Linking, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Avatar } from 'react-native-paper';
+import { View, Text, TouchableOpacity, Linking, Image, Modal } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { Avatar, useTheme } from 'react-native-paper';
 import { followUserAPI, unfollowUserAPI } from '../../api/profileAPI';
 import { AuthContext } from '../../auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import EditProfileModal from './EditProfileModal';
+import ThemeSwitcher from '../ThemeSwitcher';
 
 const ProfileHeader = ({
   profile,
@@ -20,12 +21,14 @@ const ProfileHeader = ({
 }) => {
   const { user, logout } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  const theme = useTheme();
   console.log(profile);
   const [isFollowing, setIsFollowing] = useState(
     user ? profile.followers?.some((f: any) => f._id === user._id) : false
   );
   const [followerCount, setFollowerCount] = useState(profile.followers?.length || 0);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   const handleFollowToggle = async () => {
     try {
@@ -50,155 +53,274 @@ const ProfileHeader = ({
   };
 
   return (
-    <View style={{ backgroundColor: '#fff', paddingBottom: 20 }}>
-      {/* Profile Info Container */}
-      <View style={{ alignItems: 'center', marginTop: -50 }}>
-        {/* Avatar with Border */}
+    <View style={{ backgroundColor: theme.colors.surface, paddingBottom: 20 }}>
+      {/* Avatar Section */}
+      <View style={{ paddingHorizontal: 20, marginTop: -60, alignItems: 'center' }}>
         <View
           style={{
             padding: 4,
-            backgroundColor: '#fff',
-            borderRadius: 75,
-            elevation: 5,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 70,
+            elevation: 8,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 10,
           }}>
-          <Avatar.Image size={120} source={{ uri: profile.avatar }} />
-        </View>
-
-        {/* Name and Bio */}
-        <Text style={{ fontSize: 24, fontWeight: 'bold', marginTop: 10, color: '#333' }}>
-          {profile.fullname}
-        </Text>
-        <Text style={{ color: '#666', marginTop: 4, textAlign: 'center', paddingHorizontal: 20 }}>
-          {'@' + profile.username + ' \n' + profile.story}
-        </Text>
-        {profile.address && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-            <Ionicons name="location-outline" size={14} color="#888" />
-            <Text style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>{profile.address}</Text>
-          </View>
-        )}
-
-        {/* Stats Row */}
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            width: '100%',
-            marginTop: 20,
-            paddingHorizontal: 20,
-          }}>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>{postCount}</Text>
-            <Text style={{ fontSize: 12, color: '#888', textTransform: 'uppercase' }}>Posts</Text>
-          </View>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>{followerCount}</Text>
-            <Text style={{ fontSize: 12, color: '#888', textTransform: 'uppercase' }}>
-              Followers
-            </Text>
-          </View>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>
-              {profile.following?.length || 0}
-            </Text>
-            <Text style={{ fontSize: 12, color: '#888', textTransform: 'uppercase' }}>
-              Following
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={{ flexDirection: 'row', marginTop: 20, gap: 15 }}>
-          {isOwner ? (
-            <>
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                style={{
-                  backgroundColor: '#D4F637',
-                  paddingVertical: 10,
-                  paddingHorizontal: 30,
-                  borderRadius: 25,
-                  elevation: 2,
-                }}>
-                <Text style={{ color: '#000', fontWeight: 'bold' }}>Edit Profile</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={logout}
-                style={{
-                  backgroundColor: '#ff4444',
-                  paddingVertical: 10,
-                  paddingHorizontal: 30,
-                  borderRadius: 25,
-                  elevation: 2,
-                }}>
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Logout</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity
-                onPress={handleFollowToggle}
-                style={{
-                  backgroundColor: isFollowing ? '#ccc' : '#D4F637',
-                  paddingVertical: 10,
-                  paddingHorizontal: 30,
-                  borderRadius: 25,
-                  elevation: 2,
-                  minWidth: 120,
-                  alignItems: 'center',
-                }}>
-                <Text style={{ color: isFollowing ? '#fff' : '#000', fontWeight: 'bold' }}>
-                  {isFollowing ? 'Unfollow' : 'Follow'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('Chat', {
-                    userId: profile._id,
-                    username: profile.username,
-                  })
-                }
-                style={{
-                  backgroundColor: '#fff',
-                  borderWidth: 1,
-                  borderColor: '#ccc',
-                  paddingVertical: 10,
-                  paddingHorizontal: 15,
-                  borderRadius: 25,
-                  elevation: 0,
-                  alignItems: 'center',
-                }}>
-                <Ionicons name="mail-outline" size={20} color="black" />
-              </TouchableOpacity>
-            </>
-          )}
-
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('UserPostMap', {
-                targetUserId: profile._id,
-              })
-            }
+          <Image
+            source={{ uri: profile.avatar }}
             style={{
-              backgroundColor: '#fff',
-              borderWidth: 1,
-              borderColor: '#ccc',
-              paddingVertical: 10,
-              paddingHorizontal: 15,
-              borderRadius: 25,
-              elevation: 0,
-              alignItems: 'center',
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              borderWidth: 4,
+              borderColor: '#000',
+            }}
+          />
+        </View>
+
+        <View style={{ marginTop: 16, alignItems: 'center' }}>
+          <Text
+            style={{
+              fontSize: 26,
+              fontWeight: 'bold',
+              color: theme.colors.onSurface,
+              marginTop: 12,
             }}>
-            <Ionicons name="location-outline" size={20} color="black" />
-          </TouchableOpacity>
+            {profile.fullname}
+          </Text>
+          <Text style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 15 }}>
+            {'@' + profile.username}
+          </Text>
+          <Text
+            style={{
+              color: theme.colors.onSurface,
+              marginTop: 8,
+              textAlign: 'center',
+              paddingHorizontal: 30,
+              fontSize: 14,
+              lineHeight: 20,
+            }}>
+            {profile.story}
+          </Text>
+
+          {profile.address && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <Ionicons name="location-outline" size={14} color={theme.colors.onSurfaceVariant} />
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, marginLeft: 4 }}>
+                {profile.address}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
+
+      {/* Stats Row */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          width: '100%',
+          marginTop: 32,
+          paddingHorizontal: 20,
+        }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+            {postCount}
+          </Text>
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: theme.colors.onSurfaceVariant,
+              textTransform: 'uppercase',
+              letterSpacing: 1.5,
+            }}>
+            Posts
+          </Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+            {followerCount}
+          </Text>
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: theme.colors.onSurfaceVariant,
+              textTransform: 'uppercase',
+              letterSpacing: 1.5,
+            }}>
+            Followers
+          </Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+            {profile.following?.length || 0}
+          </Text>
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: theme.colors.onSurfaceVariant,
+              textTransform: 'uppercase',
+              letterSpacing: 1.5,
+            }}>
+            Following
+          </Text>
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={{ flexDirection: 'row', marginTop: 32, paddingHorizontal: 20, gap: 10 }}>
+        {isOwner ? (
+          <>
+            <TouchableOpacity
+              onPress={() => setShowEditModal(true)}
+              style={{
+                flex: 1,
+                backgroundColor: theme.colors.primary,
+                paddingVertical: 12,
+                borderRadius: 30,
+                alignItems: 'center',
+                elevation: 2,
+              }}>
+              <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 14 }}>
+                Edit Profile
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={logout}
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(255, 68, 68, 0.1)',
+                paddingVertical: 12,
+                borderRadius: 30,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 68, 68, 0.2)',
+              }}>
+              <Text style={{ color: '#ff4444', fontWeight: 'bold', fontSize: 14 }}>Logout</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={handleFollowToggle}
+              style={{
+                flex: 1,
+                backgroundColor: isFollowing ? theme.colors.surfaceVariant : theme.colors.primary,
+                paddingVertical: 12,
+                borderRadius: 30,
+                alignItems: 'center',
+                elevation: 2,
+              }}>
+              <Text
+                style={{
+                  color: isFollowing ? theme.colors.onSurfaceVariant : theme.colors.onPrimary,
+                  fontWeight: 'bold',
+                  fontSize: 14,
+                }}>
+                {isFollowing ? 'Unfollow' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('Chat', {
+                  userId: profile._id,
+                  username: profile.username,
+                })
+              }
+              style={{
+                padding: 12,
+                backgroundColor: theme.colors.surface,
+                borderWidth: 1,
+                borderColor: theme.colors.outlineVariant,
+                borderRadius: 30,
+                alignItems: 'center',
+              }}>
+              <Ionicons name="mail-outline" size={22} color={theme.colors.onSurface} />
+            </TouchableOpacity>
+          </>
+        )}
+
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate('UserPostMap', {
+              targetUserId: profile._id,
+            })
+          }
+          style={{
+            padding: 12,
+            backgroundColor: theme.colors.surface,
+            borderWidth: 1,
+            borderColor: theme.colors.outlineVariant,
+            borderRadius: 30,
+            alignItems: 'center',
+          }}>
+          <Ionicons name="location-outline" size={22} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+
+        {isOwner && (
+          <TouchableOpacity
+            onPress={() => setShowThemeModal(true)}
+            style={{
+              padding: 12,
+              backgroundColor: theme.colors.surface,
+              borderWidth: 1,
+              borderColor: theme.colors.outlineVariant,
+              borderRadius: 30,
+              alignItems: 'center',
+            }}>
+            <Ionicons name="color-palette-outline" size={22} color={theme.colors.onSurface} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Theme Switching Modal */}
+      <Modal
+        visible={showThemeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemeModal(false)}>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowThemeModal(false)}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              width: '85%',
+              backgroundColor: theme.colors.surface,
+              borderRadius: 20,
+              padding: 24,
+              elevation: 5,
+            }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 20,
+              }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                Appearance
+              </Text>
+              <TouchableOpacity onPress={() => setShowThemeModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+            <ThemeSwitcher />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Profile Modal */}
       {isOwner && (
