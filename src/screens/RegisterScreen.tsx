@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, RadioButton } from 'react-native-paper';
+import { TextInput, Button, RadioButton, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 
@@ -14,6 +14,7 @@ const RegisterScreen = () => {
   const [password, setPassword] = useState('');
   const [gender, setGender] = useState('male');
   const [loading, setLoading] = useState(false);
+  const theme = useTheme();
 
   const handleRegister = async () => {
     if (!fullname || !username || !email || !password) {
@@ -33,7 +34,8 @@ const RegisterScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>←</Text>
@@ -41,16 +43,21 @@ const RegisterScreen = () => {
       </View> */}
 
       <View style={styles.formContainer}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Pipel to make new friends!</Text>
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>Create Account</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+          Join Pipel to make new friends!
+        </Text>
 
         <TextInput
           label="Full Name"
           value={fullname}
           onChangeText={setFullname}
           mode="outlined"
-          style={styles.input}
-          theme={{ colors: { primary: '#000', outline: '#ccc' } }}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
+          contentStyle={{ height: 50 }}
         />
 
         <TextInput
@@ -59,8 +66,11 @@ const RegisterScreen = () => {
           onChangeText={setUsername}
           mode="outlined"
           autoCapitalize="none"
-          style={styles.input}
-          theme={{ colors: { primary: '#000', outline: '#ccc' } }}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
+          contentStyle={{ height: 50 }}
         />
 
         <TextInput
@@ -70,8 +80,11 @@ const RegisterScreen = () => {
           mode="outlined"
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
-          theme={{ colors: { primary: '#000', outline: '#ccc' } }}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
+          contentStyle={{ height: 50 }}
         />
 
         <TextInput
@@ -80,25 +93,28 @@ const RegisterScreen = () => {
           onChangeText={setPassword}
           mode="outlined"
           secureTextEntry
-          style={styles.input}
-          theme={{ colors: { primary: '#000', outline: '#ccc' } }}
+          style={[styles.input, { backgroundColor: theme.colors.surface }]}
+          outlineColor={theme.colors.outline}
+          activeOutlineColor={theme.colors.primary}
+          textColor={theme.colors.onSurface}
+          contentStyle={{ height: 50 }}
         />
 
         <View style={styles.genderContainer}>
-          <Text style={styles.genderLabel}>Gender:</Text>
+          <Text style={[styles.genderLabel, { color: theme.colors.onSurface }]}>Gender:</Text>
           <RadioButton.Group onValueChange={(newValue) => setGender(newValue)} value={gender}>
             <View style={styles.radioRow}>
               <View style={styles.radioItem}>
-                <RadioButton value="male" color="#D4F637" />
-                <Text>Male</Text>
+                <RadioButton value="male" color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.onSurface }}>Male</Text>
               </View>
               <View style={styles.radioItem}>
-                <RadioButton value="female" color="#D4F637" />
-                <Text>Female</Text>
+                <RadioButton value="female" color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.onSurface }}>Female</Text>
               </View>
               <View style={styles.radioItem}>
-                <RadioButton value="other" color="#D4F637" />
-                <Text>Other</Text>
+                <RadioButton value="other" color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.onSurface }}>Other</Text>
               </View>
             </View>
           </RadioButton.Group>
@@ -108,15 +124,15 @@ const RegisterScreen = () => {
           mode="contained"
           onPress={handleRegister}
           loading={loading}
-          style={styles.button}
-          labelStyle={styles.buttonLabel}>
+          style={[styles.button, { backgroundColor: theme.colors.primary }]}
+          labelStyle={[styles.buttonLabel, { color: theme.colors.onPrimary }]}>
           Register
         </Button>
 
         <View style={styles.footer}>
-          <Text>Already have an account? </Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.link}>Login</Text>
+            <Text style={[styles.link, { color: theme.colors.primary }]}>Login</Text>
           </TouchableOpacity>
         </View>
       </View>
