@@ -2,7 +2,7 @@ import API from './axios';
 
 export const getProfileUser = async (id: string) => {
   const userRes = await API.get(`/user/${id}`);
-  const postsRes = await API.get(`/user_posts/${id}`);
+  const postsRes = await API.get(`/user_posts/${id}?media_type=media`);
 
   return {
     user: userRes.data.user,
@@ -12,8 +12,10 @@ export const getProfileUser = async (id: string) => {
   };
 };
 
-export const getUserPosts = async (id: string, page: number = 1) => {
-  const res = await API.get(`/user_posts/${id}?page=${page}&limit=9`);
+export const getUserPosts = async (id: string, page: number = 1, mediaType?: 'text' | 'media') => {
+  let url = `/user_posts/${id}?page=${page}&limit=9`;
+  if (mediaType) url += `&media_type=${mediaType}`;
+  const res = await API.get(url);
   return res.data;
 };
 
