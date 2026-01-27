@@ -11,13 +11,15 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { searchUser } from '../api/userAPI';
 import { createGroupAPI } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
 
 const CreateGroupScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
 
   const [groupName, setGroupName] = useState('');
@@ -35,7 +37,7 @@ const CreateGroupScreen = () => {
         const res = await searchUser(text);
         // Filter out self and already selected users from results
         const filtered = res.users.filter(
-          (u: any) => u._id !== user._id && !selectedUsers.find((sel) => sel._id === u._id)
+          (u: any) => user && u._id !== user._id && !selectedUsers.find((sel) => sel._id === u._id)
         );
         setSearchResults(filtered);
       } catch (err) {
@@ -93,21 +95,26 @@ const CreateGroupScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant },
+        ]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Group</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>New Group</Text>
         <TouchableOpacity
           onPress={handleCreateGroup}
           disabled={creating || !groupName || selectedUsers.length < 2}>
           {creating ? (
-            <ActivityIndicator size="small" color="#D4F637" />
+            <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : (
             <Text
               style={[
                 styles.createBtn,
+                { color: theme.colors.onPrimary, backgroundColor: theme.colors.primary },
                 (!groupName || selectedUsers.length < 2) && styles.disabledBtn,
               ]}>
               Create
@@ -117,22 +124,32 @@ const CreateGroupScreen = () => {
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Group Name</Text>
+        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Group Name</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { borderBottomColor: theme.colors.outlineVariant, color: theme.colors.onSurface },
+          ]}
           placeholder="Enter group name"
+          placeholderTextColor={theme.colors.onSurfaceVariant}
           value={groupName}
           onChangeText={setGroupName}
         />
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Add Members</Text>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={20} color="#666" style={{ marginRight: 8 }} />
+        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Add Members</Text>
+        <View style={[styles.searchBox, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={theme.colors.onSurfaceVariant}
+            style={{ marginRight: 8 }}
+          />
           <TextInput
-            style={{ flex: 1 }}
+            style={{ flex: 1, color: theme.colors.onSurface }}
             placeholder="Search users..."
+            placeholderTextColor={theme.colors.onSurfaceVariant}
             value={searchQuery}
             onChangeText={handleSearch}
           />
@@ -148,11 +165,13 @@ const CreateGroupScreen = () => {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
-              <View style={styles.chip}>
+              <View style={[styles.chip, { backgroundColor: theme.colors.surfaceVariant }]}>
                 <Image source={{ uri: item.avatar }} style={styles.chipAvatar} />
-                <Text style={styles.chipText}>{item.username}</Text>
+                <Text style={[styles.chipText, { color: theme.colors.onSurface }]}>
+                  {item.username}
+                </Text>
                 <TouchableOpacity onPress={() => toggleUserSelection(item)}>
-                  <Ionicons name="close-circle" size={18} color="#666" />
+                  <Ionicons name="close-circle" size={18} color={theme.colors.onSurfaceVariant} />
                 </TouchableOpacity>
               </View>
             )}
@@ -168,11 +187,17 @@ const CreateGroupScreen = () => {
           data={searchResults}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.userItem} onPress={() => toggleUserSelection(item)}>
+            <TouchableOpacity
+              style={[styles.userItem, { borderBottomColor: theme.colors.outlineVariant }]}
+              onPress={() => toggleUserSelection(item)}>
               <Image source={{ uri: item.avatar }} style={styles.userAvatar} />
               <View>
-                <Text style={styles.username}>{item.username}</Text>
-                <Text style={styles.fullname}>{item.fullname}</Text>
+                <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+                  {item.username}
+                </Text>
+                <Text style={[styles.fullname, { color: theme.colors.onSurfaceVariant }]}>
+                  {item.fullname}
+                </Text>
               </View>
             </TouchableOpacity>
           )}
@@ -186,7 +211,6 @@ const CreateGroupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -194,8 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginTop: 20,
+    paddingTop: 40,
   },
   headerTitle: {
     fontSize: 18,
@@ -204,8 +227,6 @@ const styles = StyleSheet.create({
   createBtn: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#D4F637',
-    backgroundColor: '#000',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -221,18 +242,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#666',
   },
   input: {
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
     paddingVertical: 8,
     fontSize: 16,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 10,
   },
@@ -243,7 +261,6 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e6e6e6',
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -267,7 +284,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   userAvatar: {
     width: 40,
