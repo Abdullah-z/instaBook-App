@@ -13,6 +13,7 @@ import {
   Dimensions,
   Modal as RNModal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import ImageView from 'react-native-image-viewing';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
@@ -29,11 +30,14 @@ import { createNotification, removeNotification } from '../api/notificationAPI';
 import { SocketContext } from '../auth/SocketContext';
 import CommentDisplay from '../components/CommentDisplay';
 import InputComment from '../components/InputComment';
+import PollView from '../components/PollView';
+import { POST_BACKGROUNDS } from '../constants/postTheme';
 import { CommentType } from '../types/types';
 import { Ionicons } from '@expo/vector-icons';
+import HashtagText from '../components/HashtagText';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { useSharedValue } from 'react-native-reanimated';
-import { Avatar, Menu, IconButton } from 'react-native-paper';
+import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
@@ -51,6 +55,7 @@ const PostScreen = () => {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
+  const theme = useTheme();
 
   // RECEIVES ONLY POST ID
   const { postId } = route.params;
@@ -268,8 +273,8 @@ const PostScreen = () => {
   // SHOW LOADING
   if (loading || !post) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#D4F637" />
+      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -279,7 +284,7 @@ const PostScreen = () => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      style={styles.container}>
+      style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={{ paddingTop: 20 }}>
         {/* <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 10 }}>
@@ -309,12 +314,18 @@ const PostScreen = () => {
                   </TouchableOpacity>
                 )}
                 <View style={styles.userInfo}>
-                  <Text style={styles.username}>{post?.user?.username}</Text>
-                  <Text style={styles.timestamp}>{moment(post.createdAt).fromNow()}</Text>
+                  <Text style={[styles.username, { color: theme.colors.onSurface }]}>
+                    {post?.user?.username}
+                  </Text>
+                  <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
+                    {moment(post.createdAt).fromNow()}
+                  </Text>
                   {post.address ? (
                     <View style={styles.locationContainer}>
-                      <Ionicons name="location" size={12} color="#65676B" />
-                      <Text style={styles.locationText}>{post.address}</Text>
+                      <Ionicons name="location" size={12} color={theme.colors.onSurfaceVariant} />
+                      <Text style={[styles.locationText, { color: theme.colors.onSurfaceVariant }]}>
+                        {post.address}
+                      </Text>
                     </View>
                   ) : null}
                 </View>
@@ -349,9 +360,67 @@ const PostScreen = () => {
                 )}
               </View>
             </View>
-            <Text style={[styles.content, { paddingHorizontal: 10, marginTop: 10 }]}>
-              {post.content}
-            </Text>
+            {/* ✅ Post content */}
+            {post.background && post.background !== 'default' ? (
+              <LinearGradient
+                colors={
+                  (POST_BACKGROUNDS.find((b) => b.id === post.background)?.colors || [
+                    theme.colors.surface,
+                    theme.colors.surface,
+                  ]) as any
+                }
+                style={{
+                  minHeight: 200,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  padding: 20,
+                  marginBottom: 10,
+                }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <HashtagText
+                  style={{
+                    fontSize: post.textStyle?.fontSize || 24,
+                    color: post.textStyle?.color || '#FFFFFF',
+                    fontWeight: post.textStyle?.fontWeight || 'bold',
+                    textAlign: 'center',
+                  }}>
+                  {post.content}
+                </HashtagText>
+              </LinearGradient>
+            ) : (
+              <HashtagText
+                style={[
+                  styles.content,
+                  { paddingHorizontal: 10, marginTop: 10, color: theme.colors.onSurface },
+                  post.textStyle && {
+                    fontSize: post.textStyle.fontSize,
+                    color:
+                      post.textStyle.color &&
+                      post.textStyle.color !== '#FFFFFF' &&
+                      post.textStyle.color !== '#fff' &&
+                      post.textStyle.color !== '#000000' &&
+                      post.textStyle.color !== '#000' &&
+                      !post.textStyle.color.startsWith('rgb(32, 27, 22)')
+                        ? post.textStyle.color
+                        : theme.colors.onSurface,
+                  },
+                ]}>
+                {post.content}
+              </HashtagText>
+            )}
+
+            {/* ✅ Poll section */}
+            {post.poll_question && (
+              <View style={{ paddingHorizontal: 15 }}>
+                <PollView
+                  postId={post._id}
+                  question={post.poll_question}
+                  options={post.poll_options}
+                  onUpdate={(updatedPost: any) => setPost(updatedPost)}
+                />
+              </View>
+            )}
 
             {/* Images */}
             {images.length > 0 && (
@@ -472,12 +541,19 @@ const PostScreen = () => {
             <View style={styles.actions}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                 <TouchableOpacity onPress={handleLike}>
-                  <Text style={{ fontSize: 16 }}>{isLiked ? '❤️ Unlike' : '🤍 Like'}</Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: isLiked ? theme.colors.error : theme.colors.onSurface,
+                    }}>
+                    {isLiked ? '❤️ Unlike' : '🤍 Like'}
+                  </Text>
                 </TouchableOpacity>
 
-                <Text style={{ marginLeft: 10 }}>{likes} likes</Text>
+                <Text style={{ marginLeft: 10, color: theme.colors.onSurface }}>{likes} likes</Text>
 
-                <Text style={{ marginLeft: 20, fontSize: 14, color: '#555' }}>
+                <Text
+                  style={{ marginLeft: 20, fontSize: 14, color: theme.colors.onSurfaceVariant }}>
                   💬 {comments.length} comment{comments.length !== 1 ? 's' : ''}
                 </Text>
               </View>
@@ -489,13 +565,19 @@ const PostScreen = () => {
                   <Ionicons
                     name={isSaved ? 'bookmark' : 'bookmark-outline'}
                     size={20}
-                    color={isSaved ? 'red' : 'black'}
+                    color={isSaved ? theme.colors.primary : theme.colors.onSurface}
                   />
                 </TouchableOpacity>
               )}
             </View>
 
-            <View style={{ borderBottomWidth: 1, borderColor: '#eee', marginVertical: 10 }} />
+            <View
+              style={{
+                borderBottomWidth: 1,
+                borderColor: theme.colors.outlineVariant,
+                marginVertical: 10,
+              }}
+            />
           </View>
         )}
         renderItem={({ item }) => (
