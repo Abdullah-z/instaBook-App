@@ -29,6 +29,9 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; }
       #map { height: 100vh; width: 100vw; background: #f0f0f0; }
@@ -76,7 +79,14 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
     <script>
       var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lon}], ${zoom});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-      var markersLayer = L.layerGroup().addTo(map);
+      
+      var markersLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        animate: true
+      }).addTo(map);
+
       var markersMap = {};
 
       function updateMarkers(data) {
@@ -117,6 +127,14 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
   </body>
 </html>
 `;
+
+const getVideoThumbnail = (url: string) => {
+  if (!url) return null;
+  if (url.includes('cloudinary.com')) {
+    return url.replace(/\.[^/.]+$/, '.jpg');
+  }
+  return null;
+};
 
 const UserPostMapScreen = () => {
   const { user: currentUser } = useContext(AuthContext);
@@ -291,7 +309,41 @@ const UserPostMapScreen = () => {
               {selectedUser.postData ? (
                 <>
                   {selectedUser.postData.image && (
-                    <Image source={{ uri: selectedUser.postData.image }} style={styles.postImage} />
+                    <>
+                      {selectedUser.postData.resource_type === 'video' ||
+                      selectedUser.postData.image.endsWith('.mp4') ? (
+                        <View
+                          style={[
+                            styles.postImage,
+                            {
+                              backgroundColor: '#000',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              overflow: 'hidden',
+                            },
+                          ]}>
+                          {getVideoThumbnail(selectedUser.postData.image) && (
+                            <Image
+                              source={{
+                                uri: getVideoThumbnail(selectedUser.postData.image) as string,
+                              }}
+                              style={{ width: '100%', height: '100%', opacity: 0.7 }}
+                            />
+                          )}
+                          <Ionicons
+                            name="play-circle-outline"
+                            size={60}
+                            color="#fff"
+                            style={{ position: 'absolute' }}
+                          />
+                        </View>
+                      ) : (
+                        <Image
+                          source={{ uri: selectedUser.postData.image }}
+                          style={styles.postImage}
+                        />
+                      )}
+                    </>
                   )}
                   {selectedUser.address && (
                     <View style={styles.locationRow}>
