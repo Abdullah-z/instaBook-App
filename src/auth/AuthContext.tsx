@@ -26,6 +26,8 @@ interface AuthContextType {
   logout: () => void;
   loading: boolean;
   setUser: (user: UserType | null) => void;
+  showOnboarding: boolean | null;
+  completeOnboarding: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -37,6 +39,8 @@ export const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   loading: true,
   setUser: () => {},
+  showOnboarding: null,
+  completeOnboarding: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -44,10 +48,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserType | null>(null);
   const [userType, setUserType] = useState<'user' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
+    checkOnboarding();
     refreshToken();
   }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const value = await AsyncStorage.getItem('HAS_SEEN_ONBOARDING');
+      setShowOnboarding(value !== 'true');
+    } catch (e) {
+      setShowOnboarding(false);
+    }
+  };
+
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('HAS_SEEN_ONBOARDING', 'true');
+      setShowOnboarding(false);
+    } catch (e) {
+      console.error('Failed to complete onboarding', e);
+    }
+  };
 
   const refreshToken = async () => {
     try {
@@ -121,7 +145,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, userType, login, register, logout, loading, setUser }}>
+      value={{
+        token,
+        user,
+        userType,
+        login,
+        register,
+        logout,
+        loading,
+        setUser,
+        showOnboarding,
+        completeOnboarding,
+      }}>
       {children}
     </AuthContext.Provider>
   );
