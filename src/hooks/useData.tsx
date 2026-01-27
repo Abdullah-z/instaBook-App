@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-//import Storage from '@react-native-async-storage/async-storage';
+import Storage from '@react-native-async-storage/async-storage';
 
 import { GreenLight } from '../constants/themes/GreenLight';
 import { GreenDark } from '../constants/themes/GreenDark';
@@ -24,27 +24,49 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState(null);
   const [avatar, setAvatar] = useState(null);
   const [fullName, setFullName] = useState(null);
+  const [themeLoaded, setThemeLoaded] = useState(false);
 
   // get isDark mode from storage
-  // const getIsDark = useCallback(async () => {
-  //   // get preferance gtom storage
-  //   //const isDarkJSON = await Storage.getItem('isDark');
+  const getInitialTheme = useCallback(async () => {
+    try {
+      const isDarkJSON = await Storage.getItem('isDark');
+      if (isDarkJSON !== null) {
+        setIsDark(JSON.parse(isDarkJSON));
+      }
 
-  //   if (isDarkJSON !== null) {
-  //     // set isDark / compare if has updated
-  //     setIsDark(JSON.parse(isDarkJSON));
-  //   }
-  // }, [setIsDark]);
+      const themeColorJSON = await Storage.getItem('themeColor');
+      if (themeColorJSON !== null) {
+        setThemeColor(themeColorJSON);
+      }
+      setThemeLoaded(true);
+    } catch (e) {
+      console.error('Failed to load theme settings', e);
+    }
+  }, []);
 
   // handle isDark mode
   const handleIsDark = useCallback(
-    (payload: boolean) => {
-      // set isDark / compare if has updated
+    async (payload: boolean) => {
       setIsDark(payload);
-      // save preferance to storage
-      // Storage.setItem('isDark', JSON.stringify(payload));
+      try {
+        await Storage.setItem('isDark', JSON.stringify(payload));
+      } catch (e) {
+        console.error('Failed to save isDark setting', e);
+      }
     },
     [setIsDark]
+  );
+
+  const handleSetThemeColor = useCallback(
+    async (color: string) => {
+      setThemeColor(color);
+      try {
+        await Storage.setItem('themeColor', color);
+      } catch (e) {
+        console.error('Failed to save themeColor setting', e);
+      }
+    },
+    [setThemeColor]
   );
 
   // handle users / profiles
@@ -110,10 +132,10 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     changeTheme();
   }, [themeColor]);
 
-  // get initial data for: isDark & language
-  // useEffect(() => {
-  //   getIsDark();
-  // }, [getIsDark]);
+  // get initial data for: isDark & themeColor
+  useEffect(() => {
+    getInitialTheme();
+  }, [getInitialTheme]);
 
   // change theme based on isDark updates
   useEffect(() => {
@@ -128,7 +150,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     setTheme,
 
     themeColor,
-    setThemeColor,
+    setThemeColor: handleSetThemeColor,
     changeTheme,
     userData,
     setUserData,
@@ -140,6 +162,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     setAvatar,
     fullName,
     setFullName,
+    themeLoaded,
   };
 
   return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
