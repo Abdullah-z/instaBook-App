@@ -450,20 +450,21 @@ const WeatherNewsScreen = () => {
     fullWidth,
     rotateIcon,
     bgFillPercentage,
+    headerColor,
   }: any) => {
     // Calculation: (Screen Width - Padding * 2 - Gap) / 2
     // Width - 40 (padding) - 16 (gap) = Width - 56.
     // Use Width - 60 to be safe and ensure they fit 2 per row.
     const cardWidth = fullWidth ? '100%' : (width - 60) / 2;
-    const waterColor = '#90CAF9'; // Solid Blue 200
+    const waterColor = headerColor || '#90CAF9'; // Use headerColor as water color if provided
 
     return (
       <View
         style={[
           styles.widgetCard,
-          { backgroundColor: color, width: cardWidth, overflow: 'hidden' }, // overflow hidden for fill
+          { backgroundColor: color, width: cardWidth, overflow: 'hidden', padding: 0 }, // Remove card padding
         ]}>
-        {/* Background Fill for Humidity */}
+        {/* Layer 1: Background Fill for Humidity (Dynamic height) */}
         {bgFillPercentage !== undefined && (
           <View
             style={{
@@ -478,7 +479,9 @@ const WeatherNewsScreen = () => {
           />
         )}
 
-        <View style={styles.widgetHeader}>
+        {/* Layer 3: Contents (Foreground) */}
+        <View
+          style={[styles.widgetHeader, { paddingHorizontal: 16, paddingTop: 16, marginBottom: 0 }]}>
           <Ionicons
             name={icon}
             size={18}
@@ -487,7 +490,9 @@ const WeatherNewsScreen = () => {
           />
           <Text style={styles.widgetTitle}>{title}</Text>
         </View>
-        <View style={styles.widgetContent}>{children}</View>
+        <View style={[styles.widgetContent, { paddingHorizontal: 16, paddingBottom: 16 }]}>
+          {children}
+        </View>
       </View>
     );
   };
@@ -690,7 +695,6 @@ const WeatherNewsScreen = () => {
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 15,
             }}>
             {/* Header settings icon reused if needed, or simplified */}
           </View>
@@ -859,7 +863,7 @@ const WeatherNewsScreen = () => {
                   </View>
                   <View style={styles.quickStatDivider} />
                   <View style={styles.quickStatItem}>
-                    <Ionicons name="thunderstorm-outline" size={18} color="rgba(255,255,255,0.8)" />
+                    <Ionicons name="navigate-outline" size={18} color="rgba(255,255,255,0.8)" />
                     <Text style={styles.quickStatValue}>
                       {currentWeather?.wind?.speed} {unit === 'metric' ? 'm/s' : 'mph'}
                     </Text>
