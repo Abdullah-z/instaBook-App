@@ -34,3 +34,18 @@ export const stopSharingAPI = async () => {
   const res = await axios.delete('/location/stop');
   return res.data;
 };
+
+export const createShoutoutAPI = async (
+  content: string,
+  latitude: number,
+  longitude: number,
+  visibility: string = 'public'
+) => {
+  const res = await axios.post('/location/shoutout', {
+    content,
+    latitude,
+    longitude,
+    visibility,
+  });
+  return res.data;
+};
