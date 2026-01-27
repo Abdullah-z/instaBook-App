@@ -1,9 +1,10 @@
-import {MD3DarkTheme, MD3LightTheme, PaperProvider} from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 
 export const OrangeLight = {
   ...MD3LightTheme,
-  roundness: 2,
+  roundness: 24,
   colors: {
+    ...MD3LightTheme.colors,
     primary: 'rgb(139, 80, 0)',
     onPrimary: 'rgb(255, 255, 255)',
     primaryContainer: 'rgb(255, 220, 190)',
@@ -20,14 +21,14 @@ export const OrangeLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(255, 251, 255)',
+    background: 'rgb(246, 246, 246)',
     onBackground: 'rgb(32, 27, 22)',
-    surface: 'rgb(255, 251, 255)',
+    surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(32, 27, 22)',
     surfaceVariant: 'rgb(242, 223, 209)',
     onSurfaceVariant: 'rgb(81, 69, 58)',
     outline: 'rgb(131, 116, 104)',
-    outlineVariant: 'rgb(213, 195, 181)',
+    outlineVariant: 'rgb(220, 220, 220)',
     shadow: 'rgb(0, 0, 0)',
     scrim: 'rgb(0, 0, 0)',
     inverseSurface: 'rgb(53, 47, 43)',
@@ -35,11 +36,11 @@ export const OrangeLight = {
     inversePrimary: 'rgb(255, 184, 114)',
     elevation: {
       level0: 'transparent',
-      level1: 'rgb(249, 242, 242)',
-      level2: 'rgb(246, 237, 235)',
-      level3: 'rgb(242, 232, 227)',
-      level4: 'rgb(241, 231, 224)',
-      level5: 'rgb(239, 227, 219)',
+      level1: 'rgb(250, 244, 238)',
+      level2: 'rgb(245, 239, 230)',
+      level3: 'rgb(240, 234, 222)',
+      level4: 'rgb(238, 231, 219)',
+      level5: 'rgb(234, 226, 213)',
     },
     surfaceDisabled: 'rgba(32, 27, 22, 0.12)',
     onSurfaceDisabled: 'rgba(32, 27, 22, 0.38)',

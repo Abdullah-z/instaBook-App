@@ -1,9 +1,10 @@
-import {MD3DarkTheme, MD3LightTheme, PaperProvider} from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 
 export const YellowLight = {
   ...MD3LightTheme,
-  roundness: 2,
+  roundness: 24,
   colors: {
+    ...MD3LightTheme.colors,
     primary: 'rgb(110, 93, 0)',
     onPrimary: 'rgb(255, 255, 255)',
     primaryContainer: 'rgb(255, 226, 94)',
@@ -20,14 +21,14 @@ export const YellowLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(255, 251, 255)',
+    background: 'rgb(246, 246, 246)',
     onBackground: 'rgb(29, 27, 22)',
-    surface: 'rgb(255, 251, 255)',
+    surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(29, 27, 22)',
     surfaceVariant: 'rgb(234, 226, 208)',
     onSurfaceVariant: 'rgb(75, 71, 57)',
     outline: 'rgb(124, 119, 103)',
-    outlineVariant: 'rgb(205, 198, 180)',
+    outlineVariant: 'rgb(220, 220, 220)',
     shadow: 'rgb(0, 0, 0)',
     scrim: 'rgb(0, 0, 0)',
     inverseSurface: 'rgb(50, 48, 42)',
@@ -35,11 +36,11 @@ export const YellowLight = {
     inversePrimary: 'rgb(229, 197, 36)',
     elevation: {
       level0: 'transparent',
-      level1: 'rgb(248, 243, 242)',
-      level2: 'rgb(243, 238, 235)',
-      level3: 'rgb(239, 234, 227)',
-      level4: 'rgb(238, 232, 224)',
-      level5: 'rgb(235, 229, 219)',
+      level1: 'rgb(249, 244, 236)',
+      level2: 'rgb(245, 238, 228)',
+      level3: 'rgb(241, 232, 219)',
+      level4: 'rgb(239, 230, 216)',
+      level5: 'rgb(236, 226, 210)',
     },
     surfaceDisabled: 'rgba(29, 27, 22, 0.12)',
     onSurfaceDisabled: 'rgba(29, 27, 22, 0.38)',

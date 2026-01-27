@@ -1,8 +1,8 @@
-import {MD3DarkTheme, MD3LightTheme, PaperProvider} from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 
 export const GreenDark = {
   ...MD3DarkTheme,
-  roundness: 2,
+  roundness: 24,
   colors: {
     primary: 'rgb(151, 217, 69)',
     onPrimary: 'rgb(31, 55, 0)',
@@ -20,9 +20,9 @@ export const GreenDark = {
     onError: 'rgb(105, 0, 5)',
     errorContainer: 'rgb(147, 0, 10)',
     onErrorContainer: 'rgb(255, 180, 171)',
-    background: 'rgb(27, 28, 24)',
+    background: 'rgb(18, 22, 17)',
     onBackground: 'rgb(227, 227, 219)',
-    surface: 'rgb(27, 28, 24)',
+    surface: 'rgb(28, 34, 26)',
     onSurface: 'rgb(227, 227, 219)',
     surfaceVariant: 'rgb(68, 72, 61)',
     onSurfaceVariant: 'rgb(197, 200, 186)',

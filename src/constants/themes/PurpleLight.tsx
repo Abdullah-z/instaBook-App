@@ -1,9 +1,10 @@
-import {MD3DarkTheme, MD3LightTheme, PaperProvider} from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 
 export const PurpleLight = {
   ...MD3LightTheme,
-  roundness: 2,
+  roundness: 24,
   colors: {
+    ...MD3LightTheme.colors,
     primary: 'rgb(153, 64, 93)',
     onPrimary: 'rgb(255, 255, 255)',
     primaryContainer: 'rgb(255, 217, 225)',
@@ -20,14 +21,14 @@ export const PurpleLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(255, 251, 255)',
+    background: 'rgb(246, 246, 246)',
     onBackground: 'rgb(32, 26, 27)',
-    surface: 'rgb(255, 251, 255)',
+    surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(32, 26, 27)',
     surfaceVariant: 'rgb(243, 221, 225)',
     onSurfaceVariant: 'rgb(81, 67, 70)',
     outline: 'rgb(132, 115, 118)',
-    outlineVariant: 'rgb(214, 194, 197)',
+    outlineVariant: 'rgb(220, 220, 220)',
     shadow: 'rgb(0, 0, 0)',
     scrim: 'rgb(0, 0, 0)',
     inverseSurface: 'rgb(53, 47, 48)',
@@ -35,11 +36,11 @@ export const PurpleLight = {
     inversePrimary: 'rgb(255, 177, 197)',
     elevation: {
       level0: 'transparent',
-      level1: 'rgb(250, 242, 247)',
-      level2: 'rgb(247, 236, 242)',
-      level3: 'rgb(244, 230, 237)',
-      level4: 'rgb(243, 229, 236)',
-      level5: 'rgb(241, 225, 232)',
+      level1: 'rgb(250, 244, 249)',
+      level2: 'rgb(246, 238, 244)',
+      level3: 'rgb(242, 232, 239)',
+      level4: 'rgb(240, 230, 237)',
+      level5: 'rgb(237, 226, 233)',
     },
     surfaceDisabled: 'rgba(32, 26, 27, 0.12)',
     onSurfaceDisabled: 'rgba(32, 26, 27, 0.38)',
