@@ -12,6 +12,7 @@ import {
   Modal,
   Switch,
 } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';
 import { imageUpload } from '../utils/imageUpload';
@@ -21,9 +22,12 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ExpoLocation from 'expo-location';
 import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const EditPostScreen = () => {
   const navigation = useNavigation();
+  const theme = useTheme();
   const route = useRoute();
   const { post, onPostUpdate } = route.params as any;
 
@@ -37,6 +41,36 @@ const EditPostScreen = () => {
     post.location?.coordinates || null
   );
   const [showLocationSearch, setShowLocationSearch] = useState(false);
+
+  // Background & Text Style State
+  const [selectedBgId, setSelectedBgId] = useState(post.background || 'default');
+  const [textColor, setTextColor] = useState(post.textStyle?.color || theme.colors.onSurface);
+  const [fontSize, setFontSize] = useState(post.textStyle?.fontSize || 24);
+  const [showStyleControls, setShowStyleControls] = useState(false);
+
+  // Poll State
+  const [showPollCreator, setShowPollCreator] = useState(!!post.poll_question);
+  const [pollQuestion, setPollQuestion] = useState(post.poll_question || '');
+  const [pollOptions, setPollOptions] = useState(
+    post.poll_options?.map((opt: any) => opt.text) || ['', '']
+  );
+
+  const activeBg = POST_BACKGROUNDS.find((b) => b.id === selectedBgId) || POST_BACKGROUNDS[0];
+  const isDefaultBg = selectedBgId === 'default';
+
+  // Toggle text color default based on background (only if changing BG, not initial load - slightly diff from Create)
+  // Actually, let's keep it simple: manual override is fine, but maybe auto-switch if user picks a BG.
+  // We can replicate the CreatePost effect safely.
+  useEffect(() => {
+    if (showStyleControls) {
+      // Only auto-switch if user is interacting
+      if (selectedBgId !== 'default') {
+        if (textColor === '#000000') setTextColor('#FFFFFF');
+      } else {
+        if (textColor === '#FFFFFF') setTextColor('#000000');
+      }
+    }
+  }, [selectedBgId]);
 
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
@@ -164,6 +198,24 @@ const EditPostScreen = () => {
     setImages((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
+  const addPollOption = () => {
+    if (pollOptions.length < 5) {
+      setPollOptions([...pollOptions, '']);
+    }
+  };
+
+  const updatePollOption = (text: string, index: number) => {
+    const newOptions = [...pollOptions];
+    newOptions[index] = text;
+    setPollOptions(newOptions);
+  };
+
+  const removePollOption = (index: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_: string, i: number) => i !== index));
+    }
+  };
+
   const handleGetCurrentLocation = async () => {
     try {
       let { status } = await ExpoLocation.getForegroundPermissionsAsync();
@@ -199,9 +251,21 @@ const EditPostScreen = () => {
   };
 
   const handleUpdate = async () => {
-    if (!content && images.length === 0 && !videoUri && !address) {
-      Alert.alert('Post must have content, image, video or location.');
+    if (!content && images.length === 0 && !videoUri && !address && !pollQuestion) {
+      Alert.alert('Post must have content, image, video, location, or poll.');
       return;
+    }
+
+    if (showPollCreator) {
+      if (!pollQuestion.trim()) {
+        Alert.alert('Error', 'Please enter a poll question.');
+        return;
+      }
+      const validOptions = pollOptions.filter((opt: string) => opt.trim().length > 0);
+      if (validOptions.length < 2) {
+        Alert.alert('Error', 'Please provide at least 2 poll options.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -237,6 +301,18 @@ const EditPostScreen = () => {
         images: media,
         address,
         location: locationCoords ? { type: 'Point', coordinates: locationCoords } : undefined,
+        background: selectedBgId !== 'default' ? selectedBgId : undefined,
+        textStyle: {
+          fontSize,
+          color: textColor,
+          fontWeight: 'bold',
+        },
+        poll_question: showPollCreator ? pollQuestion.trim() : undefined,
+        poll_options: showPollCreator
+          ? pollOptions
+              .filter((opt: string) => opt.trim().length > 0)
+              .map((opt: string) => ({ text: opt.trim() }))
+          : undefined,
       };
       const res = await updatePostAPI(post._id, updatedData);
 
@@ -256,62 +332,237 @@ const EditPostScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="What's on your mind?"
-          value={content}
-          onChangeText={setContent}
-          multiline
-        />
+    <ScrollView
+      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.inputRow,
+          {
+            borderColor: theme.colors.outlineVariant,
+            borderWidth: 1,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+          },
+        ]}>
+        {!isDefaultBg ? (
+          <LinearGradient
+            colors={activeBg.colors as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.input,
+              { justifyContent: 'center', alignItems: 'center', minHeight: 200 },
+            ]}>
+            <TextInput
+              style={{
+                fontSize: fontSize,
+                color: textColor,
+                fontWeight: 'bold',
+                textAlign: 'center',
+                width: '100%',
+              }}
+              placeholder="What's on your mind?"
+              placeholderTextColor="rgba(255,255,255,0.7)"
+              value={content}
+              onChangeText={setContent}
+              multiline
+            />
+          </LinearGradient>
+        ) : (
+          <TextInput
+            style={[
+              styles.input,
+              { fontSize: fontSize, color: textColor, backgroundColor: theme.colors.surface },
+            ]}
+            placeholder="What's on your mind?"
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            value={content}
+            onChangeText={setContent}
+            multiline
+          />
+        )}
       </View>
 
-      <View style={styles.actionsRow}>
-        <TouchableOpacity onPress={pickImages} style={styles.iconButton}>
-          <Ionicons name="image-outline" size={24} color="#4CAF50" />
-          <Text style={styles.iconText}>Photo</Text>
-        </TouchableOpacity>
+      <View
+        style={[
+          styles.actionsRow,
+          {
+            borderTopColor: theme.colors.outlineVariant,
+            borderBottomColor: theme.colors.outlineVariant,
+          },
+        ]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ alignItems: 'center', paddingRight: 20 }}>
+          <TouchableOpacity onPress={pickImages} style={styles.iconButton}>
+            <Ionicons name="image-outline" size={24} color="#4CAF50" />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>Photo</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={takePhoto} style={styles.iconButton}>
-          <Ionicons name="camera-outline" size={24} color="#FF9800" />
-          <Text style={styles.iconText}>Camera</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={takePhoto} style={styles.iconButton}>
+            <Ionicons name="camera-outline" size={24} color="#FF9800" />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>Camera</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={pickVideo} style={styles.iconButton}>
-          <Ionicons name="videocam-outline" size={24} color="#E91E63" />
-          <Text style={styles.iconText}>Video</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={pickVideo} style={styles.iconButton}>
+            <Ionicons name="videocam-outline" size={24} color="#E91E63" />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>Video</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconButton}>
-          <Ionicons name="logo-youtube" size={24} color="#F44336" />
-          <Text style={styles.iconText}>YouTube</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowYoutubeInput(true)} style={styles.iconButton}>
+            <Ionicons name="logo-youtube" size={24} color={theme.colors.error} />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>YouTube</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => setShowLocationSearch(!showLocationSearch)}
-          style={styles.iconButton}>
-          <Ionicons
-            name="location-outline"
-            size={24}
-            color={address ? '#FF5722' : '#FF9800'} // Reusing Orange for loc icon
-          />
-          <Text style={styles.iconText}>Location</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowLocationSearch(!showLocationSearch)}
+            style={styles.iconButton}>
+            <Ionicons
+              name="location-outline"
+              size={24}
+              color={address ? theme.colors.primary : theme.colors.onSurfaceVariant}
+            />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>
+              Location
+            </Text>
+          </TouchableOpacity>
 
-        <View style={styles.hdToggleContainer}>
-          <Text style={styles.hdToggleText}>HD</Text>
-          <Switch
-            value={isHD}
-            onValueChange={setIsHD}
-            trackColor={{ false: '#767577', true: '#4CAF50' }}
-            thumbColor={isHD ? '#fff' : '#f4f3f4'}
-          />
+          <TouchableOpacity
+            onPress={() => setShowStyleControls(!showStyleControls)}
+            style={styles.iconButton}>
+            <Ionicons name="color-palette-outline" size={24} color="#9C27B0" />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>Style</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowPollCreator(!showPollCreator)}
+            style={styles.iconButton}>
+            <Ionicons name="stats-chart" size={24} color="#FF9800" />
+            <Text style={[styles.iconText, { color: theme.colors.onSurfaceVariant }]}>Poll</Text>
+          </TouchableOpacity>
+
+          <View style={styles.hdToggleContainer}>
+            <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>HD</Text>
+            <Switch
+              value={isHD}
+              onValueChange={setIsHD}
+              trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+              thumbColor={theme.colors.surface}
+            />
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Style Controls */}
+      {showStyleControls && (
+        <View
+          style={[
+            styles.styleControlsContainer,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+          ]}>
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Background
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleScroll}>
+            {POST_BACKGROUNDS.map((bg) => (
+              <TouchableOpacity
+                key={bg.id}
+                onPress={() => setSelectedBgId(bg.id)}
+                style={[
+                  styles.styleOption,
+                  selectedBgId === bg.id && [
+                    styles.styleOptionActive,
+                    { borderColor: theme.colors.primary },
+                  ],
+                ]}>
+                {bg.colors.length > 1 ? (
+                  <LinearGradient colors={bg.colors as any} style={styles.colorCircle} />
+                ) : (
+                  <View
+                    style={[
+                      styles.colorCircle,
+                      {
+                        backgroundColor: bg.colors[0],
+                        borderWidth: 1,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                    ]}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Text Color
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.styleScroll}>
+            {TEXT_COLORS.map((color) => (
+              <TouchableOpacity
+                key={color}
+                onPress={() => setTextColor(color)}
+                style={[
+                  styles.styleOption,
+                  textColor === color && [
+                    styles.styleOptionActive,
+                    { borderColor: theme.colors.primary },
+                  ],
+                ]}>
+                <View
+                  style={[
+                    styles.colorCircle,
+                    {
+                      backgroundColor: color,
+                      borderWidth: 1,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={[styles.styleLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Font Size
+          </Text>
+          <View style={styles.fontSizeContainer}>
+            {FONT_SIZES.map((size) => (
+              <TouchableOpacity
+                key={size}
+                onPress={() => setFontSize(size)}
+                style={[
+                  styles.fontSizeBtn,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                  fontSize === size && [
+                    styles.fontSizeBtnActive,
+                    { backgroundColor: theme.colors.primary },
+                  ],
+                ]}>
+                <Text
+                  style={{
+                    fontSize: 14 + (size - 16) / 2,
+                    fontWeight: 'bold',
+                    color: fontSize === size ? theme.colors.onPrimary : theme.colors.onSurface,
+                  }}>
+                  A
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {showLocationSearch && (
-        <View style={styles.locationSearchContainer}>
+        <View
+          style={[
+            styles.locationSearchContainer,
+            {
+              backgroundColor: theme.colors.surfaceVariant,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}>
           <LocationAutocomplete
             onLocationSelect={(addr, coords) => {
               setAddress(addr);
@@ -321,8 +572,8 @@ const EditPostScreen = () => {
             placeholder="Search location..."
           />
           <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
-            <Ionicons name="locate" size={20} color="#007AFF" />
-            <Text style={styles.gpsBtnText}>Use GPS</Text>
+            <Ionicons name="locate" size={20} color={theme.colors.primary} />
+            <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Use GPS</Text>
           </TouchableOpacity>
           {address !== '' && (
             <TouchableOpacity
@@ -331,16 +582,24 @@ const EditPostScreen = () => {
                 setLocationCoords(null);
               }}
               style={styles.clearLocBtn}>
-              <Text style={styles.clearLocText}>Clear Location</Text>
+              <Text style={[styles.clearLocText, { color: theme.colors.error }]}>
+                Clear Location
+              </Text>
             </TouchableOpacity>
           )}
         </View>
       )}
 
       {address !== '' && !showLocationSearch && (
-        <View style={styles.taggedLocationBadge}>
-          <Ionicons name="location" size={16} color="#FF5722" />
-          <Text style={styles.taggedLocationText} numberOfLines={1}>
+        <View
+          style={[
+            styles.taggedLocationBadge,
+            { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error },
+          ]}>
+          <Ionicons name="location" size={16} color={theme.colors.error} />
+          <Text
+            style={[styles.taggedLocationText, { color: theme.colors.onErrorContainer }]}
+            numberOfLines={1}>
             {address}
           </Text>
           <TouchableOpacity
@@ -348,13 +607,70 @@ const EditPostScreen = () => {
               setAddress('');
               setLocationCoords(null);
             }}>
-            <Ionicons name="close-circle" size={18} color="#999" style={{ marginLeft: 5 }} />
+            <Ionicons
+              name="close-circle"
+              size={18}
+              color={theme.colors.onSurfaceVariant}
+              style={{ marginLeft: 5 }}
+            />
           </TouchableOpacity>
         </View>
       )}
 
+      {/* Poll Creator */}
+      {showPollCreator && (
+        <View
+          style={[
+            styles.pollCreatorContainer,
+            {
+              backgroundColor: theme.colors.surfaceVariant,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}>
+          <TextInput
+            style={[
+              styles.pollQuestionInput,
+              { color: theme.colors.onSurface, borderBottomColor: theme.colors.outlineVariant },
+            ]}
+            placeholder="Ask a question..."
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            value={pollQuestion}
+            onChangeText={setPollQuestion}
+            multiline
+          />
+          {pollOptions.map((option: string, index: number) => (
+            <View
+              key={index}
+              style={[
+                styles.pollOptionInputRow,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+              ]}>
+              <Ionicons name="radio-button-off" size={20} color={theme.colors.onSurfaceVariant} />
+              <TextInput
+                style={[styles.pollOptionInput, { color: theme.colors.onSurface }]}
+                placeholder={`Option ${index + 1}`}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                value={option}
+                onChangeText={(text) => updatePollOption(text, index)}
+              />
+              {pollOptions.length > 2 && (
+                <TouchableOpacity onPress={() => removePollOption(index)}>
+                  <Ionicons name="close-circle" size={20} color="#FF3B30" />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          {pollOptions.length < 5 && (
+            <TouchableOpacity onPress={addPollOption} style={styles.addOptionBtn}>
+              <Ionicons name="add-circle-outline" size={20} color={theme.colors.primary} />
+              <Text style={[styles.addOptionTxt, { color: theme.colors.primary }]}>Add Option</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <View style={styles.imageGrid}>
-        {images.map((img, index) => (
+        {images.map((img: any, index: number) => (
           <View key={index} style={styles.imageWrapper}>
             <Image
               source={{ uri: typeof img === 'string' ? img : img.url }}
@@ -397,12 +713,18 @@ const EditPostScreen = () => {
 
       <TouchableOpacity
         onPress={handleUpdate}
-        style={[styles.updateButton, loading && styles.disabledButton]}
+        style={[
+          styles.updateButton,
+          { backgroundColor: theme.colors.primary },
+          loading && [styles.disabledButton, { backgroundColor: theme.colors.surfaceVariant }],
+        ]}
         disabled={loading}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={theme.colors.onPrimary} />
         ) : (
-          <Text style={styles.updateButtonText}>Update Post</Text>
+          <Text style={[styles.updateButtonText, { color: theme.colors.onPrimary }]}>
+            Update Post
+          </Text>
         )}
       </TouchableOpacity>
 
@@ -412,11 +734,21 @@ const EditPostScreen = () => {
         animationType="fade"
         onRequestClose={() => setShowYoutubeInput(false)}>
         <View style={styles.modalBg}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Add YouTube Link</Text>
+          <View style={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+              Add YouTube Link
+            </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderColor: theme.colors.outlineVariant,
+                  color: theme.colors.onSurface,
+                },
+              ]}
               placeholder="Paste YouTube URL here..."
+              placeholderTextColor={theme.colors.onSurfaceVariant}
               value={youtubeLink}
               onChangeText={setYoutubeLink}
               autoCapitalize="none"
@@ -425,10 +757,14 @@ const EditPostScreen = () => {
               <TouchableOpacity
                 onPress={() => setShowYoutubeInput(false)}
                 style={styles.modalBtnCancel}>
-                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+                <Text style={[styles.modalBtnTextCancel, { color: theme.colors.onSurfaceVariant }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddYoutubeLink} style={styles.modalBtnAdd}>
-                <Text style={styles.modalBtnTextAdd}>Add</Text>
+              <TouchableOpacity
+                onPress={handleAddYoutubeLink}
+                style={[styles.modalBtnAdd, { backgroundColor: theme.colors.primary }]}>
+                <Text style={[styles.modalBtnTextAdd, { color: theme.colors.onPrimary }]}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -443,7 +779,6 @@ export default EditPostScreen;
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#fff',
     flexGrow: 1,
   },
   inputRow: {
@@ -459,7 +794,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#eee',
     paddingVertical: 10,
   },
   iconButton: {
@@ -469,8 +803,7 @@ const styles = StyleSheet.create({
   },
   iconText: {
     marginLeft: 5,
-    fontSize: 16,
-    color: '#555',
+    fontSize: 14,
   },
   imageGrid: {
     flexDirection: 'row',
@@ -504,16 +837,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   updateButton: {
-    backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
+  disabledButton: {},
   updateButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -525,7 +854,6 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     elevation: 5,
@@ -538,7 +866,6 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
@@ -554,11 +881,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   modalBtnTextCancel: {
-    color: '#555',
     fontWeight: '600',
   },
   modalBtnAdd: {
-    backgroundColor: '#4CAF50',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
@@ -581,10 +906,8 @@ const styles = StyleSheet.create({
   locationSearchContainer: {
     marginBottom: 20,
     padding: 12,
-    backgroundColor: '#f9f9f9',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#eee',
   },
   gpsBtn: {
     flexDirection: 'row',
@@ -608,19 +931,105 @@ const styles = StyleSheet.create({
   taggedLocationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF0ED',
     alignSelf: 'flex-start',
     marginBottom: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FFD7D0',
   },
   taggedLocationText: {
     fontSize: 14,
     color: '#FF5722',
     marginLeft: 4,
     maxWidth: 250,
+  },
+  styleControlsContainer: {
+    marginBottom: 20,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  styleLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  styleScroll: {
+    marginBottom: 12,
+    flexDirection: 'row',
+  },
+  styleOption: {
+    marginRight: 10,
+    padding: 2,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  styleOptionActive: {
+    borderColor: '#007AFF',
+  },
+  colorCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  fontSizeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fontSizeBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 18,
+  },
+  fontSizeBtnActive: {
+    backgroundColor: '#007AFF',
+  },
+  pollCreatorContainer: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  pollQuestionInput: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 5,
+  },
+  pollOptionInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+  },
+  pollOptionInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+  },
+  addOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    paddingVertical: 5,
+  },
+  addOptionTxt: {
+    marginLeft: 5,
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
