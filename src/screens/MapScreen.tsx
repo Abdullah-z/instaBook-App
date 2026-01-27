@@ -9,6 +9,8 @@ import {
   Dimensions,
   TouchableOpacity,
   Image,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ExpoLocation from 'expo-location';
@@ -22,52 +24,107 @@ import {
   Button,
   Divider,
   Menu,
+  useTheme,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
-import { shareLocationAPI, getSharedLocationsAPI, stopSharingAPI } from '../api/locationAPI';
+import {
+  shareLocationAPI,
+  getSharedLocationsAPI,
+  stopSharingAPI,
+  createShoutoutAPI,
+} from '../api/locationAPI';
+import { getEventsAPI } from '../api/eventAPI';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getRobustLocation } from '../utils/locationHelper';
 import moment from 'moment';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const getMapHtml = (lat: number, lon: number, zoom: number) => `
+const getMapHtml = (lat: number, lon: number, zoom: number, theme: any) => {
+  const isDark = theme.dark;
+  const primaryColor = theme.colors.primary;
+  const surfaceColor = theme.colors.surface;
+  const onSurfaceColor = theme.colors.onSurface;
+  const mapBg = isDark ? '#1a1b1e' : '#f0f0f0';
+
+  return `
 <!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; }
-      #map { height: 100vh; width: 100vw; background: #f0f0f0; }
+      #map { height: 100vh; width: 100vw; background: $\{'${mapBg}'\}; }
+      
+      /* User Location Blue Dot Style */
+      .blue-dot {
+        width: 14px;
+        height: 14px;
+        background-color: #007AFF;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      }
+      .blue-dot-pulse {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(0, 122, 255, 0.2);
+        border-radius: 50%;
+        position: absolute;
+        top: -13px;
+        left: -13px;
+        animation: pulse-dot 2s infinite;
+      }
+      @keyframes pulse-dot {
+        0% { transform: scale(0.5); opacity: 0.8; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+
       .marker-pin {
         width: 44px; height: 44px;
         border-radius: 50% 50% 50% 0;
-        background: #D4F637;
+        background: $\{'${primaryColor}'\};
         position: absolute;
         transform: rotate(-45deg);
         left: 50%; top: 50%;
         margin: -22px 0 0 -22px;
-        border: 2px solid #fff;
+        border: 2px solid $\{'${surfaceColor}'\};
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
       }
       .marker-pin.static { background: #00A8FF; }
       .marker-pin.post { background: #FF9800; }
+      .marker-pin.event { background: #E4405F; }
+      .marker-pin.shoutout { background: linear-gradient(135deg, #FF00CC 0%, #333399 100%); border-color: $\{'${primaryColor}'\}; }
       .marker-pin.focused { background: #FF0000; }
-      .marker-pin.focused .marker-img { display: none; }
+      .marker-img {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        object-fit: cover;
+        transform: rotate(45deg);
+        background: #eee;
+      }
       .marker-dot {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #000;
+        background: $\{'${surfaceColor}'\};
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%) rotate(45deg);
+        z-index: 2;
       }
       .label {
         position: absolute;
@@ -83,19 +140,56 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
         white-space: nowrap;
         font-weight: bold;
       }
+      .shoutout-label {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: $\{'${primaryColor}'\};
+        color: $\{'${surfaceColor}'\};
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        font-size: 12px;
+        white-space: nowrap;
+        font-weight: 900;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        border: 2px solid $\{'${surfaceColor}'\};
+      }
+      $\{'${isDark ? 'canvas { filter: invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2) !important; } .leaflet-tile-pane { filter: invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2) !important; }' : ''}'\}
     </style>
   </head>
   <body>
     <div id="map"></div>
     <script>
-      // Initialize map with passed coordinates
       var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lon}], ${zoom});
       
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
       }).addTo(map);
 
-      var markersLayer = L.layerGroup().addTo(map);
+      var markersLayer = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        animate: true
+      }).addTo(map);
+
+      // User Location Blue Dot
+      var blueDot = null;
+      function updateUserLocation(lat, lon) {
+        if (!blueDot) {
+          var icon = L.divIcon({
+            className: 'blue-dot-container',
+            html: '<div class="blue-dot-pulse"></div><div class="blue-dot"></div>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+          });
+          blueDot = L.marker([lat, lon], { icon: icon, zIndexOffset: 1000 }).addTo(map);
+        } else {
+          blueDot.setLatLng([lat, lon]);
+        }
+      }
 
       map.on('click', function(e) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -113,7 +207,6 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
           var newMarkersMap = {};
           var dataIds = data.map(m => m.id);
           
-          // Remove old markers not in new data
           Object.keys(markersMap).forEach(id => {
             if (!dataIds.includes(id)) {
               markersLayer.removeLayer(markersMap[id]);
@@ -124,7 +217,6 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
           data.forEach(m => {
             if (!m.lat || !m.lon) return;
 
-            // Check if marker already exists and position is same
             if (markersMap[m.id]) {
               var existing = markersMap[m.id];
               var curPos = existing.getLatLng();
@@ -135,20 +227,26 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
               markersLayer.removeLayer(existing);
             }
 
-            var imgSrc = (m.type === 'post' && m.postData && m.postData.image) 
-              ? m.postData.image 
-              : (m.avatar || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png");
-            
-            var pinClass = m.type === "static" ? "static" : (m.type === "post" ? "post" : (m.type === "focused" ? "focused" : ""));
-            
+            var pinClass = m.type === "static" ? "static" : (m.type === "post" ? "post" : (m.type === "event" ? "event" : (m.type === "shoutout" ? "shoutout" : (m.type === "focused" ? "focused" : ""))));
+            var labelHtml = m.type === 'shoutout' 
+               ? '<div class="shoutout-label">🌈 ' + m.shoutoutData.content + '</div>'
+               : '<div class="label">' + (m.username || 'User') + '</div>';
+
+            var iconArray = m.type === 'shoutout' ? [60, 60] : [44, 44];
+            var anchorArray = m.type === 'shoutout' ? [30, 60] : [22, 44];
+
+            var innerHtml = (m.type === 'post' && m.postData && m.postData.image)
+              ? '<img class="marker-img" src="' + m.postData.image + '" />'
+              : '<div class="marker-dot"></div>';
+
             var icon = L.divIcon({
               className: 'custom-div-icon',
               html: '<div class="marker-pin ' + pinClass + '">' +
-                      '<div class="marker-dot"></div>' +
-                      '<div class="label">' + (m.username || 'User') + '</div>' +
+                      innerHtml +
+                      labelHtml +
                     '</div>',
-              iconSize: [44, 44],
-              iconAnchor: [22, 44]
+              iconSize: iconArray,
+              iconAnchor: anchorArray
             });
             var marker = L.marker([m.lat, m.lon], { icon: icon }).addTo(markersLayer);
             
@@ -172,8 +270,18 @@ const getMapHtml = (lat: number, lon: number, zoom: number) => `
   </body>
 </html>
 `;
+};
+
+const getVideoThumbnail = (url: string) => {
+  if (!url) return null;
+  if (url.includes('cloudinary.com')) {
+    return url.replace(/\.[^/.]+$/, '.jpg');
+  }
+  return null;
+};
 
 const MapScreen = () => {
+  const theme = useTheme();
   const { user: currentUser } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -194,11 +302,17 @@ const MapScreen = () => {
   const [radius, setRadius] = useState(50);
   const [radiusMenuVisible, setRadiusMenuVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedShoutout, setSelectedShoutout] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [shoutoutModalVisible, setShoutoutModalVisible] = useState(false);
+  const [shoutoutContent, setShoutoutContent] = useState('');
+  const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(-1);
-  const [sheetMode, setSheetMode] = useState<'user' | 'sharing'>('sharing');
+  const [sheetMode, setSheetMode] = useState<'user' | 'sharing' | 'event' | 'shoutout'>('sharing');
 
   const snapPoints = useMemo(() => {
-    if (sheetMode === 'user') return ['30%', '50%'];
+    if (sheetMode === 'user' || sheetMode === 'event') return ['30%', '50%'];
     return ['45%', '75%'];
   }, [sheetMode]);
 
@@ -244,6 +358,14 @@ const MapScreen = () => {
         } else {
           console.warn('[MapScreen] API returned non-array data:', data);
           setSharedLocations([]);
+        }
+
+        // Fetch Events too
+        try {
+          const eventRes = await getEventsAPI();
+          setEvents(eventRes.events || []);
+        } catch (e) {
+          console.error('Error fetching events on map:', e);
         }
 
         if (syncState && Array.isArray(data)) {
@@ -300,60 +422,160 @@ const MapScreen = () => {
       sharedLocations.length
     );
 
-    let markerList = isFocusedMode
-      ? []
-      : sharedLocations
-          .filter((loc) => loc && loc.user) // Robust check for missing user data
-          .map((loc) => ({
-            id: loc._id,
-            lat: loc.latitude,
-            lon: loc.longitude,
-            title: loc.user.fullname,
-            username: loc.user.username,
-            fullname: loc.user.fullname,
-            avatar: loc.user.avatar,
-            isMe: loc.user._id === currentUser?._id,
-            type: loc.type || 'live',
-            lastUpdate: loc.lastUpdate || loc.updatedAt,
-            postData: loc.postData,
-            address: loc.address,
-          }));
+    const latestLiveLocs = new Map<string, any>();
+    const shoutouts: any[] = [];
+    const postMarkers: any[] = [];
 
-    // Add selected/static marker if it exists
-    if (selectedLocation || isFocusedMode) {
+    // 1. Process shared locations (shoutouts vs user locations vs posts)
+    sharedLocations.forEach((loc) => {
+      if (!loc || !loc.user) return;
+
+      const userId = String(loc.user._id);
+      const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+
+      if (loc.type === 'shoutout') {
+        shoutouts.push({
+          id: loc._id,
+          lat: loc.latitude,
+          lon: loc.longitude,
+          title: 'Graffiti',
+          username: loc.user.username,
+          fullname: loc.user.fullname,
+          avatar: loc.user.avatar,
+          isMe: userId === currentUserId,
+          type: 'shoutout',
+          lastUpdate: loc.lastUpdate || loc.updatedAt,
+          shoutoutData: {
+            content: loc.content,
+            visibility: loc.visibility,
+          },
+        });
+      } else if (loc.type === 'post') {
+        postMarkers.push({
+          id: loc._id,
+          lat: loc.latitude,
+          lon: loc.longitude,
+          title: loc.user.fullname,
+          username: loc.user.username,
+          fullname: loc.user.fullname,
+          avatar: loc.user.avatar,
+          isMe: userId === currentUserId,
+          type: 'post',
+          lastUpdate: loc.lastUpdate || loc.updatedAt,
+          postData: loc.postData,
+          address: loc.address,
+        });
+      } else {
+        // Keep only the latest live/static update per user
+        const existing = latestLiveLocs.get(userId);
+        if (!existing || new Date(loc.updatedAt) > new Date(existing.updatedAt)) {
+          latestLiveLocs.set(userId, loc);
+        }
+      }
+    });
+
+    const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+
+    // Map user live/static locations
+    let markerList: any[] = Array.from(latestLiveLocs.values())
+      .filter((loc) => {
+        const userId = String(loc.user._id);
+        // Hide self only if it's a live location (blue dot covers it)
+        // BUT show self if it's a static location so the user sees their pinned spot
+        if (userId === currentUserId) {
+          return loc.type === 'static';
+        }
+        return true;
+      })
+      .map((loc) => ({
+        id: loc._id,
+        lat: loc.latitude,
+        lon: loc.longitude,
+        title: loc.user.fullname,
+        username: loc.user.username,
+        fullname: loc.user.fullname,
+        avatar: loc.user.avatar,
+        isMe: String(loc.user._id) === currentUserId,
+        type: loc.type || 'live',
+        lastUpdate: loc.lastUpdate || loc.updatedAt,
+        postData: loc.postData,
+        address: loc.address,
+      }));
+
+    // Add shoutouts and posts
+    markerList = [...markerList, ...shoutouts, ...postMarkers];
+
+    // 2. Add selected/static marker if it exists - only show if NOT selecting for graffiti
+    // and if we don't already have a marker for this user at this location
+    if ((selectedLocation || isFocusedMode) && !isSelectingLocation) {
       const pinLat = isFocusedMode ? route.params.lat : selectedLocation!.latitude;
       const pinLon = isFocusedMode ? route.params.lon : selectedLocation!.longitude;
-      const pinTitle = isFocusedMode ? 'Shared Location' : 'Selected Spot';
-      const pinUsername = isFocusedMode ? route.params.address || 'Location' : 'Fixed Point';
 
-      markerList.push({
-        id: isFocusedMode ? 'shared_pin' : 'selected',
-        lat: pinLat,
-        lon: pinLon,
-        title: pinTitle,
-        username: pinUsername,
-        fullname: pinTitle,
-        avatar: currentUser?.avatar || '',
-        isMe: !isFocusedMode,
-        type: isFocusedMode ? 'focused' : 'static',
-        lastUpdate: new Date().toISOString(),
-        postData: undefined,
-        address: isFocusedMode ? route.params.address : undefined,
-      });
+      // Check for overlap with existing markers (0.00001 precision)
+      const hasOverlapWithOtherMarkers = markerList.some(
+        (m: any) => Math.abs(m.lat - pinLat) < 0.00001 && Math.abs(m.lon - pinLon) < 0.00001
+      );
+
+      // ALSO check for overlap with the Blue Dot (current device location)
+      const userLat = deviceLocation?.coords.latitude;
+      const userLon = deviceLocation?.coords.longitude;
+      const overlapsWithBlueDot =
+        userLat !== undefined &&
+        userLon !== undefined &&
+        Math.abs(userLat - pinLat) < 0.00001 &&
+        Math.abs(userLon - pinLon) < 0.00001;
+
+      if (!hasOverlapWithOtherMarkers && !overlapsWithBlueDot) {
+        const pinTitle = isFocusedMode ? 'Shared Location' : 'Selected Spot';
+        const pinUsername = isFocusedMode ? route.params.address || 'Location' : 'Fixed Point';
+
+        markerList.push({
+          id: isFocusedMode ? 'shared_pin' : 'selected',
+          lat: pinLat,
+          lon: pinLon,
+          title: pinTitle,
+          username: pinUsername,
+          fullname: pinTitle,
+          avatar: currentUser?.avatar || '',
+          isMe: false,
+          type: isFocusedMode ? 'focused' : 'static',
+          lastUpdate: new Date().toISOString(),
+          postData: undefined,
+          address: isFocusedMode ? route.params.address : undefined,
+        });
+      }
     }
+
+    // 3. Add Events
+    events.forEach((ev: any) => {
+      markerList.push({
+        id: ev._id,
+        lat: ev.location.coordinates[1],
+        lon: ev.location.coordinates[0],
+        title: ev.title,
+        username: ev.title,
+        fullname: ev.title,
+        avatar: ev.image || '',
+        isMe: false,
+        type: 'event',
+        lastUpdate: ev.updatedAt,
+        postData: undefined,
+        address: ev.address,
+        eventData: ev,
+      });
+    });
+
     console.log('[MapScreen] Final marker list size:', markerList.length);
     return markerList;
-  }, [sharedLocations, selectedLocation, route.params, currentUser]);
+  }, [sharedLocations, selectedLocation, route.params, currentUser, events, isSelectingLocation]);
 
   const updateMarkers = useCallback(() => {
     console.log('[MapScreen] updateMarkers called. LogRef:', !!webViewRef.current);
-    // Safety check: ensure ref and method exist
     if (!webViewRef.current || !webViewRef.current.injectJavaScript) {
-      // console.log("MapScreen: injectJavaScript not available in updateMarkers");
       return;
     }
 
-    const markersData = markers.map((m) => ({
+    const markersData = markers.map((m: any) => ({
       id: m.id,
       lat: m.lat,
       lon: m.lon,
@@ -364,22 +586,33 @@ const MapScreen = () => {
       isMe: m.isMe,
       postData: m.postData,
       lastUpdate: m.lastUpdate,
+      address: m.address,
+      eventData: m.eventData,
+      shoutoutData: m.shoutoutData,
     }));
 
-    console.log('[MapScreen] Injecting markers JSON length:', JSON.stringify(markersData).length);
+    // Inject markers and user blue dot
+    const userLat = deviceLocation?.coords.latitude;
+    const userLon = deviceLocation?.coords.longitude;
+    const userUpdateJs =
+      userLat && userLon
+        ? `if(window.updateUserLocation) { updateUserLocation(${userLat}, ${userLon}); }`
+        : '';
 
-    // Wrap in setTimeout to ensure execution on next tick
     setTimeout(() => {
       try {
         if (webViewRef.current?.injectJavaScript) {
-          console.log('[MapScreen] Executing injectJavaScript updateMarkers');
-          webViewRef.current.injectJavaScript(`updateMarkers(${JSON.stringify(markersData)})`);
+          webViewRef.current.injectJavaScript(`
+            ${userUpdateJs}
+            updateMarkers(${JSON.stringify(markersData)});
+            true;
+          `);
         }
       } catch (err) {
         console.error('MapScreen: injectJavaScript failed in updateMarkers', err);
       }
     }, 0);
-  }, [markers]);
+  }, [markers, deviceLocation]);
 
   useEffect(() => {
     // Call updateMarkers whenever markers change.
@@ -387,12 +620,15 @@ const MapScreen = () => {
     updateMarkers();
   }, [updateMarkers]);
 
-  // Calculate Initial Map State
+  // Calculate Initial Map State - STABLE
+  const initialMapRef = useRef<{ lat: number; lon: number; zoom: number } | null>(null);
   const initialMapState = useMemo(() => {
+    if (initialMapRef.current) return initialMapRef.current;
+
     const isFocused = route.params?.lat !== undefined && route.params?.lon !== undefined;
     let lat = 0,
       lon = 0,
-      zoom = 2; // Default to world view
+      zoom = 2;
 
     if (isFocused) {
       lat = route.params.lat;
@@ -403,14 +639,18 @@ const MapScreen = () => {
       lon = deviceLocation.coords.longitude;
       zoom = 13;
     }
+
+    if (lat !== 0) {
+      initialMapRef.current = { lat, lon, zoom };
+    }
     return { lat, lon, zoom };
   }, [route.params, deviceLocation]);
 
   const webViewSource = useMemo(
     () => ({
-      html: getMapHtml(initialMapState.lat, initialMapState.lon, initialMapState.zoom),
+      html: getMapHtml(initialMapState.lat, initialMapState.lon, initialMapState.zoom, theme),
     }),
-    [initialMapState]
+    [initialMapState.lat, initialMapState.lon, initialMapState.zoom, theme]
   );
 
   // Use refs for interval to avoid frequent resets
@@ -720,10 +960,13 @@ const MapScreen = () => {
     setSelectedLocation(null);
     setSharingType('live');
     if (deviceLocation) {
+      const lat = deviceLocation.coords.latitude;
+      const lon = deviceLocation.coords.longitude;
+
       if (webViewRef.current?.injectJavaScript) {
-        // Added safety check
+        // Just pan, the blue dot is handled by updateMarkers
         webViewRef.current.injectJavaScript(`
-          map.setView([${deviceLocation.coords.latitude}, ${deviceLocation.coords.longitude}], 13);
+          map.setView([${lat}, ${lon}], 13);
         `);
       }
     }
@@ -742,12 +985,37 @@ const MapScreen = () => {
             console.log('[MapScreen] WebView ready. Triggering initial marker update.');
             updateMarkers();
           } else if (data.type === 'click') {
-            const coords = { latitude: data.lat, longitude: data.lon };
-            setSelectedLocation(coords);
-            setSharingType('static');
+            if (isSelectingLocation || (sheetMode === 'sharing' && sharingType === 'static')) {
+              const coords = { latitude: data.lat, longitude: data.lon };
+              setSelectedLocation(coords);
+              setSharingType('static');
+              // Add visual marker for selected location
+              addTemporaryMarker(data.lat, data.lon, isSelectingLocation ? 'graffiti' : 'gps');
+
+              if (isSelectingLocation) {
+                setIsSelectingLocation(false);
+                // Reopen graffiti modal
+                setTimeout(() => {
+                  setShoutoutModalVisible(true);
+                }, 300);
+              } else {
+                // Reopen sharing settings
+                setTimeout(() => {
+                  bottomSheetRef.current?.snapToIndex(1);
+                }, 300);
+              }
+            }
           } else if (data.type === 'marker-click') {
-            setSelectedUser(data.userData);
-            setSheetMode('user');
+            if (data.userData.type === 'event') {
+              setSelectedEvent(data.userData.eventData);
+              setSheetMode('event');
+            } else if (data.userData.type === 'shoutout') {
+              setSelectedShoutout(data.userData);
+              setSheetMode('shoutout');
+            } else {
+              setSelectedUser(data.userData);
+              setSheetMode('user');
+            }
             bottomSheetRef.current?.snapToIndex(1);
           }
         } catch (e) {
@@ -755,7 +1023,7 @@ const MapScreen = () => {
         }
       }, 0);
     },
-    [route.params, deviceLocation]
+    [route.params, deviceLocation, isSelectingLocation, sheetMode, sharingType]
   );
 
   const handleOpenSharing = () => {
@@ -783,9 +1051,93 @@ const MapScreen = () => {
     return `${sharingType === 'live' ? 'Live' : 'Static'} sharing with ${sharingVisibility}`;
   };
 
+  const handleCreateShoutout = async () => {
+    if (!shoutoutContent.trim()) {
+      Alert.alert('Empty Shoutout', 'Please enter some graffiti text!');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let lat = deviceLocation?.coords.latitude || 0;
+      let lon = deviceLocation?.coords.longitude || 0;
+
+      // If a spot is selected, use that instead of current location
+      if (selectedLocation) {
+        lat = selectedLocation.latitude;
+        lon = selectedLocation.longitude;
+      }
+
+      await createShoutoutAPI(shoutoutContent, lat, lon, 'public');
+      Alert.alert('✨ Success!', "You've left your digital graffiti on the map!");
+      setShoutoutContent('');
+      setShoutoutModalVisible(false);
+      setSelectedLocation(null); // Clear selected location
+      removeTemporaryMarker(); // Remove the temporary marker
+      await fetchLocations({ silent: true });
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to create shoutout');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = () => {
-    if (sharingVisibility === 'off') return '#888';
-    return sharingType === 'live' ? '#D4F637' : '#00A8FF';
+    if (sharingVisibility === 'off') return theme.colors.outline;
+    return sharingType === 'live' ? theme.colors.primary : '#00A8FF';
+  };
+
+  // Function to add a temporary marker on the map
+  const addTemporaryMarker = (lat: number, lon: number, type: 'graffiti' | 'gps') => {
+    const markerColor = type === 'graffiti' ? '#FF00CC' : theme.colors.primary;
+    const markerLabel = type === 'graffiti' ? '📍 Graffiti Location' : '📍 My Location';
+
+    const js = `
+      (function() {
+        // Remove existing temporary marker if any
+        if (window.tempMarker) {
+          map.removeLayer(window.tempMarker);
+        }
+        
+        // Create custom icon for temporary marker
+        var icon = L.divIcon({
+          className: 'custom-div-icon',
+          html: '<div class="marker-pin" style="background: ${markerColor}; border-color: ${theme.colors.surface}; width: 50px; height: 50px; margin: -25px 0 0 -25px; animation: pulse 1.5s infinite;">' +
+                  '<div class="marker-dot" style="background: ${theme.colors.surface};"></div>' +
+                  '<div class="label" style="bottom: -30px; font-size: 11px; font-weight: bold;">${markerLabel}</div>' +
+                '</div>',
+          iconSize: [50, 50],
+          iconAnchor: [25, 50]
+        });
+        
+        // Add pulsing animation
+        var style = document.createElement('style');
+        style.innerHTML = '@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }';
+        document.head.appendChild(style);
+        
+        // Create and add marker
+        window.tempMarker = L.marker([${lat}, ${lon}], { icon: icon }).addTo(map);
+        
+        // Pan to marker
+        map.panTo([${lat}, ${lon}]);
+      })();
+      true;
+    `;
+
+    webViewRef.current?.injectJavaScript(js);
+  };
+
+  const removeTemporaryMarker = () => {
+    const js = `
+      (function() {
+        if (window.tempMarker) {
+          map.removeLayer(window.tempMarker);
+          window.tempMarker = null;
+        }
+      })();
+      true;
+    `;
+    webViewRef.current?.injectJavaScript(js);
   };
 
   const renderBackdrop = useCallback(
@@ -815,8 +1167,8 @@ const MapScreen = () => {
             icon="chevron-left"
             size={24}
             mode="contained"
-            containerColor="#fff"
-            iconColor="#000"
+            containerColor={theme.colors.surface}
+            iconColor={theme.colors.onSurface}
             onPress={() => navigation.goBack()}
             style={styles.backBtn}
           />
@@ -840,8 +1192,8 @@ const MapScreen = () => {
                 mode="contained"
                 onPress={() => setRadiusMenuVisible(true)}
                 style={styles.fab}
-                buttonColor="#fff"
-                textColor="#000"
+                buttonColor={theme.colors.surface}
+                textColor={theme.colors.onSurface}
                 icon="radius-outline">
                 {radius >= 10000 ? 'All' : `${radius}km`}
               </Button>
@@ -931,8 +1283,8 @@ const MapScreen = () => {
           <IconButton
             icon="crosshairs-gps"
             mode="contained"
-            containerColor="#000"
-            iconColor="#D4F637"
+            containerColor={theme.colors.onSurface}
+            iconColor={theme.colors.primary}
             size={24}
             onPress={resetToMyLocation}
             style={styles.fab}
@@ -940,10 +1292,19 @@ const MapScreen = () => {
           <IconButton
             icon="share-variant"
             mode="contained"
-            containerColor="#D4F637"
-            iconColor="#000"
+            containerColor={theme.colors.primary}
+            iconColor={theme.colors.onPrimary}
             size={24}
             onPress={handleOpenSharing}
+            style={styles.fab}
+          />
+          <IconButton
+            icon="format-paint"
+            mode="contained"
+            containerColor="#FF00CC"
+            iconColor="#fff"
+            size={24}
+            onPress={() => setShoutoutModalVisible(true)}
             style={styles.fab}
           />
         </View>
@@ -956,6 +1317,8 @@ const MapScreen = () => {
         enablePanDownToClose
         onChange={setBottomSheetIndex}
         backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: theme.colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
         style={{ zIndex: 2000 }}>
         <BottomSheetScrollView style={styles.bottomSheetContent}>
           {sheetMode === 'user' && selectedUser ? (
@@ -1023,10 +1386,41 @@ const MapScreen = () => {
                       navigation.navigate('PostDetail', { postId: selectedUser.postData.id });
                     }}>
                     {selectedUser.postData.image && (
-                      <Image
-                        source={{ uri: selectedUser.postData.image }}
-                        style={styles.postPreviewImage}
-                      />
+                      <>
+                        {selectedUser.postData.resource_type === 'video' ||
+                        selectedUser.postData.image.endsWith('.mp4') ? (
+                          <View
+                            style={[
+                              styles.postPreviewImage,
+                              {
+                                backgroundColor: '#000',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                overflow: 'hidden',
+                              },
+                            ]}>
+                            {getVideoThumbnail(selectedUser.postData.image) ? (
+                              <Image
+                                source={{
+                                  uri: getVideoThumbnail(selectedUser.postData.image) as string,
+                                }}
+                                style={{ width: '100%', height: '100%', opacity: 0.7 }}
+                              />
+                            ) : null}
+                            <Ionicons
+                              name="play-circle-outline"
+                              size={24}
+                              color="#fff"
+                              style={{ position: 'absolute' }}
+                            />
+                          </View>
+                        ) : (
+                          <Image
+                            source={{ uri: selectedUser.postData.image }}
+                            style={styles.postPreviewImage}
+                          />
+                        )}
+                      </>
                     )}
                     <View style={styles.postPreviewTextContent}>
                       <Text variant="bodyMedium" numberOfLines={2}>
@@ -1066,6 +1460,98 @@ const MapScreen = () => {
                 </Button>
               )}
             </View>
+          ) : sheetMode === 'event' && selectedEvent ? (
+            <View style={styles.userInfoContainer}>
+              <View style={styles.userHeader}>
+                {selectedEvent.image ? (
+                  <Image
+                    source={{ uri: selectedEvent.image }}
+                    style={[styles.postPreviewImage, { width: 80, height: 80 }]}
+                  />
+                ) : (
+                  <Avatar.Icon size={70} icon="calendar" />
+                )}
+                <View style={styles.userNameInfo}>
+                  <Text variant="titleLarge" style={styles.fullname}>
+                    {selectedEvent.title}
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.username}>
+                    {moment(selectedEvent.date).format('ddd, MMM D')} • {selectedEvent.time}
+                  </Text>
+                </View>
+              </View>
+
+              <Divider style={styles.divider} />
+
+              <View style={styles.infoRow}>
+                <IconButton icon="map-marker-outline" size={20} />
+                <Text variant="bodyMedium" style={{ flex: 1 }}>
+                  {selectedEvent.address}
+                </Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <IconButton icon="account-group-outline" size={20} />
+                <Text variant="bodyMedium">
+                  {selectedEvent.going?.length || 0} going • {selectedEvent.interested?.length || 0}{' '}
+                  interested
+                </Text>
+              </View>
+
+              <Button
+                mode="contained"
+                style={styles.viewProfileBtn}
+                onPress={() => {
+                  bottomSheetRef.current?.close();
+                  navigation.navigate('EventDetail', { id: selectedEvent._id });
+                }}>
+                View Event Details
+              </Button>
+            </View>
+          ) : sheetMode === 'shoutout' && selectedShoutout ? (
+            <View style={styles.userInfoContainer}>
+              <View style={styles.userHeader}>
+                <Avatar.Text
+                  size={70}
+                  label="🌈"
+                  style={{ backgroundColor: theme.colors.primary }}
+                  labelStyle={{ fontSize: 40 }}
+                />
+                <View style={styles.userNameInfo}>
+                  <Text variant="titleLarge" style={[styles.fullname, { color: '#FF00CC' }]}>
+                    Digital Graffiti
+                  </Text>
+                  <Text variant="bodyMedium" style={styles.username}>
+                    by {selectedShoutout.fullname} (@{selectedShoutout.username})
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.shoutoutContentCard}>
+                <Text style={styles.shoutoutLargeText}>
+                  "{selectedShoutout.shoutoutData.content}"
+                </Text>
+              </View>
+
+              <Divider style={styles.divider} />
+
+              <View style={styles.infoRow}>
+                <IconButton icon="clock-outline" size={20} />
+                <Text variant="bodyMedium">
+                  Left {moment(selectedShoutout.lastUpdate).fromNow()}
+                </Text>
+              </View>
+
+              <Button
+                mode="contained"
+                style={styles.viewProfileBtn}
+                onPress={() => {
+                  bottomSheetRef.current?.close();
+                  navigation.navigate('Profile', { id: selectedShoutout.user._id });
+                }}>
+                View Author Profile
+              </Button>
+            </View>
           ) : (
             <View style={styles.sharingSettingsContainer}>
               <View style={styles.settingsHeaderContainer}>
@@ -1078,7 +1564,11 @@ const MapScreen = () => {
                     {getStatusText()}
                   </Text>
                   {isUpdating && (
-                    <ActivityIndicator size={12} color="#666" style={{ marginLeft: 8 }} />
+                    <ActivityIndicator
+                      size={12}
+                      color={theme.colors.onSurfaceVariant}
+                      style={{ marginLeft: 8 }}
+                    />
                   )}
                 </View>
               </View>
@@ -1124,6 +1614,34 @@ const MapScreen = () => {
                     style={{ flex: 1.5 }}
                   />
                 </View>
+                {sharingType === 'static' && (
+                  <Button
+                    mode="outlined"
+                    icon="map-marker-plus"
+                    onPress={() => {
+                      bottomSheetRef.current?.close();
+                      Alert.alert(
+                        'Select Spot',
+                        'Tap anywhere on the map to pick your sharing location',
+                        [{ text: 'OK' }]
+                      );
+                    }}
+                    style={{ marginTop: 10 }}
+                    textColor={theme.colors.primary}>
+                    Tap on Map to Pick Spot
+                  </Button>
+                )}
+                {sharingType === 'static' && selectedLocation && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: theme.colors.primary,
+                      marginTop: 4,
+                      textAlign: 'center',
+                    }}>
+                    ✅ Location selected on map
+                  </Text>
+                )}
               </View>
 
               <View style={styles.settingsActions}>
@@ -1132,8 +1650,8 @@ const MapScreen = () => {
                   onPress={handleShareNow}
                   loading={loading}
                   style={styles.settingsActionBtn}
-                  buttonColor="#D4F637"
-                  textColor="#000"
+                  buttonColor={theme.colors.primary}
+                  textColor={theme.colors.onPrimary}
                   icon="share-variant">
                   {sharingVisibility === 'off' ? 'Start Sharing' : 'Update Now'}
                 </Button>
@@ -1154,6 +1672,106 @@ const MapScreen = () => {
           )}
         </BottomSheetScrollView>
       </BottomSheet>
+
+      {/* Shoutout Modal */}
+      <Modal
+        visible={shoutoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShoutoutModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.shoutoutModal, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.shoutoutModalInner}>
+              <Text
+                variant="titleLarge"
+                style={[styles.shoutoutTitle, { color: theme.colors.onSurface }]}>
+                Spray some Graffiti! 🎨
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={[styles.shoutoutSub, { color: theme.colors.onSurfaceVariant }]}>
+                Leave a fun message for others nearby.
+              </Text>
+              <View
+                style={[
+                  styles.shoutoutInputWrapper,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                ]}>
+                <IconButton icon="format-paint" iconColor="#FF00CC" size={24} />
+                <View style={{ flex: 1 }}>
+                  <LocationAutocomplete
+                    onLocationSelect={(addr, coord) => {
+                      const c = { latitude: coord[1], longitude: coord[0] };
+                      setSelectedLocation(c);
+                    }}
+                    placeholder="Searching for a spot?"
+                  />
+                </View>
+              </View>
+
+              <Button
+                mode="outlined"
+                icon="map-marker-plus"
+                onPress={() => {
+                  setShoutoutModalVisible(false);
+                  setIsSelectingLocation(true);
+                }}
+                style={{ marginTop: 10 }}
+                textColor={theme.colors.primary}>
+                Tap on Map to Select Location
+              </Button>
+
+              {selectedLocation && (
+                <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                  <Text
+                    style={{ marginLeft: 5, color: theme.colors.onSurfaceVariant, fontSize: 13 }}>
+                    Location selected on map
+                  </Text>
+                </View>
+              )}
+
+              <View
+                style={[
+                  styles.shoutoutInputWrapper,
+                  { marginTop: 10, backgroundColor: theme.colors.surfaceVariant },
+                ]}>
+                <IconButton icon="chat-outline" iconColor="#00A8FF" size={24} />
+                <TextInput
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    fontSize: 15,
+                    color: theme.colors.onSurface,
+                    minHeight: 80,
+                  }}
+                  placeholder="What is on your mind?"
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                  value={shoutoutContent}
+                  onChangeText={setShoutoutContent}
+                  multiline
+                  maxLength={200}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={{ height: 20 }} />
+
+              <Button
+                mode="contained"
+                buttonColor={theme.colors.primary}
+                textColor={theme.colors.onPrimary}
+                onPress={handleCreateShoutout}
+                loading={loading}
+                disabled={!shoutoutContent}
+                style={{ marginBottom: 10 }}>
+                POST GRAFFITI
+              </Button>
+              <Button onPress={() => setShoutoutModalVisible(false)}>Cancel</Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1161,7 +1779,6 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
   },
   map: {
     flex: 1,
@@ -1176,15 +1793,10 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   backBtn: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     width: 44,
     height: 44,
     marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
     elevation: 4,
   },
   searchWrapper: {
@@ -1201,10 +1813,6 @@ const styles = StyleSheet.create({
   fab: {
     margin: 0,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   sharingSettingsContainer: {
     paddingBottom: 20,
@@ -1230,7 +1838,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#666',
     fontWeight: '500',
   },
   settingsActions: {
@@ -1250,7 +1857,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
     textAlign: 'center',
-    color: '#666',
   },
   modeDurationRow: {
     flexDirection: 'row',
@@ -1274,9 +1880,7 @@ const styles = StyleSheet.create({
   fullname: {
     fontWeight: 'bold',
   },
-  username: {
-    color: '#666',
-  },
+  username: {},
   divider: {
     marginBottom: 15,
   },
@@ -1288,20 +1892,16 @@ const styles = StyleSheet.create({
   viewProfileBtn: {
     marginTop: 20,
     borderRadius: 10,
-    backgroundColor: '#D4F637',
   },
   postPreviewContainer: {
     marginTop: 15,
-    backgroundColor: '#F8F9FA',
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
   },
   latestPostTitle: {
     marginBottom: 8,
     fontWeight: 'bold',
-    color: '#495057',
   },
   postCardPreview: {
     flexDirection: 'row',
@@ -1311,7 +1911,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: '#eee',
   },
   postPreviewTextContent: {
     flex: 1,
@@ -1324,10 +1923,59 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   radiusMenu: {
-    backgroundColor: '#fff',
     borderRadius: 15,
     marginTop: -220, // Adjust to show above button
     paddingVertical: 5,
+  },
+  shoutoutModal: {
+    borderRadius: 20,
+    width: Dimensions.get('window').width * 0.85,
+    padding: 10,
+  },
+  shoutoutModalInner: {
+    padding: 10,
+  },
+  shoutoutTitle: {
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  shoutoutSub: {
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  shoutoutInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+  },
+  shoutoutContentCard: {
+    backgroundColor: '#000',
+    padding: 20,
+    borderRadius: 15,
+    marginVertical: 10,
+    transform: [{ rotate: '-2deg' }],
+    borderWidth: 3,
+    borderColor: '#D4F637',
+    shadowColor: '#FF00CC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  shoutoutLargeText: {
+    color: '#D4F637',
+    fontSize: 24,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Marker Felt' : 'monospace',
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
