@@ -1,6 +1,6 @@
 // src/navigation/AppNavigator.tsx
 
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 
@@ -8,6 +8,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MainTabNavigator from './MainTabNavigator';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
@@ -18,11 +19,16 @@ import StoryViewer from '../components/StoryViewer';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
 import GroupDetailsScreen from '../screens/GroupDetailsScreen';
+import EventsScreen from '../screens/EventsScreen';
+import CreateEventScreen from '../screens/CreateEventScreen';
+import EventDetailScreen from '../screens/EventDetailScreen';
+import EditEventScreen from '../screens/EditEventScreen';
+import MyEventsScreen from '../screens/MyEventsScreen';
 
 import { AuthContext } from '../auth/AuthContext';
 import PageScreen from '../screens/PageScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
-import { Button } from 'react-native-paper';
+import { Button, useTheme } from 'react-native-paper';
 import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
 import CommentsScreen from '../screens/CommentScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -36,41 +42,51 @@ import ProfileHeaderIcon from '../components/ProfileHeaderIcon';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import MapScreen from '../screens/MapScreen';
 import UserPostMapScreen from '../screens/UserPostMapScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
-  const { token, userType, logout, loading } = useContext(AuthContext);
+  const { token, userType, logout, loading, showOnboarding } = useContext(AuthContext);
   const { notification, showNotification, setShowNotification } = useContext(SocketContext);
+  const theme = useTheme();
 
-  if (loading) {
+  if (loading || showOnboarding === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#D4F637" />
       </View>
     );
   }
 
   return (
     <>
-      <Stack.Navigator detachInactiveScreens={false}>
-        {token ? (
+      <Stack.Navigator
+        detachInactiveScreens={false}
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.onSurface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}>
+        {showOnboarding ? (
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingScreen}
+            options={{ headerShown: false }}
+          />
+        ) : token ? (
           <>
             <Stack.Screen
               name="Main"
               component={MainTabNavigator}
               options={{
                 title: '',
-
                 headerShown: true,
                 headerLeft: () => <HeaderLogo />,
                 headerRight: () => <ProfileHeaderIcon />,
-                // headerLeftContainerStyle: { // Removed this line
-                //   paddingLeft: 0,
-                // },
               }}
             />
-
+            {/* ... rest of authenticated screens ... */}
             <Stack.Screen name="CommentsScreen" component={CommentsScreen as any} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen
@@ -148,6 +164,27 @@ const AppNavigator = () => {
               name="GroupDetailsScreen"
               component={GroupDetailsScreen}
               options={{ title: 'Group Details' }}
+            />
+            <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events' }} />
+            <Stack.Screen
+              name="CreateEvent"
+              component={CreateEventScreen}
+              options={{ title: 'Create Event' }}
+            />
+            <Stack.Screen
+              name="EventDetail"
+              component={EventDetailScreen}
+              options={{ title: 'Event' }}
+            />
+            <Stack.Screen
+              name="EditEvent"
+              component={EditEventScreen}
+              options={{ title: 'Edit Event' }}
+            />
+            <Stack.Screen
+              name="MyEvents"
+              component={MyEventsScreen}
+              options={{ title: 'My Events' }}
             />
           </>
         ) : (
