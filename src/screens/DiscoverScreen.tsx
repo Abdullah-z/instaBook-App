@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { getDiscoverPostsAPI } from '../api/postAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +19,8 @@ const ITEM_WIDTH = width / 3;
 
 const DiscoverScreen = () => {
   const { token } = useContext(AuthContext);
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const theme = useTheme();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -86,14 +88,14 @@ const DiscoverScreen = () => {
 
   if (loading && page === 1) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#D4F637" />
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <FlatList
         data={posts}
         renderItem={renderItem}
@@ -101,7 +103,9 @@ const DiscoverScreen = () => {
         numColumns={3}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={loading && page > 1 ? <ActivityIndicator color="#D4F637" /> : null}
+        ListFooterComponent={
+          loading && page > 1 ? <ActivityIndicator color={theme.colors.primary} /> : null
+        }
       />
     </View>
   );
