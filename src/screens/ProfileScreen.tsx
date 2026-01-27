@@ -12,6 +12,7 @@ import { AuthContext } from '../auth/AuthContext';
 import { getProfileUser, getSavedPosts, getUserPosts } from '../api/profileAPI';
 import PostGrid from '../components/profile/PostGrid';
 import ProfileHeader from '../components/profile/ProfileHeader';
+import { useTheme } from 'react-native-paper';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -32,12 +33,17 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const [savedPosts, setSavedPosts] = useState<any[] | null>(null);
   const [totalPosts, setTotalPosts] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showSaved, setShowSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'text' | 'saved'>('posts');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedPage, setSavedPage] = useState(1);
   const [savedResult, setSavedResult] = useState(0);
+
+  const [textPosts, setTextPosts] = useState<any[]>([]);
+  const [textPage, setTextPage] = useState(1);
+  const [textResult, setTextResult] = useState(0);
+  const theme = useTheme();
 
   const scrollY = useSharedValue(0);
 
@@ -77,7 +83,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const res = await getUserPosts(id, nextPage);
+      const res = await getUserPosts(id, nextPage, 'media');
       setPosts((prev) => [...prev, ...res.posts]);
       setResult(res.result);
       setPage(nextPage);
@@ -104,15 +110,47 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
     }
   };
 
+  const loadTextPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await getUserPosts(id, 1, 'text');
+      setTextPosts(res.posts);
+      setTextResult(res.result);
+      setTextPage(1);
+    } catch (err) {
+      console.error('Failed to fetch text posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadMoreText = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = textPage + 1;
+      const res = await getUserPosts(id, nextPage, 'text');
+      setTextPosts((prev) => [...prev, ...res.posts]);
+      setTextResult(res.result);
+      setTextPage(nextPage);
+    } catch (err) {
+      console.error('Failed to load more text posts:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
   }, [id]);
 
   useEffect(() => {
-    if (showSaved && user && id === user._id && !savedPosts) {
+    if (activeTab === 'saved' && user && id === user._id && !savedPosts) {
       loadSavedPosts();
+    } else if (activeTab === 'text' && textPosts.length === 0) {
+      loadTextPosts();
     }
-  }, [showSaved, id, user, savedPosts]);
+  }, [activeTab, id, user, savedPosts, textPosts.length]);
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
@@ -136,9 +174,20 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
     };
   });
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} />;
+  if (loading && !profileUser) {
+    return (
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
-  const showLoadMoreButton = showSaved ? savedResult === 9 : result === 9;
+  const showLoadMoreButton =
+    activeTab === 'saved'
+      ? savedResult === 9
+      : activeTab === 'text'
+        ? textResult === 9
+        : result === 9;
 
   const renderHeader = () => {
     if (!profileUser || !user) return null;
@@ -151,26 +200,59 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
           onRefresh={loadProfile}
         />
 
-        {user && id === user._id && (
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 12 }}>
-            <TouchableOpacity onPress={() => setShowSaved(false)}>
-              <Text style={{ fontWeight: showSaved ? 'normal' : 'bold', marginHorizontal: 12 }}>
-                Posts
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowSaved(true)}>
-              <Text style={{ fontWeight: showSaved ? 'bold' : 'normal', marginHorizontal: 12 }}>
-                Saved
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View
+          style={{
+            flexDirection: 'row',
+            marginTop: 24,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.outlineVariant,
+            paddingHorizontal: 10,
+          }}>
+          {['posts', 'text', 'saved'].map((tab: any) => {
+            if (tab === 'saved' && (!user || id !== user._id)) return null;
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    color: isActive ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                  }}>
+                  {tab}
+                </Text>
+                {isActive && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      width: '40%',
+                      height: 3,
+                      backgroundColor: theme.colors.primary,
+                      borderTopLeftRadius: 3,
+                      borderTopRightRadius: 3,
+                    }}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {profileUser && (
         <Animated.Image
           source={{ uri: profileUser.cover || 'https://picsum.photos/800/400' }}
@@ -179,8 +261,15 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
       )}
 
       <PostGrid
-        posts={showSaved ? savedPosts || [] : posts}
-        onLoadMore={showSaved ? handleLoadMoreSaved : handleLoadMore}
+        posts={activeTab === 'saved' ? savedPosts || [] : activeTab === 'text' ? textPosts : posts}
+        onLoadMore={
+          activeTab === 'saved'
+            ? handleLoadMoreSaved
+            : activeTab === 'text'
+              ? handleLoadMoreText
+              : handleLoadMore
+        }
+        isLoading={loading}
         isLoadingMore={loadingMore}
         loadMoreVisible={showLoadMoreButton}
         ListHeaderComponent={renderHeader()}
@@ -200,6 +289,11 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
