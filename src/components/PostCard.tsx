@@ -28,6 +28,7 @@ import { POST_BACKGROUNDS } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import PollView from './PollView';
 import HashtagText from './HashtagText';
+import { BlurView } from 'expo-blur';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -123,7 +124,7 @@ const PostCard = ({
   disableNavigation?: boolean;
 }) => {
   const navigation = useNavigation<any>();
-  const { user } = useContext(AuthContext);
+  const { user, isAmbientEnabled } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
 
   const [isLiked, setIsLiked] = useState(false);
@@ -454,18 +455,49 @@ const PostCard = ({
                         setViewerVisible(true);
                       }}
                       onLongPress={() => promptSaveImage(item.url)}
-                      style={{ paddingHorizontal: 16 }}>
-                      <Image
-                        source={{ uri: item.url }}
+                      style={{ paddingHorizontal: 16, width: '100%', height: '100%' }}>
+                      <View
                         style={{
                           width: '100%',
                           height: '100%',
-                          resizeMode: 'cover',
                           borderRadius: 20,
+                          overflow: 'hidden',
+                          backgroundColor: '#000',
                           borderWidth: 1,
                           borderColor: theme.colors.outlineVariant + '33',
-                        }}
-                      />
+                        }}>
+                        {/* 🌟 Ambient Background (Conditional) */}
+                        {isAmbientEnabled && (
+                          <>
+                            <Image
+                              source={{ uri: item.url }}
+                              style={{
+                                ...StyleSheet.absoluteFillObject,
+                                width: '100%',
+                                height: '100%',
+                                opacity: 1,
+                              }}
+                              resizeMode="cover"
+                            />
+                            <BlurView
+                              intensity={70}
+                              tint="dark"
+                              experimentalBlurMethod="dimezisBlurView"
+                              style={StyleSheet.absoluteFill}
+                            />
+                          </>
+                        )}
+
+                        {/* 🖼️ Primary Foreground Image */}
+                        <Image
+                          source={{ uri: item.url }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                          }}
+                          resizeMode="contain"
+                        />
+                      </View>
                     </TouchableOpacity>
                   ) : (
                     <View
@@ -646,7 +678,7 @@ const PostCard = ({
   );
 };
 
-export default PostCard;
+export default React.memo(PostCard);
 
 const styles = StyleSheet.create({
   card: {

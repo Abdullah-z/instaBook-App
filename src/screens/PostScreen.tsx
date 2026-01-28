@@ -41,6 +41,7 @@ import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
+import { BlurView } from 'expo-blur';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -53,7 +54,7 @@ const getYoutubeId = (url: string) => {
 const PostScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
-  const { user } = useContext(AuthContext);
+  const { user, isAmbientEnabled } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
   const theme = useTheme();
 
@@ -456,10 +457,41 @@ const PostScreen = () => {
                           setViewerIndex(images.indexOf(item));
                           setViewerVisible(true);
                         }}>
-                        <Image
-                          source={{ uri: item.url }}
-                          style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                        />
+                        <View
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: 20,
+                            overflow: 'hidden',
+                            backgroundColor: '#000',
+                          }}>
+                          {/* 🌟 Ambient Background (Conditional) */}
+                          {isAmbientEnabled && (
+                            <>
+                              <Image
+                                source={{ uri: item.url }}
+                                style={{
+                                  ...StyleSheet.absoluteFillObject,
+                                  opacity: 1,
+                                }}
+                                resizeMode="cover"
+                              />
+                              <BlurView
+                                intensity={70}
+                                tint="dark"
+                                experimentalBlurMethod="dimezisBlurView"
+                                style={StyleSheet.absoluteFill}
+                              />
+                            </>
+                          )}
+
+                          {/* 🖼️ Main Content */}
+                          <Image
+                            source={{ uri: item.url }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="contain"
+                          />
+                        </View>
                       </TouchableOpacity>
                     );
                   }}
