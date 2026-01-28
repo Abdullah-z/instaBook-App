@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
 import moment from 'moment';
 import { BlurView } from 'expo-blur';
+import { AuthContext } from '../auth/AuthContext';
+import { useTheme } from 'react-native-paper';
 import { generateCityImage } from '../api/geminiService';
 
 // Static Asset
@@ -35,6 +37,8 @@ const API_KEY = '6cc098a44449cf3468d194cae0f91b47';
 const UNSPLASH_ACCESS_KEY = 'j67xuJY4yvRW8UprInTOzcA8XVdxb9YEAlBl_KN4nlU';
 
 const WeatherNewsScreen = () => {
+  const { isAmbientEnabled } = useContext(AuthContext);
+  const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState('Lahore');
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -456,13 +460,26 @@ const WeatherNewsScreen = () => {
     // Width - 40 (padding) - 16 (gap) = Width - 56.
     // Use Width - 60 to be safe and ensure they fit 2 per row.
     const cardWidth = fullWidth ? '100%' : (width - 60) / 2;
-    const waterColor = headerColor || '#90CAF9'; // Use headerColor as water color if provided
+    const waterColor = headerColor || (theme.dark ? 'rgba(144, 202, 249, 0.3)' : '#90CAF9');
+
+    // Adjust widget background color for dark mode if it's too bright
+    const widgetBg = theme.dark ? 'rgba(255,255,255,0.08)' : color;
+    const textColor = theme.dark ? theme.colors.onSurface : '#444';
+    const subTextColor = theme.dark ? theme.colors.onSurfaceVariant : '#666';
 
     return (
       <View
         style={[
           styles.widgetCard,
-          { backgroundColor: color, width: cardWidth, overflow: 'hidden', padding: 0 }, // Remove card padding
+          {
+            backgroundColor: widgetBg,
+            width: cardWidth,
+            overflow: 'hidden',
+            padding: 0,
+            elevation: theme.dark ? 0 : 2,
+            borderWidth: theme.dark ? 1 : 0,
+            borderColor: 'rgba(255,255,255,0.1)',
+          },
         ]}>
         {/* Layer 1: Background Fill for Humidity (Dynamic height) */}
         {bgFillPercentage !== undefined && (
@@ -485,10 +502,10 @@ const WeatherNewsScreen = () => {
           <Ionicons
             name={icon}
             size={18}
-            color="#444"
+            color={textColor}
             style={rotateIcon !== undefined ? { transform: [{ rotate: `${rotateIcon}deg` }] } : {}}
           />
-          <Text style={styles.widgetTitle}>{title}</Text>
+          <Text style={[styles.widgetTitle, { color: textColor }]}>{title}</Text>
         </View>
         <View style={[styles.widgetContent, { paddingHorizontal: 16, paddingBottom: 16 }]}>
           {children}
@@ -633,12 +650,16 @@ const WeatherNewsScreen = () => {
         </View>
 
         <View style={styles.sunRow}>
-          <Ionicons name="sunny-outline" size={16} color="#333" />
-          <Text style={styles.sunText}>{detailsData.sunrise}</Text>
+          <Ionicons name="sunny-outline" size={16} color={theme.colors.onSurface} />
+          <Text style={[styles.sunText, { color: theme.colors.onSurface }]}>
+            {detailsData.sunrise}
+          </Text>
         </View>
         <View style={styles.sunRow}>
-          <Ionicons name="moon-outline" size={16} color="#333" />
-          <Text style={styles.sunText}>{detailsData.sunset}</Text>
+          <Ionicons name="moon-outline" size={16} color={theme.colors.onSurface} />
+          <Text style={[styles.sunText, { color: theme.colors.onSurface }]}>
+            {detailsData.sunset}
+          </Text>
         </View>
       </View>
     );
@@ -649,16 +670,30 @@ const WeatherNewsScreen = () => {
     const percentage = Math.max(0, Math.min(100, (aqi / 300) * 100));
 
     return (
-      <View style={styles.aqiCard}>
+      <View
+        style={[
+          styles.aqiCard,
+          {
+            backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : '#fff',
+            borderColor: theme.dark ? 'rgba(255,255,255,0.1)' : theme.colors.onSurfaceVariant,
+            borderWidth: 1,
+            elevation: theme.dark ? 0 : 1,
+            borderRadius: 24, // Explicitly ensure radius is applied
+          },
+        ]}>
         <View style={styles.aqiHeader}>
-          <Ionicons name="filter-outline" size={20} color="#333" />
-          <Text style={styles.aqiTitle}>Air quality</Text>
+          <Ionicons name="filter-outline" size={20} color={theme.colors.onSurface} />
+          <Text style={[styles.aqiTitle, { color: theme.colors.onSurface }]}>Air quality</Text>
         </View>
 
-        <Text style={styles.aqiCurrentLabel}>Current condition</Text>
+        <Text style={[styles.aqiCurrentLabel, { color: theme.colors.onSurfaceVariant }]}>
+          Current condition
+        </Text>
         <View style={styles.aqiValueContainer}>
-          <Text style={styles.aqiValueLarge}>{aqi}</Text>
-          <Text style={styles.aqiStatusText}>{desc}</Text>
+          <Text style={[styles.aqiValueLarge, { color: theme.colors.onSurface }]}>{aqi}</Text>
+          <Text style={[styles.aqiStatusText, { color: theme.colors.onSurfaceVariant }]}>
+            {desc}
+          </Text>
         </View>
 
         <View style={styles.aqiBarContainer}>
@@ -671,23 +706,50 @@ const WeatherNewsScreen = () => {
           <View style={[styles.aqiIndicator, { left: `${percentage}%`, marginLeft: -6 }]} />
         </View>
 
-        <Text style={styles.aqiStatement}>{getAQIStatement(aqi)}</Text>
+        <Text style={[styles.aqiStatement, { color: theme.colors.onSurfaceVariant }]}>
+          {getAQIStatement(aqi)}
+        </Text>
       </View>
     );
   };
 
   if (loading && !currentWeather) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#000" />
+      <View style={[styles.container, styles.center, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Immersive Full-Screen Blurred Background */}
+      {isAmbientEnabled && (
+        <View style={StyleSheet.absoluteFill}>
+          {generatedBgImage ? (
+            <Image
+              source={{ uri: generatedBgImage }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image source={weatherBg} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          )}
+          <BlurView
+            experimentalBlurMethod="dimezisBlurView"
+            intensity={100}
+            tint={theme.dark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
+
+      <StatusBar
+        barStyle={theme.dark ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
         {/* Header with Tabs */}
         <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 10 }}>
           <View
@@ -700,18 +762,40 @@ const WeatherNewsScreen = () => {
           </View>
 
           {/* Custom Tab Switcher */}
-          <View style={styles.tabContainer}>
+          <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface }]}>
             <TouchableOpacity
-              style={[styles.tabButton, activeTab === 'weather' && styles.activeTab]}
+              style={[
+                styles.tabButton,
+                activeTab === 'weather' && {
+                  backgroundColor: theme.colors.surface,
+                  shadowColor: theme.colors.shadow,
+                },
+              ]}
               onPress={() => setActiveTab('weather')}>
-              <Text style={[styles.tabText, activeTab === 'weather' && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: theme.colors.onSurfaceVariant },
+                  activeTab === 'weather' && { color: theme.colors.primary },
+                ]}>
                 Weather
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tabButton, activeTab === 'news' && styles.activeTab]}
+              style={[
+                styles.tabButton,
+                activeTab === 'news' && {
+                  backgroundColor: theme.colors.surface,
+                  shadowColor: theme.colors.shadow,
+                },
+              ]}
               onPress={() => setActiveTab('news')}>
-              <Text style={[styles.tabText, activeTab === 'news' && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: theme.colors.onSurfaceVariant },
+                  activeTab === 'news' && { color: theme.colors.primary },
+                ]}>
                 Top Stories
               </Text>
             </TouchableOpacity>
@@ -824,7 +908,11 @@ const WeatherNewsScreen = () => {
                 )}
 
                 {/* Central Info Panel (Localized Blur) */}
-                <BlurView intensity={65} tint="dark" style={styles.modernCenterInfoPanel}>
+                <BlurView
+                  experimentalBlurMethod="dimezisBlurView"
+                  intensity={isAmbientEnabled ? 80 : 0}
+                  tint="dark"
+                  style={styles.modernCenterInfoPanel}>
                   <View style={styles.modernTempContainer}>
                     {currentWeather?.weather?.[0]?.icon && (
                       <Image
@@ -855,7 +943,11 @@ const WeatherNewsScreen = () => {
                 </BlurView>
 
                 {/* Bottom Quick Stats (Localized Blur) */}
-                <BlurView intensity={65} tint="dark" style={styles.modernQuickStatsPanel}>
+                <BlurView
+                  experimentalBlurMethod="dimezisBlurView"
+                  intensity={isAmbientEnabled ? 80 : 0}
+                  tint="dark"
+                  style={styles.modernQuickStatsPanel}>
                   <View style={styles.quickStatItem}>
                     <Ionicons name="water-outline" size={18} color="rgba(255,255,255,0.8)" />
                     <Text style={styles.quickStatValue}>{currentWeather?.main?.humidity}%</Text>
@@ -881,24 +973,43 @@ const WeatherNewsScreen = () => {
 
             {/* Bottom Section */}
             <View style={styles.bottomSection}>
-              <View style={styles.dragHandle} />
+              <View
+                style={[styles.dragHandle, { backgroundColor: theme.colors.onSurfaceVariant }]}
+              />
 
               {/* Hourly Section */}
-              <Text style={styles.sectionTitleBlack}>Hourly Forecast</Text>
+              <Text style={[styles.sectionTitleBlack, { color: theme.colors.onSurface }]}>
+                Hourly Forecast
+              </Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.hourlyList}>
                 {hourlyData.map((item, index) => (
-                  <View key={index} style={styles.hourlyItem}>
-                    <Text style={styles.hourlyTimeBlack}>{item.time}</Text>
+                  <View
+                    key={index}
+                    style={[
+                      styles.hourlyItem,
+                      {
+                        backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : '#f9f9f9',
+                        elevation: 0,
+                        borderWidth: theme.dark ? 1 : 0,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                      },
+                    ]}>
+                    <Text
+                      style={[styles.hourlyTimeBlack, { color: theme.colors.onSurfaceVariant }]}>
+                      {item.time}
+                    </Text>
                     <Ionicons
                       name={item.icon as any}
                       size={28}
-                      color={item.isSunny ? '#fdb813' : '#54a0ff'}
+                      color={item.isSunny ? '#fdb813' : theme.colors.secondary}
                       style={styles.hourlyIcon}
                     />
-                    <Text style={styles.hourlyTempBlack}>{item.temp}°</Text>
+                    <Text style={[styles.hourlyTempBlack, { color: theme.colors.onSurface }]}>
+                      {item.temp}°
+                    </Text>
                   </View>
                 ))}
               </ScrollView>
@@ -909,29 +1020,55 @@ const WeatherNewsScreen = () => {
               )}
 
               {/* Daily Section */}
-              <Text style={[styles.sectionTitleBlack, { marginTop: 25 }]}>Daily Forecast</Text>
+              <Text
+                style={[
+                  styles.sectionTitleBlack,
+                  { marginTop: 25, color: theme.colors.onSurface },
+                ]}>
+                Daily Forecast
+              </Text>
               <View style={styles.dailyList}>
                 {dailyData.map((item, index) => (
-                  <View key={index} style={styles.dailyItem}>
-                    <Text style={styles.dailyDay}>{item.day}</Text>
+                  <View
+                    key={index}
+                    style={[
+                      styles.dailyItem,
+                      { borderBottomColor: theme.colors.onSurfaceVariant },
+                    ]}>
+                    <Text style={[styles.dailyDay, { color: theme.colors.onSurface }]}>
+                      {item.day}
+                    </Text>
                     <View style={styles.dailyConditionContainer}>
                       <Ionicons
                         name={item.icon as any}
                         size={20}
-                        color={item.icon === 'sunny' ? '#fdb813' : '#54a0ff'}
+                        color={item.icon === 'sunny' ? '#fdb813' : theme.colors.secondary}
                       />
-                      <Text style={styles.dailyCondition}>{item.condition}</Text>
+                      <Text
+                        style={[styles.dailyCondition, { color: theme.colors.onSurfaceVariant }]}>
+                        {item.condition}
+                      </Text>
                     </View>
                     <View style={styles.dailyTemps}>
-                      <Text style={styles.tempHigh}>{item.high}°</Text>
-                      <Text style={styles.tempLow}>{item.low}°</Text>
+                      <Text style={[styles.tempHigh, { color: theme.colors.onSurface }]}>
+                        {item.high}°
+                      </Text>
+                      <Text style={[styles.tempLow, { color: theme.colors.onSurfaceVariant }]}>
+                        {item.low}°
+                      </Text>
                     </View>
                   </View>
                 ))}
               </View>
 
               {/* Details Section (Widget Grid) */}
-              <Text style={[styles.sectionTitleBlack, { marginTop: 25 }]}>Current Details</Text>
+              <Text
+                style={[
+                  styles.sectionTitleBlack,
+                  { marginTop: 25, color: theme.colors.onSurface },
+                ]}>
+                Current Details
+              </Text>
               <View style={styles.widgetGrid}>
                 <WeatherWidget title="Wind" icon="navigate-outline" color="#FBE9E7">
                   <View
@@ -944,7 +1081,7 @@ const WeatherNewsScreen = () => {
                     <Ionicons
                       name="navigate-outline"
                       size={140}
-                      color="#333"
+                      color={theme.dark ? theme.colors.onSurface : '#333'}
                       style={{
                         position: 'absolute',
                         opacity: 0.1,
@@ -954,8 +1091,12 @@ const WeatherNewsScreen = () => {
                         transform: [{ rotate: `${(detailsData.windDeg || 0) - 45}deg` }],
                       }}
                     />
-                    <Text style={styles.widgetBigValue}>{detailsData.windSpeed}</Text>
-                    <Text style={styles.widgetSubValue}>From {detailsData.windDir}</Text>
+                    <Text style={[styles.widgetBigValue, { color: theme.colors.onSurface }]}>
+                      {detailsData.windSpeed}
+                    </Text>
+                    <Text style={[styles.widgetSubValue, { color: theme.colors.onSurfaceVariant }]}>
+                      From {detailsData.windDir}
+                    </Text>
                   </View>
                 </WeatherWidget>
 
@@ -970,8 +1111,10 @@ const WeatherNewsScreen = () => {
                   color="#E1F5FE"
                   bgFillPercentage={detailsData.humidityVal}>
                   <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                    <Text style={styles.widgetBigValue}>{detailsData.humidity}</Text>
-                    <Text style={styles.widgetSubValue}>
+                    <Text style={[styles.widgetBigValue, { color: theme.colors.onSurface }]}>
+                      {detailsData.humidity}
+                    </Text>
+                    <Text style={[styles.widgetSubValue, { color: theme.colors.onSurfaceVariant }]}>
                       Dew point:{' '}
                       {Math.round(
                         currentWeather.main.temp - (100 - currentWeather.main.humidity) / 5
@@ -983,23 +1126,33 @@ const WeatherNewsScreen = () => {
 
                 <WeatherWidget title="Visibility" icon="eye-outline" color="#F3E5F5">
                   <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                    <Text style={styles.widgetBigValue}>{detailsData.visibility}</Text>
-                    <Text style={styles.widgetSubValue}>Clear View</Text>
+                    <Text style={[styles.widgetBigValue, { color: theme.colors.onSurface }]}>
+                      {detailsData.visibility}
+                    </Text>
+                    <Text style={[styles.widgetSubValue, { color: theme.colors.onSurfaceVariant }]}>
+                      Clear View
+                    </Text>
                   </View>
                 </WeatherWidget>
 
                 {/* Row 3: Pressure & Feels Like */}
                 <WeatherWidget title="Pressure" icon="speedometer-outline" color="#ECEFF1">
                   <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                    <Text style={styles.widgetBigValue}>{detailsData.pressure}</Text>
-                    <Text style={styles.widgetSubValue}>hPa</Text>
+                    <Text style={[styles.widgetBigValue, { color: theme.colors.onSurface }]}>
+                      {detailsData.pressure}
+                    </Text>
+                    <Text style={[styles.widgetSubValue, { color: theme.colors.onSurfaceVariant }]}>
+                      hPa
+                    </Text>
                   </View>
                 </WeatherWidget>
 
                 <WeatherWidget title="Feels Like" icon="thermometer-outline" color="#E8F5E9">
                   <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                    <Text style={styles.widgetBigValue}>{detailsData.feelsLike}</Text>
-                    <Text style={styles.widgetSubValue}>
+                    <Text style={[styles.widgetBigValue, { color: theme.colors.onSurface }]}>
+                      {detailsData.feelsLike}
+                    </Text>
+                    <Text style={[styles.widgetSubValue, { color: theme.colors.onSurfaceVariant }]}>
                       Actual: {Math.round(currentWeather.main.temp)}°
                     </Text>
                   </View>
@@ -1010,11 +1163,13 @@ const WeatherNewsScreen = () => {
             </View>
           </ScrollView>
         ) : (
-          <View style={{ flex: 1, backgroundColor: '#f0f2f5' }}>
+          <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             {newsLoading ? (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#1877F2" />
-                <Text style={{ marginTop: 10, color: '#666' }}>Loading headlines...</Text>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={{ marginTop: 10, color: theme.colors.onSurfaceVariant }}>
+                  Loading headlines...
+                </Text>
               </View>
             ) : (
               <FlatList
@@ -1023,7 +1178,16 @@ const WeatherNewsScreen = () => {
                 contentContainerStyle={{ padding: 15, paddingBottom: 100 }}
                 renderItem={({ item }: any) => (
                   <TouchableOpacity
-                    style={styles.newsCard}
+                    style={[
+                      styles.newsCard,
+                      {
+                        backgroundColor: theme.colors.surface,
+                        shadowColor: theme.colors.shadow,
+                        elevation: theme.dark ? 0 : 2,
+                        borderWidth: theme.dark ? 1 : 0,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                      },
+                    ]}
                     onPress={() => handleNewsPress(item.url)}
                     activeOpacity={0.9}>
                     {item.urlToImage ? (
@@ -1033,20 +1197,30 @@ const WeatherNewsScreen = () => {
                         style={[
                           styles.newsImage,
                           {
-                            backgroundColor: '#ddd',
+                            backgroundColor: theme.colors.surface,
                             justifyContent: 'center',
                             alignItems: 'center',
                           },
                         ]}>
-                        <Ionicons name="newspaper-outline" size={40} color="#999" />
+                        <Ionicons
+                          name="newspaper-outline"
+                          size={40}
+                          color={theme.colors.onSurfaceVariant}
+                        />
                       </View>
                     )}
                     <View style={styles.newsContent}>
-                      <Text style={styles.newsSource}>{item.source?.name || 'News'}</Text>
-                      <Text style={styles.newsTitle} numberOfLines={3}>
+                      <Text style={[styles.newsSource, { color: theme.colors.primary }]}>
+                        {item.source?.name || 'News'}
+                      </Text>
+                      <Text
+                        style={[styles.newsTitle, { color: theme.colors.onSurface }]}
+                        numberOfLines={3}>
                         {item.title}
                       </Text>
-                      <Text style={styles.newsTime}>{moment(item.publishedAt).fromNow()}</Text>
+                      <Text style={[styles.newsTime, { color: theme.colors.onSurfaceVariant }]}>
+                        {moment(item.publishedAt).fromNow()}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -1061,31 +1235,35 @@ const WeatherNewsScreen = () => {
           transparent={true}
           visible={settingsVisible}
           onRequestClose={() => setSettingsVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Settings</Text>
+                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>Settings</Text>
                 <TouchableOpacity onPress={() => setSettingsVisible(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
+                  <Ionicons name="close" size={24} color={theme.colors.onSurface} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.settingRow}>
                 <View>
-                  <Text style={styles.settingLabel}>Temperature Unit</Text>
-                  <Text style={styles.settingSubLabel}>
+                  <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
+                    Temperature Unit
+                  </Text>
+                  <Text style={[styles.settingSubLabel, { color: theme.colors.onSurfaceVariant }]}>
                     Current: {unit === 'metric' ? 'Celsius (°C)' : 'Fahrenheit (°F)'}
                   </Text>
                 </View>
                 <Switch
-                  trackColor={{ false: '#767577', true: '#81b0ff' }}
-                  thumbColor={unit === 'imperial' ? '#2196f3' : '#f4f3f4'}
+                  trackColor={{ false: theme.colors.surface, true: theme.colors.primary }}
+                  thumbColor={unit === 'imperial' ? theme.colors.primary : theme.colors.outline}
                   onValueChange={toggleUnit}
                   value={unit === 'imperial'}
                 />
               </View>
 
-              <Text style={styles.modalFooter}>Weather data provided by OpenWeatherMap</Text>
+              <Text style={[styles.modalFooter, { color: theme.colors.onSurfaceVariant }]}>
+                Weather data provided by OpenWeatherMap
+              </Text>
             </View>
           </View>
         </Modal>
