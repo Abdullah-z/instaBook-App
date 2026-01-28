@@ -28,6 +28,8 @@ interface AuthContextType {
   setUser: (user: UserType | null) => void;
   showOnboarding: boolean | null;
   completeOnboarding: () => Promise<void>;
+  isAmbientEnabled: boolean;
+  toggleAmbientMode: (value: boolean) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -41,6 +43,8 @@ export const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
   showOnboarding: null,
   completeOnboarding: async () => {},
+  isAmbientEnabled: true,
+  toggleAmbientMode: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -49,11 +53,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userType, setUserType] = useState<'user' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [isAmbientEnabled, setIsAmbientEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     checkOnboarding();
+    loadAmbientPref();
     refreshToken();
   }, []);
+
+  const loadAmbientPref = async () => {
+    try {
+      const val = await AsyncStorage.getItem('IS_AMBIENT_ENABLED');
+      if (val !== null) {
+        setIsAmbientEnabled(val === 'true');
+      }
+    } catch (e) {
+      console.log('Failed to load ambient pref', e);
+    }
+  };
+
+  const toggleAmbientMode = async (value: boolean) => {
+    try {
+      setIsAmbientEnabled(value);
+      await AsyncStorage.setItem('IS_AMBIENT_ENABLED', value.toString());
+    } catch (e) {
+      console.log('Failed to save ambient pref', e);
+    }
+  };
 
   const checkOnboarding = async () => {
     try {
@@ -156,6 +182,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser,
         showOnboarding,
         completeOnboarding,
+        isAmbientEnabled,
+        toggleAmbientMode,
       }}>
       {children}
     </AuthContext.Provider>
