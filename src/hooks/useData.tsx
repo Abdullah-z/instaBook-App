@@ -139,6 +139,8 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   // change theme based on isDark updates
   useEffect(() => {
+    // Note: The custom matching ITheme for dark mode is not yet fully implemented
+    // in constants, but we ensure the state is reactive to transitions.
     setTheme(isDark ? light : light);
   }, [isDark]);
 
