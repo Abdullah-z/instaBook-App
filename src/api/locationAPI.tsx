@@ -22,10 +22,11 @@ export const getSharedLocationsAPI = async (
   lon?: number,
   radius?: number,
   targetUserId?: string,
-  timePeriod?: string
+  timePeriod?: string,
+  typeFilter?: string
 ) => {
   const res = await axios.get('/location/shared', {
-    params: { lat, lon, radius, targetUserId, timePeriod },
+    params: { lat, lon, radius, targetUserId, timePeriod, typeFilter },
   });
   return res.data;
 };
