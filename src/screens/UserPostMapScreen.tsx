@@ -155,8 +155,11 @@ const UserPostMapScreen = () => {
     setLoading(true);
     try {
       // Fixed radius to 20000 (All) for history view
-      const data = await getSharedLocationsAPI(0, 0, 20000, targetUserId, timePeriod);
-      if (Array.isArray(data)) setSharedLocations(data);
+      // Pass typeFilter='post' to only fetch post markers from backend
+      const data = await getSharedLocationsAPI(0, 0, 20000, targetUserId, timePeriod, 'post');
+      if (Array.isArray(data)) {
+        setSharedLocations(data);
+      }
     } catch (err) {
       console.error('Error fetching user post locations:', err);
     } finally {
