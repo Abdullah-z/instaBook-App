@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TouchableOpacity, Linking, Image, Modal } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Avatar, useTheme } from 'react-native-paper';
+import { Avatar, useTheme, Switch, Divider } from 'react-native-paper';
 import { followUserAPI, unfollowUserAPI } from '../../api/profileAPI';
 import { AuthContext } from '../../auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +19,7 @@ const ProfileHeader = ({
   postCount: number;
   onRefresh?: () => void;
 }) => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, isAmbientEnabled, toggleAmbientMode } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const theme = useTheme();
   console.log(profile);
@@ -318,6 +318,39 @@ const ProfileHeader = ({
               </TouchableOpacity>
             </View>
             <ThemeSwitcher />
+
+            <Divider style={{ marginVertical: 20, opacity: 0.5 }} />
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+              <View style={{ flex: 1, marginRight: 16 }}>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: theme.colors.onSurface,
+                  }}>
+                  Immersive Effects
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: theme.colors.onSurfaceVariant,
+                    marginTop: 2,
+                  }}>
+                  Enable ambient lighting and blurs. Disable for better performance.
+                </Text>
+              </View>
+              <Switch
+                value={isAmbientEnabled}
+                onValueChange={toggleAmbientMode}
+                color={theme.colors.primary}
+              />
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
