@@ -9,6 +9,7 @@ export const updateUserProfile = async (userData: {
   website?: string;
   story?: string;
   gender?: string;
+  isPrivate?: boolean;
 }) => {
   const res = await API.patch('/user', userData);
   return res.data;

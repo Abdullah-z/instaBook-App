@@ -13,6 +13,8 @@ import { useTheme } from 'react-native-paper';
 import { getDiscoverPostsAPI } from '../api/postAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { POST_BACKGROUNDS } from '../constants/postTheme';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width / 3;
@@ -59,31 +61,72 @@ const DiscoverScreen = () => {
   }, [page]);
 
   const renderItem = ({ item }: { item: any }) => {
-    const imageUrl = item.images[0]?.url;
-    const isVideo = imageUrl?.match(/video/i);
+    let imageUrl = item.images[0]?.url;
+    let isVideo =
+      item.images[0]?.resource_type === 'video' || (imageUrl && imageUrl.endsWith('.mp4'));
 
-    return (
-      <TouchableOpacity
-        style={styles.itemContainer}
-        onPress={() => {
-          // Navigate to post detail if available, or just log for now
-          console.log('Pressed post:', item._id);
-          navigation.navigate('PostDetail', { post: item._id, postId: item._id });
-        }}>
-        <Image
-          source={{
-            uri: isVideo ? 'https://cdn-icons-png.flaticon.com/512/238/238910.png' : imageUrl,
-          }}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        {isVideo && (
-          <View style={styles.videoIndicator}>
-            <Text style={styles.videoText}>▶</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
+    if (imageUrl) {
+      if (isVideo && imageUrl.includes('cloudinary.com')) {
+        // Create thumbnail from video URL
+        imageUrl = imageUrl.replace(/\.[^/.]+$/, '.jpg');
+      }
+
+      return (
+        <TouchableOpacity
+          style={styles.itemContainer}
+          onPress={() => {
+            navigation.navigate('PostDetail', { post: item._id, postId: item._id });
+          }}>
+          <Image
+            source={{ uri: imageUrl || 'https://via.placeholder.com/150' }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          {isVideo && (
+            <View style={styles.videoIndicator}>
+              <Text style={styles.videoText}>▶</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    } else {
+      // Text Post
+      const bgColors =
+        item.background && item.background !== 'default'
+          ? POST_BACKGROUNDS.find((b) => b.id === item.background)?.colors || ['#ccc', '#ccc']
+          : ['#ffffff', '#ffffff'];
+
+      return (
+        <TouchableOpacity
+          style={styles.itemContainer}
+          onPress={() => {
+            navigation.navigate('PostDetail', { post: item._id, postId: item._id });
+          }}>
+          <LinearGradient
+            colors={bgColors as any}
+            style={{
+              width: '100%',
+              height: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 5,
+            }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+            <Text
+              numberOfLines={4}
+              style={{
+                color: item.textStyle?.color || '#fff',
+                fontSize: 10,
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}>
+              {item.content}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
   };
 
   if (loading && page === 1) {

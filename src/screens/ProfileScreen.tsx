@@ -9,7 +9,12 @@ import {
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
-import { getProfileUser, getSavedPosts, getUserPosts } from '../api/profileAPI';
+import {
+  getProfileByUsername,
+  getProfileUser,
+  getSavedPosts,
+  getUserPosts,
+} from '../api/profileAPI';
 import PostGrid from '../components/profile/PostGrid';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import { useTheme } from 'react-native-paper';
@@ -26,8 +31,11 @@ const { width } = Dimensions.get('window');
 const ProfileScreen = ({ userId }: { userId?: string }) => {
   const route = useRoute<any>();
   const { user } = useContext(AuthContext);
-  const id = userId || route.params?.id || route.params?.userId || user?._id;
 
+  const initialId = userId || route.params?.id || route.params?.userId;
+  const username = route.params?.username;
+
+  const [id, setId] = useState(initialId || (username ? undefined : user?._id));
   const [profileUser, setProfileUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [savedPosts, setSavedPosts] = useState<any[] | null>(null);
@@ -48,10 +56,27 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const scrollY = useSharedValue(0);
 
   const loadProfile = async () => {
-    if (!id) return;
+    const targetId = userId || route.params?.id || route.params?.userId;
+    const targetUsername = route.params?.username;
+
+    if (!targetId && !targetUsername && !user?._id) return;
+
     try {
       setLoading(true);
-      const res = await getProfileUser(id);
+      let res;
+      if (targetId) {
+        res = await getProfileUser(targetId);
+        setId(targetId);
+      } else if (targetUsername) {
+        res = await getProfileByUsername(targetUsername);
+        setId(res.user._id);
+      } else if (user?._id) {
+        res = await getProfileUser(user._id as string);
+        setId(user._id);
+      } else {
+        return;
+      }
+
       setProfileUser(res.user);
       setPosts(res.posts);
       setTotalPosts(res.totalPosts);
@@ -142,7 +167,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
 
   useEffect(() => {
     loadProfile();
-  }, [id]);
+  }, [id, route.params?.id, route.params?.userId, route.params?.username]);
 
   useEffect(() => {
     if (activeTab === 'saved' && user && id === user._id && !savedPosts) {
@@ -276,6 +301,11 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         onScroll={scrollHandler}
         contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
         scrollEnabled={true}
+        showPrivateMessage={
+          profileUser?.isPrivate &&
+          user?._id !== id &&
+          !profileUser?.followers?.some((f: any) => f._id === user?._id)
+        }
       />
     </View>
   );
