@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
+import { POST_BACKGROUNDS } from '../constants/postTheme';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import moment from 'moment';
 
@@ -38,8 +40,8 @@ const StoryViewer = () => {
     if (!currentStory) return;
 
     setProgress(0);
-    const isVideo =
-      currentStory.images[0]?.type === 'video' || currentStory.images[0]?.url?.endsWith('.mp4');
+    const firstImg = currentStory.images?.[0];
+    const isVideo = firstImg?.type === 'video' || firstImg?.url?.endsWith('.mp4');
 
     if (isVideo) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -89,17 +91,38 @@ const StoryViewer = () => {
 
   if (!currentStory) return null;
 
-  const isVideo =
-    currentStory.images[0]?.type === 'video' || currentStory.images[0]?.url?.endsWith('.mp4');
-  const mediaUrl = currentStory.images[0]?.url;
+  const firstImg = currentStory.images?.[0];
+  const isVideo = firstImg?.type === 'video' || firstImg?.url?.endsWith('.mp4');
+  const mediaUrl = firstImg?.url;
+
+  const hasMedia = !!mediaUrl;
+  const bgId = currentStory.background || 'default';
+  const activeBg = POST_BACKGROUNDS.find((b) => b.id === bgId) || POST_BACKGROUNDS[0];
+  const textStyle = currentStory.textStyle || {};
 
   return (
     <View style={styles.container}>
       <StatusBar hidden />
 
-      {/* Media */}
+      {/* Media or Styled Text */}
       <View style={styles.mediaContainer}>
-        {isVideo ? (
+        {!hasMedia ? (
+          <LinearGradient
+            colors={activeBg.colors as any}
+            style={[styles.media, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+            <Text
+              style={{
+                fontSize: textStyle.fontSize || 24,
+                color: textStyle.color || '#000',
+                fontWeight: textStyle.fontWeight || 'normal',
+                textAlign: 'center',
+              }}>
+              {currentStory.content}
+            </Text>
+          </LinearGradient>
+        ) : isVideo ? (
           <Video
             source={{ uri: mediaUrl }}
             style={styles.media}
@@ -161,8 +184,8 @@ const StoryViewer = () => {
         <Ionicons name="close" size={30} color="#fff" />
       </TouchableOpacity>
 
-      {/* Footer Content */}
-      {currentStory.content ? (
+      {/* Footer Content - only if media is present */}
+      {hasMedia && currentStory.content ? (
         <View style={styles.footer}>
           <Text style={styles.content}>{currentStory.content}</Text>
         </View>
