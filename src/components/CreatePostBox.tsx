@@ -15,10 +15,13 @@ import {
   PermissionsAndroid,
   Platform,
   Switch,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Video, ResizeMode } from 'expo-av';
 import { createPostAPI } from '../api/postAPI';
+import { searchUser as searchUserAPI } from '../api/userAPI';
 import { imageUpload } from '../utils/imageUpload';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -29,6 +32,8 @@ import LocationAutocomplete from './LocationAutocomplete';
 import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 
+const SUGGESTION_COLOR_KEYS = ['primary', 'secondary', 'tertiary', 'error'] as const;
+
 interface Props {
   onPostCreated: (newPost: any) => void;
   initialPostType?: 'feed' | 'story' | 'both';
@@ -36,6 +41,7 @@ interface Props {
 
 const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed' }) => {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -61,8 +67,27 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
 
+  // Mention State
+  const [mentionsUsers, setMentionsUsers] = useState<any[]>([]);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [mentionStartPos, setMentionStartPos] = useState<number | null>(null);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [cursorPos, setCursorPos] = useState(0);
+
   const activeBg = POST_BACKGROUNDS.find((b) => b.id === selectedBgId) || POST_BACKGROUNDS[0];
   const isDefaultBg = selectedBgId === 'default';
+
+  const route = useRoute<any>();
+
+  // Listen for location picked from map via DeviceEventEmitter
+  React.useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('onLocationPicked', (locationData: any) => {
+      console.log('[CreatePostBox] Location received from event:', locationData.address);
+      setLocationAddress(locationData.address);
+      setLocationCoords([locationData.longitude, locationData.latitude]);
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Toggle text color default based on background
   React.useEffect(() => {
@@ -70,6 +95,11 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
       setTextColor('#FFFFFF'); // Default to white for colored backgrounds
       setFontSize(30); // Default larger font
     } else {
+      // In default mode, we don't want to lock in a specific color string
+      // unless the user manually picked one.
+      // Setting it to a dummy value or null would be better, but we need
+      // the UI to show the current theme color.
+      // The logic in handlePost will handle NOT saving it.
       setTextColor(theme.colors.onSurface);
       setFontSize(24);
     }
@@ -92,10 +122,66 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
     setShowYoutubeInput(false);
   };
 
+  const handleContentChange = (text: string) => {
+    setContent(text);
+
+    // Mention detection
+    const lastChar = text[cursorPos - 1];
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex !== -1) {
+      const query = textBeforeCursor.substring(lastAtIndex + 1);
+      // Ensure no spaces between @ and cursor
+      if (!query.includes(' ')) {
+        setMentionStartPos(lastAtIndex);
+        setMentionQuery(query);
+        handleSearchUsers(query);
+      } else {
+        setMentionsUsers([]);
+        setMentionStartPos(null);
+      }
+    } else {
+      setMentionsUsers([]);
+      setMentionStartPos(null);
+    }
+  };
+
+  const handleSearchUsers = async (query: string) => {
+    try {
+      setMentionLoading(true);
+      const res = await searchUserAPI(query);
+      setMentionsUsers(res.users || []);
+    } catch (err) {
+      console.error('Mention search error:', err);
+    } finally {
+      setMentionLoading(false);
+    }
+  };
+
+  const insertMention = (username: string) => {
+    if (mentionStartPos === null) return;
+
+    const textBeforeMention = content.substring(0, mentionStartPos);
+    const textAfterMention = content.substring(cursorPos);
+    const newContent = `${textBeforeMention}@${username} ${textAfterMention}`;
+
+    setContent(newContent);
+    setMentionsUsers([]);
+    setMentionStartPos(null);
+  };
+
   const pickImages = async () => {
     try {
       if (videoUri) {
         Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
+      if (selectedBgId !== 'default') {
+        Alert.alert(
+          'Not Allowed',
+          'You cannot add images when a custom background is selected. Please remove the background first.'
+        );
         return;
       }
       const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -130,6 +216,13 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
     try {
       if (images.length > 0) {
         Alert.alert('Limit Reached', 'You cannot add a video when images are selected.');
+        return;
+      }
+      if (selectedBgId !== 'default') {
+        Alert.alert(
+          'Not Allowed',
+          'You cannot add a video when a custom background is selected. Please remove the background first.'
+        );
         return;
       }
       if (videoUri) {
@@ -200,6 +293,13 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
       if (videoUri) {
         console.log('Blocked: video selected');
         Alert.alert('Limit Reached', 'You cannot add images when a video is selected.');
+        return;
+      }
+      if (selectedBgId !== 'default') {
+        Alert.alert(
+          'Not Allowed',
+          'You cannot take photos when a custom background is selected. Please remove the background first.'
+        );
         return;
       }
       if (images.length >= 4) {
@@ -324,7 +424,9 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         background: selectedBgId !== 'default' ? selectedBgId : undefined,
         textStyle: {
           fontSize,
-          color: textColor,
+          color: (isDefaultBg && textColor === theme.colors.onSurface
+            ? undefined
+            : textColor) as any,
           fontWeight: 'bold',
         },
         poll_question: showPollCreator ? pollQuestion.trim() : undefined,
@@ -376,7 +478,8 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
               placeholder="What's on your mind?"
               placeholderTextColor="rgba(255,255,255,0.7)"
               value={content}
-              onChangeText={setContent}
+              onChangeText={handleContentChange}
+              onSelectionChange={(e) => setCursorPos(e.nativeEvent.selection.start)}
               multiline
             />
           </LinearGradient>
@@ -394,11 +497,45 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             placeholder="What's on your mind?"
             placeholderTextColor={theme.colors.onSurfaceVariant}
             value={content}
-            onChangeText={setContent}
+            onChangeText={handleContentChange}
+            onSelectionChange={(e) => setCursorPos(e.nativeEvent.selection.start)}
             multiline
           />
         )}
       </View>
+
+      {/* Mention Suggestions */}
+      {mentionsUsers.length > 0 && (
+        <View style={[styles.mentionsContainer, { backgroundColor: theme.colors.surface }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {mentionsUsers.map((user, index) => (
+              <TouchableOpacity
+                key={user._id}
+                style={[
+                  styles.mentionItem,
+                  {
+                    backgroundColor: theme.dark
+                      ? theme.colors.secondaryContainer + '26'
+                      : theme.colors.secondaryContainer + '0D',
+                  },
+                ]}
+                onPress={() => insertMention(user.username)}>
+                <Image source={{ uri: user.avatar }} style={styles.mentionAvatar} />
+                <Text
+                  style={{
+                    color: (theme.colors as any)[
+                      SUGGESTION_COLOR_KEYS[index % SUGGESTION_COLOR_KEYS.length]
+                    ],
+                    fontSize: 13,
+                    fontWeight: '600',
+                  }}>
+                  @{user.username}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <View
         style={[
@@ -527,7 +664,16 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             {POST_BACKGROUNDS.map((bg) => (
               <TouchableOpacity
                 key={bg.id}
-                onPress={() => setSelectedBgId(bg.id)}
+                onPress={() => {
+                  if (bg.id !== 'default' && (images.length > 0 || videoUri)) {
+                    Alert.alert(
+                      'Not Allowed',
+                      'Special backgrounds are only for text-only posts. Please remove media first.'
+                    );
+                    return;
+                  }
+                  setSelectedBgId(bg.id);
+                }}
                 style={[
                   styles.styleOption,
                   selectedBgId === bg.id && [
@@ -560,10 +706,17 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             {TEXT_COLORS.map((color) => (
               <TouchableOpacity
                 key={color}
-                onPress={() => setTextColor(color)}
+                onPress={() => {
+                  if (color === 'default') {
+                    setTextColor(theme.colors.onSurface);
+                  } else {
+                    setTextColor(color);
+                  }
+                }}
                 style={[
                   styles.styleOption,
-                  textColor === color && [
+                  (textColor === color ||
+                    (color === 'default' && textColor === theme.colors.onSurface)) && [
                     styles.styleOptionActive,
                     { borderColor: theme.colors.primary },
                   ],
@@ -572,12 +725,20 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
                   style={[
                     styles.colorCircle,
                     {
-                      backgroundColor: color,
+                      backgroundColor: color === 'default' ? theme.colors.onSurface : color,
                       borderWidth: 1,
                       borderColor: theme.colors.outlineVariant,
                     },
-                  ]}
-                />
+                  ]}>
+                  {color === 'default' && (
+                    <Ionicons
+                      name="refresh"
+                      size={16}
+                      color={theme.colors.surface}
+                      style={{ alignSelf: 'center', marginTop: 6 }}
+                    />
+                  )}
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -632,6 +793,12 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
           <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
             <Ionicons name="locate" size={20} color={theme.colors.primary} />
             <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Use GPS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Map', { pickLocation: true })}
+            style={[styles.gpsBtn, { marginTop: 8 }]}>
+            <Ionicons name="map-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Pick on Map</Text>
           </TouchableOpacity>
           {locationAddress !== '' && (
             <TouchableOpacity
@@ -1107,4 +1274,26 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   fontSizeBtnActive: {},
+  mentionsContainer: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingHorizontal: 10,
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  mentionAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 6,
+  },
 });
