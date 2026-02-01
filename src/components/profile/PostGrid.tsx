@@ -37,7 +37,8 @@ const PostGrid = ({
   ListHeaderComponent,
   onScroll,
   contentContainerStyle,
-}: PostGridProps) => {
+  showPrivateMessage,
+}: PostGridProps & { showPrivateMessage?: boolean }) => {
   const navigation = useNavigation<any>();
   const theme = useTheme();
 
@@ -138,6 +139,29 @@ const PostGrid = ({
         <View style={{ padding: 40, alignItems: 'center' }}>
           {isLoading ? (
             <ActivityIndicator size="large" color={theme.colors.primary} />
+          ) : showPrivateMessage ? (
+            <View style={{ alignItems: 'center', marginTop: 20 }}>
+              <View
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  borderWidth: 2,
+                  borderColor: theme.colors.outline,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 10,
+                }}>
+                <Text style={{ fontSize: 30, color: theme.colors.onSurface }}>🔒</Text>
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.onSurface }}>
+                Private Account
+              </Text>
+              <Text
+                style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 5 }}>
+                Follow this account to see their photos and videos.
+              </Text>
+            </View>
           ) : (
             <Text style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
               No posts yet
