@@ -38,7 +38,7 @@ import PostScreen from '../screens/PostScreen';
 import NotificationToast from '../components/NotificationToast';
 import { SocketContext } from '../auth/SocketContext';
 import HeaderLogo from '../components/HeaderLogo';
-import ProfileHeaderIcon from '../components/ProfileHeaderIcon';
+import HeaderRightActions from '../components/HeaderRightActions';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import MapScreen from '../screens/MapScreen';
 import UserPostMapScreen from '../screens/UserPostMapScreen';
@@ -83,7 +83,7 @@ const AppNavigator = () => {
                 title: '',
                 headerShown: true,
                 headerLeft: () => <HeaderLogo />,
-                headerRight: () => <ProfileHeaderIcon />,
+                headerRight: () => <HeaderRightActions />,
               }}
             />
             {/* ... rest of authenticated screens ... */}
@@ -185,6 +185,11 @@ const AppNavigator = () => {
               name="MyEvents"
               component={MyEventsScreen}
               options={{ title: 'My Events' }}
+            />
+            <Stack.Screen
+              name="FollowRequests"
+              component={require('../screens/FollowRequestsScreen').default}
+              options={{ title: 'Follow Requests', headerShown: true }}
             />
           </>
         ) : (
