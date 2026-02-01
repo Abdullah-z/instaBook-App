@@ -1,6 +1,6 @@
-import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 
 interface UserCardProps {
   user: {
@@ -10,10 +10,13 @@ interface UserCardProps {
     avatar: string;
   };
   onPress?: () => void;
+  index?: number;
+  color?: string;
 }
 
-const UserCard = ({ user, onPress }: UserCardProps) => {
+const UserCard = ({ user, onPress, color }: UserCardProps) => {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
 
   const handlePress = () => {
     if (onPress) {
@@ -23,8 +26,26 @@ const UserCard = ({ user, onPress }: UserCardProps) => {
     }
   };
 
+  const dynamicBg = theme.dark
+    ? theme.colors.secondaryContainer + '26' // 15% opacity for Dark Mode
+    : theme.colors.secondaryContainer + '0D'; // 5% opacity for Light Mode
+
+  const dynamicBorder = color ? color + '33' : theme.colors.outlineVariant;
+  const textColor = color || theme.colors.onSurface;
+
   return (
-    <TouchableOpacity style={styles.container} onPress={handlePress}>
+    <TouchableOpacity
+      style={[
+        styles.container,
+        {
+          backgroundColor: dynamicBg,
+          borderColor: dynamicBorder,
+          borderRadius: 16,
+          marginBottom: 10,
+          borderWidth: 1,
+        },
+      ]}
+      onPress={handlePress}>
       <Image
         source={{
           uri:
@@ -34,8 +55,10 @@ const UserCard = ({ user, onPress }: UserCardProps) => {
         style={styles.avatar}
       />
       <View style={styles.info}>
-        <Text style={styles.username}>{user.username}</Text>
-        <Text style={styles.fullname}>{user.fullname}</Text>
+        <Text style={[styles.username, { color: textColor }]}>{user.username}</Text>
+        <Text style={[styles.fullname, { color: theme.colors.onSurfaceVariant }]}>
+          {user.fullname}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -45,10 +68,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    padding: 12,
   },
   avatar: {
     width: 50,
