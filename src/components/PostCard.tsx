@@ -8,11 +8,15 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   Modal as RNModal,
+  TextInput,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import ImageView from 'react-native-image-viewing';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { AuthContext } from '../auth/AuthContext';
-import { likePostAPI, unlikePostAPI, savePost, unsavePost } from '../api/postAPI';
+import { likePostAPI, unlikePostAPI, savePost, unsavePost, sharePostAPI } from '../api/postAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
 import { SocketContext } from '../auth/SocketContext';
 import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
@@ -22,7 +26,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
-import { promptSaveImage } from '../utils/MediaUtils';
+import { promptSaveImage, downloadAndSaveImage } from '../utils/MediaUtils';
 import { shortenAddress } from '../utils/locationHelper';
 import { POST_BACKGROUNDS } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -231,6 +235,31 @@ const PostCard = ({
     setIsLiked(liked);
   }, [post.likes, user]);
 
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareContent, setShareContent] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const res = await sharePostAPI(post._id, shareContent);
+      setShareModalVisible(false);
+      setShareContent('');
+      Toast.show({
+        type: 'success',
+        text1: 'Post shared successfully!',
+      });
+    } catch (err: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to share post',
+        text2: err.response?.data?.msg || err.message,
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <View
       style={[
@@ -257,13 +286,16 @@ const PostCard = ({
                 <Avatar.Icon size={40} icon="account" />
               )}
             </TouchableOpacity>
-            <View style={styles.userInfo}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}
+              style={styles.userInfo}>
               <Text style={[styles.username, { color: theme.colors.onSurface }]}>
                 {post.user.username}
               </Text>
               <View style={styles.timestampContainer}>
                 <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
                   {moment(post.createdAt).fromNow()}
+                  {post.isEdited && ' (Edited)'}
                 </Text>
                 {post.address ? (
                   <View style={styles.locationContainer}>
@@ -281,7 +313,7 @@ const PostCard = ({
                   </View>
                 ) : null}
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {post?.user?._id === user?._id && (
@@ -298,7 +330,14 @@ const PostCard = ({
               <Menu.Item
                 onPress={() => {
                   closeMenu();
-                  onDelete(post._id);
+                  Alert.alert(
+                    'Delete Post',
+                    'Are you sure you want to delete this post? This action cannot be undone.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => onDelete(post._id) },
+                    ]
+                  );
                 }}
                 title="Delete"
                 leadingIcon="delete-outline"
@@ -366,12 +405,14 @@ const PostCard = ({
                 fontSize: post.textStyle.fontSize,
                 lineHeight: post.textStyle.fontSize * 1.2,
                 color:
-                  post.textStyle.color &&
-                  post.textStyle.color !== '#FFFFFF' &&
-                  post.textStyle.color !== '#fff' &&
-                  post.textStyle.color !== '#000000' &&
-                  post.textStyle.color !== '#000' &&
-                  !post.textStyle.color.startsWith('rgb(32, 27, 22)') // Specific fix for the user's report
+                  (post.textStyle.color &&
+                    post.textStyle.color !== '#FFFFFF' &&
+                    post.textStyle.color !== '#fff' &&
+                    post.textStyle.color !== '#000000' &&
+                    post.textStyle.color !== '#000' &&
+                    !post.textStyle.color.startsWith('rgb(32, 27, 22)') && // Specific fix for the user's report
+                    !post.background) ||
+                  post.background === 'default'
                     ? post.textStyle.color
                     : theme.colors.onSurface,
               },
@@ -389,12 +430,14 @@ const PostCard = ({
                   fontSize: post.textStyle.fontSize,
                   lineHeight: post.textStyle.fontSize * 1.2,
                   color:
-                    post.textStyle.color &&
-                    post.textStyle.color !== '#FFFFFF' &&
-                    post.textStyle.color !== '#fff' &&
-                    post.textStyle.color !== '#000000' &&
-                    post.textStyle.color !== '#000' &&
-                    !post.textStyle.color.startsWith('rgb(32, 27, 22)')
+                    (post.textStyle.color &&
+                      post.textStyle.color !== '#FFFFFF' &&
+                      post.textStyle.color !== '#fff' &&
+                      post.textStyle.color !== '#000000' &&
+                      post.textStyle.color !== '#000' &&
+                      !post.textStyle.color.startsWith('rgb(32, 27, 22)') &&
+                      !post.background) ||
+                    post.background === 'default'
                       ? post.textStyle.color
                       : theme.colors.onSurface,
                 },
@@ -439,6 +482,7 @@ const PostCard = ({
                           borderRadius: 20,
                           overflow: 'hidden',
                           marginHorizontal: 16,
+                          marginVertical: 16,
                           borderWidth: 1,
                           borderColor: theme.colors.outlineVariant + '33',
                         }}>
@@ -455,7 +499,12 @@ const PostCard = ({
                         setViewerVisible(true);
                       }}
                       onLongPress={() => promptSaveImage(item.url)}
-                      style={{ paddingHorizontal: 16, width: '100%', height: '100%' }}>
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 16,
+                        width: '100%',
+                        height: '100%',
+                      }}>
                       <View
                         style={{
                           width: '100%',
@@ -507,6 +556,7 @@ const PostCard = ({
                         backgroundColor: '#eee',
                         borderRadius: 20,
                         marginHorizontal: 16,
+                        marginVertical: 16,
                       }}
                     />
                   );
@@ -582,8 +632,79 @@ const PostCard = ({
           </View>
         ) : null}
 
+        {/* ✅ Shared Post Preview */}
+        {post.sharedPost && (
+          <View
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 16,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: theme.colors.outlineVariant,
+              overflow: 'hidden',
+              backgroundColor: theme.colors.surfaceVariant + '33',
+            }}>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('PostDetail', {
+                  postId: post.sharedPost._id,
+                  post: post.sharedPost,
+                })
+              }
+              style={{ padding: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                {post.sharedPost.user?.avatar &&
+                typeof post.sharedPost.user.avatar === 'string' &&
+                post.sharedPost.user.avatar.trim() !== '' ? (
+                  <Avatar.Image size={24} source={{ uri: post.sharedPost.user.avatar }} />
+                ) : (
+                  <Avatar.Icon size={24} icon="account" />
+                )}
+                <Text
+                  style={{
+                    marginLeft: 8,
+                    fontWeight: 'bold',
+                    fontSize: 13,
+                    color: theme.colors.onSurface,
+                  }}>
+                  {post.sharedPost.user?.username || 'Unknown User'}
+                </Text>
+                <Text
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 11,
+                    color: theme.colors.onSurfaceVariant,
+                  }}>
+                  • {moment(post.sharedPost.createdAt).fromNow()}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 13, color: theme.colors.onSurface }} numberOfLines={3}>
+                {post.sharedPost.content}
+              </Text>
+              {post.sharedPost.images &&
+                post.sharedPost.images.length > 0 &&
+                post.sharedPost.images[0].url && (
+                  <Image
+                    source={{ uri: post.sharedPost.images[0].url }}
+                    style={{
+                      width: '100%',
+                      height: 150,
+                      borderRadius: 12,
+                      marginTop: 8,
+                      backgroundColor: '#000',
+                    }}
+                    resizeMode="cover"
+                  />
+                )}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ✅ Like / Comment / Save */}
-        <View style={styles.actions}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => navigation.navigate('PostDetail', { postId: post._id, post })}
+          style={styles.actions}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             <TouchableOpacity
               onPress={isLiked ? handleUnlike : handleLike}
@@ -604,6 +725,21 @@ const PostCard = ({
                 {comments.length}
               </Text>
             </TouchableOpacity>
+
+            {!post.sharedPost && (
+              <TouchableOpacity
+                onPress={() => setShareModalVisible(true)}
+                style={styles.actionButton}>
+                <Ionicons
+                  name="share-social-outline"
+                  size={22}
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                  Share
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {post.user?._id !== user?._id && (
@@ -615,7 +751,7 @@ const PostCard = ({
               />
             </TouchableOpacity>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* ✅ One comment preview */}
         {firstComment && (
@@ -673,7 +809,111 @@ const PostCard = ({
         onRequestClose={() => setViewerVisible(false)}
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
+        HeaderComponent={({ imageIndex }) => {
+          const currentImage = images.filter((img: any) => img.url)[imageIndex];
+          return (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                padding: 20,
+                paddingTop: 50,
+              }}>
+              <TouchableOpacity
+                onPress={() => currentImage && downloadAndSaveImage(currentImage.url)}
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  padding: 10,
+                  borderRadius: 25,
+                }}>
+                <Ionicons name="download-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          );
+        }}
       />
+
+      {/* ✅ Share Modal */}
+      <RNModal
+        visible={shareModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>Share Post</Text>
+              <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.shareInputContainer}>
+              <Avatar.Image size={40} source={{ uri: user?.avatar }} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                  {user?.username}
+                </Text>
+                <TextInput
+                  placeholder="Say something about this..."
+                  placeholderTextColor={theme.colors.onSurfaceVariant}
+                  multiline
+                  value={shareContent}
+                  onChangeText={setShareContent}
+                  style={{
+                    color: theme.colors.onSurface,
+                    fontSize: 16,
+                    minHeight: 80,
+                    textAlignVertical: 'top',
+                    marginTop: 8,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Original Post Preview in Modal */}
+            <View
+              style={{
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.outlineVariant,
+                padding: 10,
+                backgroundColor: theme.colors.surfaceVariant + '22',
+              }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Avatar.Image size={20} source={{ uri: post.user?.avatar }} />
+                <Text
+                  style={{
+                    marginLeft: 6,
+                    fontWeight: 'bold',
+                    fontSize: 12,
+                    color: theme.colors.onSurface,
+                  }}>
+                  {post.user?.username}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: theme.colors.onSurface }} numberOfLines={2}>
+                {post.content}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.shareSubmitBtn,
+                { backgroundColor: theme.colors.primary },
+                isSharing && { opacity: 0.7 },
+              ]}
+              disabled={isSharing}
+              onPress={handleShare}>
+              {isSharing ? (
+                <ActivityIndicator color={theme.colors.onPrimary} size="small" />
+              ) : (
+                <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>Share Now</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </RNModal>
     </View>
   );
 };
@@ -686,11 +926,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 28, // Expressive roundness
     borderWidth: 1, // Subtle border
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   cardContent: {
     borderRadius: 28,
@@ -786,5 +1021,36 @@ const styles = StyleSheet.create({
   },
   commentMetaText: {
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  shareInputContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  shareSubmitBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
   },
 });
