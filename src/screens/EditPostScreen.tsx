@@ -10,11 +10,14 @@ import {
   Text,
   ActivityIndicator,
   Modal,
+  Platform,
   Switch,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';
+import { searchUser as searchUserAPI } from '../api/userAPI';
 import { imageUpload } from '../utils/imageUpload';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,36 +27,127 @@ import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import moment from 'moment';
 
 const EditPostScreen = () => {
   const navigation = useNavigation();
   const theme = useTheme();
   const route = useRoute();
-  const { post, onPostUpdate } = route.params as any;
+  const params = route.params as any;
 
-  const [content, setContent] = useState(post.content);
-  const [images, setImages] = useState<any[]>(post.images || []);
+  // Persist post and callback in state so they survive re-navigation/param-merging
+  // post will be null/undefined on future renders IF params are lost, but useState stays
+  const [initialPost] = useState(params?.post);
+  const [persistedOnPostUpdate] = useState(() => params?.onPostUpdate);
+
+  // Safety check: if we're in edit mode but post is missing, we must go back
+  useEffect(() => {
+    if (!initialPost) {
+      console.warn('[EditPostScreen] Initial post is missing! Navigation params likely lost.');
+      Alert.alert('Error', 'Post data lost. Please try again.');
+      navigation.goBack();
+    }
+  }, [initialPost]);
+
+  console.log('[EditPostScreen] Render params:', {
+    hasPostParam: !!params?.post,
+    hasInitialPost: !!initialPost,
+    hasPickedLocation: !!params?.pickedLocation,
+  });
+
+  const [content, setContent] = useState(initialPost?.content || '');
+  const [images, setImages] = useState<any[]>(initialPost?.images || []);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isHD, setIsHD] = useState(false);
-  const [address, setAddress] = useState(post.address || '');
-  const [locationCoords, setLocationCoords] = useState<[number, number] | null>(
-    post.location?.coordinates || null
+  const [address, setAddress] = useState(initialPost?.address || '');
+  const [locationCoords, setLocationCoords] = useState<any>(
+    initialPost?.location?.coordinates || null
   );
   const [showLocationSearch, setShowLocationSearch] = useState(false);
 
   // Background & Text Style State
-  const [selectedBgId, setSelectedBgId] = useState(post.background || 'default');
-  const [textColor, setTextColor] = useState(post.textStyle?.color || theme.colors.onSurface);
-  const [fontSize, setFontSize] = useState(post.textStyle?.fontSize || 24);
+  const [selectedBgId, setSelectedBgId] = useState(initialPost?.background || 'default');
+  const [textColor, setTextColor] = useState(
+    initialPost?.textStyle?.color || theme.colors.onSurface
+  );
+  const [fontSize, setFontSize] = useState(initialPost?.textStyle?.fontSize || 24);
   const [showStyleControls, setShowStyleControls] = useState(false);
 
   // Poll State
-  const [showPollCreator, setShowPollCreator] = useState(!!post.poll_question);
-  const [pollQuestion, setPollQuestion] = useState(post.poll_question || '');
+  const [showPollCreator, setShowPollCreator] = useState(!!initialPost?.poll_question);
+  const [pollQuestion, setPollQuestion] = useState(initialPost?.poll_question || '');
   const [pollOptions, setPollOptions] = useState(
-    post.poll_options?.map((opt: any) => opt.text) || ['', '']
+    initialPost?.poll_options?.map((opt: any) => opt.text) || ['', '']
   );
+
+  // Mention State
+  const [mentionsUsers, setMentionsUsers] = useState<any[]>([]);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [mentionStartPos, setMentionStartPos] = useState<number | null>(null);
+  const [cursorPos, setCursorPos] = useState(0);
+
+  const handleContentChange = (text: string) => {
+    setContent(text);
+
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex !== -1) {
+      const query = textBeforeCursor.substring(lastAtIndex + 1);
+      if (!query.includes(' ')) {
+        setMentionStartPos(lastAtIndex);
+        handleSearchUsers(query);
+      } else {
+        setMentionsUsers([]);
+        setMentionStartPos(null);
+      }
+    } else {
+      setMentionsUsers([]);
+      setMentionStartPos(null);
+    }
+  };
+
+  const handleSearchUsers = async (query: string) => {
+    try {
+      setMentionLoading(true);
+      const res = await searchUserAPI(query);
+      setMentionsUsers(res.users || []);
+    } catch (err) {
+      console.error('Mention search error:', err);
+    } finally {
+      setMentionLoading(false);
+    }
+  };
+
+  const insertMention = (username: string) => {
+    if (mentionStartPos === null) return;
+
+    const textBeforeMention = content.substring(0, mentionStartPos);
+    const textAfterMention = content.substring(cursorPos);
+    const newContent = `${textBeforeMention}@${username} ${textAfterMention}`;
+
+    setContent(newContent);
+    setMentionsUsers([]);
+    setMentionStartPos(null);
+  };
+
+  const [postDate, setPostDate] = useState(new Date(initialPost?.createdAt || Date.now()));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setPostDate(selectedDate);
+    }
+  };
+
+  const showMode = (currentMode: 'date' | 'time') => {
+    setShowDatePicker(true);
+    setDatePickerMode(currentMode);
+  };
 
   const activeBg = POST_BACKGROUNDS.find((b) => b.id === selectedBgId) || POST_BACKGROUNDS[0];
   const isDefaultBg = selectedBgId === 'default';
@@ -65,12 +159,23 @@ const EditPostScreen = () => {
     if (showStyleControls) {
       // Only auto-switch if user is interacting
       if (selectedBgId !== 'default') {
-        if (textColor === '#000000') setTextColor('#FFFFFF');
+        if (textColor === '#000000' || textColor === theme.colors.onSurface)
+          setTextColor('#FFFFFF');
       } else {
-        if (textColor === '#FFFFFF') setTextColor('#000000');
+        if (textColor === '#FFFFFF') setTextColor(theme.colors.onSurface);
       }
     }
   }, [selectedBgId]);
+
+  // Listen for location picked from map via DeviceEventEmitter
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('onLocationPicked', (locationData: any) => {
+      console.log('[EditPostScreen] Location received from event:', locationData.address);
+      setAddress(locationData.address);
+      setLocationCoords([locationData.longitude, locationData.latitude]);
+    });
+    return () => subscription.remove();
+  }, []);
 
   // YouTube Input State
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
@@ -135,6 +240,13 @@ const EditPostScreen = () => {
     try {
       if (images.length > 0) {
         Alert.alert('Limit Reached', 'You cannot add a video when images are selected.');
+        return;
+      }
+      if (selectedBgId !== 'default') {
+        Alert.alert(
+          'Not Allowed',
+          'You cannot add a video when a custom background is selected. Please remove the background first.'
+        );
         return;
       }
       if (videoUri) {
@@ -304,7 +416,9 @@ const EditPostScreen = () => {
         background: selectedBgId !== 'default' ? selectedBgId : undefined,
         textStyle: {
           fontSize,
-          color: textColor,
+          color: (isDefaultBg && textColor === theme.colors.onSurface
+            ? undefined
+            : textColor) as any,
           fontWeight: 'bold',
         },
         poll_question: showPollCreator ? pollQuestion.trim() : undefined,
@@ -313,11 +427,12 @@ const EditPostScreen = () => {
               .filter((opt: string) => opt.trim().length > 0)
               .map((opt: string) => ({ text: opt.trim() }))
           : undefined,
+        createdAt: postDate.toISOString(),
       };
-      const res = await updatePostAPI(post._id, updatedData);
+      const res = await updatePostAPI(initialPost?._id, updatedData);
 
-      if (onPostUpdate) {
-        onPostUpdate(res.newPost);
+      if (persistedOnPostUpdate) {
+        persistedOnPostUpdate(res.newPost);
       }
 
       Alert.alert('Success', 'Post updated successfully', [
@@ -365,7 +480,8 @@ const EditPostScreen = () => {
               placeholder="What's on your mind?"
               placeholderTextColor="rgba(255,255,255,0.7)"
               value={content}
-              onChangeText={setContent}
+              onChangeText={handleContentChange}
+              onSelectionChange={(e) => setCursorPos(e.nativeEvent.selection.start)}
               multiline
             />
           </LinearGradient>
@@ -378,11 +494,63 @@ const EditPostScreen = () => {
             placeholder="What's on your mind?"
             placeholderTextColor={theme.colors.onSurfaceVariant}
             value={content}
-            onChangeText={setContent}
+            onChangeText={handleContentChange}
+            onSelectionChange={(e) => setCursorPos(e.nativeEvent.selection.start)}
             multiline
           />
         )}
       </View>
+
+      {/* Mention Suggestions */}
+      {mentionsUsers.length > 0 && (
+        <View style={[styles.mentionsContainer, { backgroundColor: theme.colors.surface }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {mentionsUsers.map((user) => (
+              <TouchableOpacity
+                key={user._id}
+                style={styles.mentionItem}
+                onPress={() => insertMention(user.username)}>
+                <Image source={{ uri: user.avatar }} style={styles.mentionAvatar} />
+                <Text style={{ color: theme.colors.onSurface, fontSize: 13 }}>
+                  @{user.username}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Date & Time Picker Buttons */}
+      <View style={styles.datePickerContainer}>
+        <Text style={[styles.dateLabel, { color: theme.colors.onSurfaceVariant }]}>
+          Post Date: {moment(postDate).format('llll')}
+        </Text>
+        <View style={styles.dateButtons}>
+          <TouchableOpacity onPress={() => showMode('date')} style={styles.datePickerButton}>
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.datePickerButtonText, { color: theme.colors.primary }]}>
+              Change Date
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => showMode('time')} style={styles.datePickerButton}>
+            <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.datePickerButtonText, { color: theme.colors.primary }]}>
+              Change Time
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          testID="dateTimePicker"
+          value={postDate}
+          mode={datePickerMode}
+          is24Hour={true}
+          display="default"
+          onChange={onDateChange}
+        />
+      )}
 
       <View
         style={[
@@ -469,7 +637,16 @@ const EditPostScreen = () => {
             {POST_BACKGROUNDS.map((bg) => (
               <TouchableOpacity
                 key={bg.id}
-                onPress={() => setSelectedBgId(bg.id)}
+                onPress={() => {
+                  if (bg.id !== 'default' && (images.length > 0 || videoUri)) {
+                    Alert.alert(
+                      'Not Allowed',
+                      'Special backgrounds are only for text-only posts. Please remove media first.'
+                    );
+                    return;
+                  }
+                  setSelectedBgId(bg.id);
+                }}
                 style={[
                   styles.styleOption,
                   selectedBgId === bg.id && [
@@ -502,10 +679,17 @@ const EditPostScreen = () => {
             {TEXT_COLORS.map((color) => (
               <TouchableOpacity
                 key={color}
-                onPress={() => setTextColor(color)}
+                onPress={() => {
+                  if (color === 'default') {
+                    setTextColor(theme.colors.onSurface);
+                  } else {
+                    setTextColor(color);
+                  }
+                }}
                 style={[
                   styles.styleOption,
-                  textColor === color && [
+                  (textColor === color ||
+                    (color === 'default' && textColor === theme.colors.onSurface)) && [
                     styles.styleOptionActive,
                     { borderColor: theme.colors.primary },
                   ],
@@ -514,12 +698,20 @@ const EditPostScreen = () => {
                   style={[
                     styles.colorCircle,
                     {
-                      backgroundColor: color,
+                      backgroundColor: color === 'default' ? theme.colors.onSurface : color,
                       borderWidth: 1,
                       borderColor: theme.colors.outlineVariant,
                     },
-                  ]}
-                />
+                  ]}>
+                  {color === 'default' && (
+                    <Ionicons
+                      name="refresh"
+                      size={16}
+                      color={theme.colors.surface}
+                      style={{ alignSelf: 'center', marginTop: 6 }}
+                    />
+                  )}
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -566,7 +758,7 @@ const EditPostScreen = () => {
           <LocationAutocomplete
             onLocationSelect={(addr, coords) => {
               setAddress(addr);
-              setLocationCoords(coords);
+              setLocationCoords(coords as any);
             }}
             initialValue={address}
             placeholder="Search location..."
@@ -574,6 +766,12 @@ const EditPostScreen = () => {
           <TouchableOpacity onPress={handleGetCurrentLocation} style={styles.gpsBtn}>
             <Ionicons name="locate" size={20} color={theme.colors.primary} />
             <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Use GPS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Map' as any, { pickLocation: true } as any)}
+            style={[styles.gpsBtn, { marginTop: 8 }]}>
+            <Ionicons name="map-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.gpsBtnText, { color: theme.colors.primary }]}>Pick on Map</Text>
           </TouchableOpacity>
           {address !== '' && (
             <TouchableOpacity
@@ -1031,5 +1229,52 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  datePickerContainer: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 10,
+  },
+  dateLabel: {
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+  dateButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f2f5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  datePickerButtonText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mentionsContainer: {
+    maxHeight: 120,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 5,
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    marginRight: 10,
+    borderRadius: 8,
+  },
+  mentionAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 6,
   },
 });
