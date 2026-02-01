@@ -30,7 +30,7 @@ import { SocketContext } from '../auth/SocketContext';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { imageUpload } from '../utils/imageUpload';
 import moment from 'moment';
-import { promptSaveImage } from '../utils/MediaUtils';
+import { promptSaveImage, downloadAndSaveImage } from '../utils/MediaUtils';
 import * as ExpoLocation from 'expo-location';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import * as Notifications from 'expo-notifications';
@@ -1204,6 +1204,27 @@ const ChatScreen = () => {
         onRequestClose={() => setViewerVisible(false)}
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
+        HeaderComponent={({ imageIndex }) => (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              padding: 20,
+              paddingTop: 50,
+            }}>
+            <TouchableOpacity
+              onPress={() =>
+                viewerImages[imageIndex] && downloadAndSaveImage(viewerImages[imageIndex].uri)
+              }
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                padding: 10,
+                borderRadius: 25,
+              }}>
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
       />
     </KeyboardAvoidingView>
   );
