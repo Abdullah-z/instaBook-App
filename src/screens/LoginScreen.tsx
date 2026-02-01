@@ -4,6 +4,7 @@ import { TextInput, Button, Text, useTheme, Surface } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import HeaderLogo from '../components/HeaderLogo';
 
 const LoginScreen = () => {
   const { login } = useContext(AuthContext);
@@ -118,15 +119,7 @@ const LoginScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
-        {/* <View style={styles.logoContainer}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoP}>i.</Text>
-          </View>
-          <Text style={styles.logoText}>instaBook</Text>
-        </View> */}
-        {/* <TouchableOpacity>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity> */}
+        <HeaderLogo />
       </View>
 
       <View style={styles.content}>
