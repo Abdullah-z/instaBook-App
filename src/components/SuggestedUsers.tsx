@@ -71,14 +71,19 @@ const SuggestedUsers = ({ users }: { users: any[] }) => {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
     const isFollowing = following.includes(item._id);
 
     return (
       <View
         style={[
           styles.card,
-          { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+          {
+            backgroundColor: theme.dark
+              ? theme.colors.secondaryContainer + '26'
+              : theme.colors.secondaryContainer + '0D',
+            borderColor: theme.colors.outlineVariant,
+          },
         ]}>
         <TouchableOpacity onPress={() => navigation.navigate('Profile', { id: item._id })}>
           <Avatar.Image
@@ -97,7 +102,9 @@ const SuggestedUsers = ({ users }: { users: any[] }) => {
         <TouchableOpacity
           style={[
             styles.followButton,
-            { backgroundColor: theme.colors.primary },
+            {
+              backgroundColor: theme.colors.primary,
+            },
             isFollowing && [
               styles.followingButton,
               { backgroundColor: theme.colors.surfaceVariant },
@@ -168,7 +175,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   seeAll: {
-    color: '#007AFF',
     fontWeight: '600',
   },
   list: {
@@ -178,7 +184,7 @@ const styles = StyleSheet.create({
     width: 140, // Fixed width for cards
     height: 180,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 20,
     marginHorizontal: 4,
     padding: 10,
     alignItems: 'center',
@@ -186,7 +192,6 @@ const styles = StyleSheet.create({
   },
   avatar: {
     marginBottom: 8,
-    backgroundColor: '#f0f0f0',
   },
   username: {
     fontWeight: 'bold',
@@ -195,26 +200,19 @@ const styles = StyleSheet.create({
   },
   fullname: {
     fontSize: 12,
-    color: '#666',
     marginBottom: 12,
   },
   followButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 4,
+    borderRadius: 20,
     width: '100%',
     alignItems: 'center',
   },
-  followingButton: {
-    backgroundColor: '#eee',
-  },
+  followingButton: {},
   followText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 12,
   },
-  followingText: {
-    color: '#333',
-  },
+  followingText: {},
 });
