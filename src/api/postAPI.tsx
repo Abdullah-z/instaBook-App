@@ -94,3 +94,8 @@ export const searchPostAPI = async (query: string) => {
   const res = await API.get(`/search_post?content=${encodeURIComponent(query)}`);
   return res.data;
 };
+
+export const sharePostAPI = async (postId: string, content?: string) => {
+  const res = await API.post(`/post/${postId}/share`, { content });
+  return res.data;
+};
