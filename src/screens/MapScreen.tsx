@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   TextInput,
+  DeviceEventEmitter,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ExpoLocation from 'expo-location';
@@ -38,7 +39,7 @@ import {
 } from '../api/locationAPI';
 import { getEventsAPI } from '../api/eventAPI';
 import LocationAutocomplete from '../components/LocationAutocomplete';
-import { getRobustLocation } from '../utils/locationHelper';
+import { getRobustLocation, getReadableAddress } from '../utils/locationHelper';
 import moment from 'moment';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -310,6 +311,10 @@ const MapScreen = () => {
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(-1);
   const [sheetMode, setSheetMode] = useState<'user' | 'sharing' | 'event' | 'shoutout'>('sharing');
+
+  // Picker mode detection
+  const isPickerMode = route.params?.pickLocation === true;
+  const [pickerAddress, setPickerAddress] = useState('');
 
   const snapPoints = useMemo(() => {
     if (sheetMode === 'user' || sheetMode === 'event') return ['30%', '50%'];
@@ -985,24 +990,41 @@ const MapScreen = () => {
             console.log('[MapScreen] WebView ready. Triggering initial marker update.');
             updateMarkers();
           } else if (data.type === 'click') {
-            if (isSelectingLocation || (sheetMode === 'sharing' && sharingType === 'static')) {
+            if (
+              isSelectingLocation ||
+              (sheetMode === 'sharing' && sharingType === 'static') ||
+              isPickerMode
+            ) {
               const coords = { latitude: data.lat, longitude: data.lon };
               setSelectedLocation(coords);
-              setSharingType('static');
-              // Add visual marker for selected location
-              addTemporaryMarker(data.lat, data.lon, isSelectingLocation ? 'graffiti' : 'gps');
 
-              if (isSelectingLocation) {
-                setIsSelectingLocation(false);
-                // Reopen graffiti modal
-                setTimeout(() => {
-                  setShoutoutModalVisible(true);
-                }, 300);
+              if (isPickerMode) {
+                // In picker mode, just set the location and fetch address
+                console.log('[MapScreen] Picker mode: location selected', coords);
+                addTemporaryMarker(data.lat, data.lon, 'gps');
+                getReadableAddress(data.lat, data.lon)
+                  .then((addr: string) => {
+                    console.log('[MapScreen] Address fetched:', addr);
+                    setPickerAddress(addr);
+                  })
+                  .catch(() => setPickerAddress('Selected Location'));
               } else {
-                // Reopen sharing settings
-                setTimeout(() => {
-                  bottomSheetRef.current?.snapToIndex(1);
-                }, 300);
+                setSharingType('static');
+                // Add visual marker for selected location
+                addTemporaryMarker(data.lat, data.lon, isSelectingLocation ? 'graffiti' : 'gps');
+
+                if (isSelectingLocation) {
+                  setIsSelectingLocation(false);
+                  // Reopen graffiti modal
+                  setTimeout(() => {
+                    setShoutoutModalVisible(true);
+                  }, 300);
+                } else {
+                  // Reopen sharing settings
+                  setTimeout(() => {
+                    bottomSheetRef.current?.snapToIndex(1);
+                  }, 300);
+                }
               }
             }
           } else if (data.type === 'marker-click') {
@@ -1085,6 +1107,28 @@ const MapScreen = () => {
   const getStatusColor = () => {
     if (sharingVisibility === 'off') return theme.colors.outline;
     return sharingType === 'live' ? theme.colors.primary : '#00A8FF';
+  };
+
+  // Handle location confirmation in picker mode
+  const handleConfirmLocation = async () => {
+    if (!selectedLocation) {
+      Alert.alert('No Location Selected', 'Please tap on the map to select a location.');
+      return;
+    }
+
+    const locationData = {
+      address: pickerAddress || 'Selected Location',
+      latitude: selectedLocation.latitude,
+      longitude: selectedLocation.longitude,
+    };
+
+    console.log('[MapScreen] Confirming location via event:', locationData);
+
+    // Emit event instead of complicated navigation
+    DeviceEventEmitter.emit('onLocationPicked', locationData);
+
+    // Simply go back
+    navigation.goBack();
   };
 
   // Function to add a temporary marker on the map
@@ -1179,6 +1223,23 @@ const MapScreen = () => {
               isLoading={loading}
             />
           </View>
+        </View>
+      )}
+
+      {/* Confirm Button for Picker Mode */}
+      {isPickerMode && selectedLocation && (
+        <View style={[styles.pickerConfirmContainer, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.pickerAddressText, { color: theme.colors.onSurface }]}>
+            {pickerAddress || 'Loading address...'}
+          </Text>
+          <Button
+            mode="contained"
+            onPress={handleConfirmLocation}
+            style={styles.confirmButton}
+            contentStyle={{ paddingVertical: 8 }}
+            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}>
+            Confirm Location
+          </Button>
         </View>
       )}
 
@@ -1289,24 +1350,28 @@ const MapScreen = () => {
             onPress={resetToMyLocation}
             style={styles.fab}
           />
-          <IconButton
-            icon="share-variant"
-            mode="contained"
-            containerColor={theme.colors.primary}
-            iconColor={theme.colors.onPrimary}
-            size={24}
-            onPress={handleOpenSharing}
-            style={styles.fab}
-          />
-          <IconButton
-            icon="format-paint"
-            mode="contained"
-            containerColor="#FF00CC"
-            iconColor="#fff"
-            size={24}
-            onPress={() => setShoutoutModalVisible(true)}
-            style={styles.fab}
-          />
+          {!isPickerMode && (
+            <React.Fragment>
+              <IconButton
+                icon="share-variant"
+                mode="contained"
+                containerColor={theme.colors.primary}
+                iconColor={theme.colors.onPrimary}
+                size={24}
+                onPress={handleOpenSharing}
+                style={styles.fab}
+              />
+              <IconButton
+                icon="format-paint"
+                mode="contained"
+                containerColor="#FF00CC"
+                iconColor="#fff"
+                size={24}
+                onPress={() => setShoutoutModalVisible(true)}
+                style={styles.fab}
+              />
+            </React.Fragment>
+          )}
         </View>
       )}
 
@@ -1976,6 +2041,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  pickerConfirmContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  pickerAddressText: {
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  confirmButton: {
+    borderRadius: 12,
   },
 });
 
