@@ -38,6 +38,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
     website: '',
     story: '',
     gender: 'male',
+    isPrivate: false,
   });
   const [avatarUri, setAvatarUri] = useState('');
   const [coverUri, setCoverUri] = useState('');
@@ -52,6 +53,7 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
         website: profile.website || '',
         story: profile.story || '',
         gender: profile.gender || 'male',
+        isPrivate: profile.isPrivate || false,
       });
       setAvatarUri(profile.avatar || '');
       setCoverUri(profile.cover || '');
@@ -393,6 +395,33 @@ const EditProfileModal = ({ visible, onClose, onSave, profile }: EditProfileModa
                   </Text>
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Private Account Toggle */}
+            <View
+              style={[
+                styles.fieldContainer,
+                {
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 10,
+                },
+              ]}>
+              <View>
+                <Text style={[styles.label, { color: theme.colors.onSurface, marginBottom: 2 }]}>
+                  Private Account
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>
+                  Only followers can see your posts and stories
+                </Text>
+              </View>
+              <Switch
+                value={formData?.isPrivate}
+                onValueChange={(val) => setFormData({ ...formData, isPrivate: val })}
+                trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+                thumbColor={theme.colors.surface}
+              />
             </View>
           </View>
         </ScrollView>
