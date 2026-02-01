@@ -6,9 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Image,
 } from 'react-native';
+import ImageView from 'react-native-image-viewing';
 import { useRoute } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
+import { downloadAndSaveImage } from '../utils/MediaUtils';
+import { Ionicons } from '@expo/vector-icons';
 import {
   getProfileByUsername,
   getProfileUser,
@@ -52,6 +56,8 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const [textPage, setTextPage] = useState(1);
   const [textResult, setTextResult] = useState(0);
   const theme = useTheme();
+
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   const scrollY = useSharedValue(0);
 
@@ -223,6 +229,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
           isOwner={id === user._id}
           postCount={totalPosts}
           onRefresh={loadProfile}
+          onCoverPress={() => setViewerVisible(true)}
         />
 
         <View
@@ -285,6 +292,36 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         />
       )}
 
+      {profileUser && (
+        <ImageView
+          images={[{ uri: profileUser.cover || 'https://picsum.photos/800/400' }]}
+          imageIndex={0}
+          visible={viewerVisible}
+          onRequestClose={() => setViewerVisible(false)}
+          HeaderComponent={() => (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                padding: 20,
+                paddingTop: 50,
+              }}>
+              <TouchableOpacity
+                onPress={() =>
+                  downloadAndSaveImage(profileUser.cover || 'https://picsum.photos/800/400')
+                }
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  padding: 10,
+                  borderRadius: 25,
+                }}>
+                <Ionicons name="download-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
+
       <PostGrid
         posts={activeTab === 'saved' ? savedPosts || [] : activeTab === 'text' ? textPosts : posts}
         onLoadMore={
@@ -299,7 +336,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         loadMoreVisible={showLoadMoreButton}
         ListHeaderComponent={renderHeader()}
         onScroll={scrollHandler}
-        contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
+        contentContainerStyle={{ paddingTop: 0 }}
         scrollEnabled={true}
         showPrivateMessage={
           profileUser?.isPrivate &&
