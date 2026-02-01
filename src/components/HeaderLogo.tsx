@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 
 const HeaderLogo = () => {
+  const theme = useTheme();
+
   return (
     <View style={styles.container}>
-      <View style={styles.logoBox}>
-        <Text style={styles.logoP}>iB.</Text>
+      <View style={[styles.logoBox, { backgroundColor: theme.colors.primary }]}>
+        <Text style={[styles.logoP, { color: theme.colors.onPrimary }]}>iB.</Text>
       </View>
-      <Text style={styles.logoText}>instaBook</Text>
+      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Instabook</Text>
     </View>
   );
 };
@@ -21,7 +24,6 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   logoBox: {
-    backgroundColor: '#D4F637',
     width: 30,
     height: 30,
     borderRadius: 8,
