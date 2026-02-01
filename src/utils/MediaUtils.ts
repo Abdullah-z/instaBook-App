@@ -3,6 +3,8 @@ import * as FileSystem from 'expo-file-system';
 import { Alert, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+const downloadingUrls = new Set<string>();
+
 /**
  * Downloads an image from a URL and saves it to the device's media library.
  * @param url The image URL to download and save.
@@ -16,6 +18,9 @@ export const downloadAndSaveImage = async (url: string) => {
     });
     return;
   }
+
+  if (downloadingUrls.has(url)) return;
+  downloadingUrls.add(url);
 
   try {
     // 1. Check existing Permissions
@@ -52,19 +57,8 @@ export const downloadAndSaveImage = async (url: string) => {
       throw new Error('Download failed');
     }
 
-    // 3. Save to Media Library
-    const asset = await MediaLibrary.createAssetAsync(downloadResult.uri);
-
-    // Check if album exists, if not create it. Use copyAsset: true to avoid "modify photo" prompt
-    const albumName = 'Instabook';
-    const album = await MediaLibrary.getAlbumAsync(albumName);
-
-    if (album) {
-      // Use true to COPY asset to album instead of moving it, avoids "modify photo" prompt
-      await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
-    } else {
-      await MediaLibrary.createAlbumAsync(albumName, asset, true);
-    }
+    // 3. Save to default gallery folder
+    await MediaLibrary.createAssetAsync(downloadResult.uri);
 
     Toast.show({
       type: 'success',
@@ -78,6 +72,8 @@ export const downloadAndSaveImage = async (url: string) => {
       text1: 'Save failed',
       text2: 'Could not save image to gallery',
     });
+  } finally {
+    downloadingUrls.delete(url);
   }
 };
 
