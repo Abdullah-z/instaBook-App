@@ -14,6 +14,7 @@ export const POST_BACKGROUNDS = [
 ];
 
 export const TEXT_COLORS = [
+  'default',
   '#000000', // Black
   '#FFFFFF', // White
   '#FF0000', // Red
