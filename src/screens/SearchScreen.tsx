@@ -15,6 +15,8 @@ import { searchPostAPI, deletePostAPI } from '../api/postAPI';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
+const VIBRANT_COLOR_KEYS = ['primary', 'secondary', 'tertiary', 'error'] as const;
+
 const SearchScreen = () => {
   const route = useRoute<any>();
   const isChatSearch = route.params?.isChatSearch;
@@ -162,11 +164,12 @@ const SearchScreen = () => {
       <FlatList
         data={tab === 'users' ? users : posts}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           if (tab === 'users') {
             return (
               <UserCard
                 user={item}
+                color={(theme.colors as any)[VIBRANT_COLOR_KEYS[index % VIBRANT_COLOR_KEYS.length]]}
                 onPress={
                   isChatSearch
                     ? () =>
