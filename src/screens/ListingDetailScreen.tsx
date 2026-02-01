@@ -35,7 +35,7 @@ import { VoiceCallContext } from '../auth/VoiceCallContext';
 import Carousel from 'react-native-reanimated-carousel';
 import LeafletMap from '../components/LeafletMap';
 import Constants from 'expo-constants';
-import { promptSaveImage } from '../utils/MediaUtils';
+import { promptSaveImage, downloadAndSaveImage } from '../utils/MediaUtils';
 import moment from 'moment';
 
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -419,6 +419,27 @@ const ListingDetailScreen = () => {
         onRequestClose={() => setViewerVisible(false)}
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
+        HeaderComponent={({ imageIndex }) => (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              padding: 20,
+              paddingTop: 50,
+            }}>
+            <TouchableOpacity
+              onPress={() =>
+                listing.images[imageIndex] && downloadAndSaveImage(listing.images[imageIndex])
+              }
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                padding: 10,
+                borderRadius: 25,
+              }}>
+              <Ionicons name="download-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
       />
     </ScrollView>
   );
