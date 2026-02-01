@@ -18,7 +18,7 @@ import StatusBox from '../components/StatusBox';
 import BottomSheet, { BottomSheetScrollView, BottomSheetView } from '@gorhom/bottom-sheet';
 import CommentsScreen from './CommentScreen';
 import { useNavigation } from '@react-navigation/native';
-import CreatePostBox from '../components/CreatePostBox';
+import HeaderLogo from '../components/HeaderLogo';
 import SuggestedUsers from '../components/SuggestedUsers';
 
 const LIMIT = 4;
@@ -209,59 +209,28 @@ const HomeScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Custom Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.logoContainer}>
-          {/* <View style={styles.logoBox}>
-            <Text style={styles.logoP}>P.</Text>
-          </View>
-          <Text style={styles.logoText}>Pipel</Text> */}
-        </View>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Search' as never)}>
-            <Ionicons name="search" size={24} color={theme.colors.onSurface} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Marketplace' as never)}>
-            <Ionicons name="storefront-outline" size={24} color={theme.colors.onSurface} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Events' as never)}>
-            <Ionicons name="calendar-outline" size={24} color={theme.colors.onSurface} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Map' as never)}>
-            <Ionicons name="map-outline" size={24} color={theme.colors.onSurface} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Discover' as never)}>
-            <Ionicons name="compass-outline" size={24} color={theme.colors.onSurface} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => navigation.navigate('Notifications' as never)}>
-            <View>
-              <Ionicons name="notifications" size={24} color={theme.colors.onSurface} />
-              {unreadCount > 0 && (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: theme.colors.error, borderColor: theme.colors.surface },
-                  ]}>
-                  <Text style={[styles.badgeText, { color: theme.colors.onError }]}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
+      {/* Screen Specific Shortcuts Row */}
+      <View style={[styles.shortcutsRow, { backgroundColor: theme.colors.surface }]}>
+        <TouchableOpacity
+          style={styles.shortcutBtn}
+          onPress={() => navigation.navigate('Marketplace' as never)}>
+          <Ionicons name="storefront-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shortcutBtn}
+          onPress={() => navigation.navigate('Events' as never)}>
+          <Ionicons name="calendar-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shortcutBtn}
+          onPress={() => navigation.navigate('Map' as never)}>
+          <Ionicons name="map-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shortcutBtn}
+          onPress={() => navigation.navigate('Discover' as never)}>
+          <Ionicons name="compass-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -314,28 +283,19 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 20,
   },
-  header: {
+  shortcutsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  logoContainer: { flexDirection: 'row', alignItems: 'center' },
-  logoBox: {
-    backgroundColor: '#D4F637',
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+  shortcutBtn: {
+    padding: 8,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
   },
-  logoP: { fontWeight: 'bold', fontSize: 14 },
-  logoText: { fontWeight: 'bold', fontSize: 18 },
-  headerIcons: { flexDirection: 'row', gap: 16 },
-  iconBtn: { padding: 4 },
 
   storiesContainer: {
     paddingVertical: 16,
