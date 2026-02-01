@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import ImageView from 'react-native-image-viewing';
+import { downloadAndSaveImage } from '../utils/MediaUtils';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import {
@@ -320,6 +321,7 @@ const PostScreen = () => {
                   </Text>
                   <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
                     {moment(post.createdAt).fromNow()}
+                    {post.isEdited && ' (Edited)'}
                   </Text>
                   {post.address ? (
                     <View style={styles.locationContainer}>
@@ -651,6 +653,28 @@ const PostScreen = () => {
         onRequestClose={() => setViewerVisible(false)}
         swipeToCloseEnabled={true}
         doubleTapToZoomEnabled={true}
+        HeaderComponent={({ imageIndex }) => {
+          const currentImage = images.filter((img: any) => img.url)[imageIndex];
+          return (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                padding: 20,
+                paddingTop: 50,
+              }}>
+              <TouchableOpacity
+                onPress={() => currentImage && downloadAndSaveImage(currentImage.url)}
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  padding: 10,
+                  borderRadius: 25,
+                }}>
+                <Ionicons name="download-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          );
+        }}
       />
     </KeyboardAvoidingView>
   );
