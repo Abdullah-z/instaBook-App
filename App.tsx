@@ -24,8 +24,39 @@ import { DataProvider, useData, usePushNotifications } from './src/hooks';
 import * as Notifications from 'expo-notifications';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    'Montserrat-Regular':
+      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Regular.ttf',
+    'Montserrat-Medium':
+      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Medium.ttf',
+    'Montserrat-SemiBold':
+      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-SemiBold.ttf',
+    'Montserrat-Bold':
+      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Bold.ttf',
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      if (fontError) {
+        console.error('❌ Font Loading Error:', fontError);
+      }
+      SplashScreen.hideAsync().catch((err) => {
+        console.warn('Failed to hide splash screen:', err);
+      });
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <DataProvider>
       <MainApp />
