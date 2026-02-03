@@ -70,34 +70,30 @@ export const WEIGHTS: ThemeWeights = {
 // };
 
 export const ASSETS: ThemeAssets = {
-  // fonts
-  OpenSansLight: require('../assets/fonts/OpenSans-Light.ttf'),
-  OpenSansRegular: require('../assets/fonts/OpenSans-Regular.ttf'),
-  OpenSansSemiBold: require('../assets/fonts/OpenSans-SemiBold.ttf'),
-  OpenSansExtraBold: require('../assets/fonts/OpenSans-ExtraBold.ttf'),
-  OpenSansBold: require('../assets/fonts/OpenSans-Bold.ttf'),
+  // fonts - Using Montserrat loaded via expo-font in App.tsx
+  // No local font files needed as we're using Google Fonts CDN
 };
 
 export const FONTS: ThemeFonts = {
   // based on font size
-  text: 'OpenSans-Regular',
-  h1: 'OpenSans-Bold',
-  h2: 'OpenSans-Bold',
-  h3: 'OpenSans-Bold',
-  h4: 'OpenSans-Bold',
-  h5: 'OpenSans-SemiBold',
-  p: 'OpenSans-Regular',
+  text: 'Montserrat-Regular',
+  h1: 'Montserrat-Bold',
+  h2: 'Montserrat-Bold',
+  h3: 'Montserrat-Bold',
+  h4: 'Montserrat-SemiBold',
+  h5: 'Montserrat-SemiBold',
+  p: 'Montserrat-Regular',
 
   // based on fontWeight
-  thin: 'OpenSans-Light',
-  extralight: 'OpenSans-Light',
-  light: 'OpenSans-Light',
-  normal: 'OpenSans-Regular',
-  medium: 'OpenSans-SemiBold',
-  semibold: 'OpenSans-SemiBold',
-  bold: 'OpenSans-Bold',
-  extrabold: 'OpenSans-ExtraBold',
-  black: 'OpenSans-ExtraBold',
+  thin: 'Montserrat-Regular',
+  extralight: 'Montserrat-Regular',
+  light: 'Montserrat-Regular',
+  normal: 'Montserrat-Regular',
+  medium: 'Montserrat-Medium',
+  semibold: 'Montserrat-SemiBold',
+  bold: 'Montserrat-Bold',
+  extrabold: 'Montserrat-Bold',
+  black: 'Montserrat-Bold',
 };
 
 export const LINE_HEIGHTS: ThemeLineHeights = {
