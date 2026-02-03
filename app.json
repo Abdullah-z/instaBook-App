@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "my-expo-app",
-    "slug": "instabook",
+    "name": "Prism",
+    "slug": "prism",
     "version": "1.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,10 +41,10 @@
       ]
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/prism.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/prism.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -60,10 +60,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/prism.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.instabook.social",
+      "package": "com.prism.social",
       "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json",
       "permissions": [
