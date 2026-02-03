@@ -26,8 +26,9 @@ import {
   Divider,
   Menu,
   useTheme,
+  Chip,
 } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet, { BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
@@ -311,6 +312,9 @@ const MapScreen = () => {
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(-1);
   const [sheetMode, setSheetMode] = useState<'user' | 'sharing' | 'event' | 'shoutout'>('sharing');
+  const [activeFilter, setActiveFilter] = useState<
+    'all' | 'friends' | 'shared' | 'post' | 'shoutout'
+  >('all');
 
   // Picker mode detection
   const isPickerMode = route.params?.pickLocation === true;
@@ -353,7 +357,25 @@ const MapScreen = () => {
         }
 
         // if (!silent) Alert.alert('DEBUG [2]', `Calling API for radius ${activeRadius}`);
-        const data = await getSharedLocationsAPI(lat, lon, activeRadius);
+        const typeFilter =
+          activeFilter === 'post'
+            ? 'post'
+            : activeFilter === 'shoutout'
+              ? 'shoutout'
+              : activeFilter === 'shared'
+                ? 'live,static'
+                : undefined;
+        const audienceFilter = activeFilter === 'friends' ? 'friends' : undefined;
+
+        const data = await getSharedLocationsAPI(
+          lat,
+          lon,
+          activeRadius,
+          undefined,
+          undefined,
+          typeFilter,
+          audienceFilter
+        );
         // if (!silent) Alert.alert('DEBUG [3]', `API Success! Count: ${data?.length}`);
 
         if (Array.isArray(data)) {
@@ -782,7 +804,7 @@ const MapScreen = () => {
       // Alert.alert('DEBUG [Effect]', `Radius changed to ${radius}`);
       fetchLocations();
     }
-  }, [radius, deviceLocation]); // Removed fetchLocations from deps to avoid re-runs on its recreation
+  }, [radius, deviceLocation, activeFilter]); // Added activeFilter to deps
 
   const handleVisibilityChange = async (value: string) => {
     setSharingVisibility(value);
@@ -1223,6 +1245,56 @@ const MapScreen = () => {
               isLoading={loading}
             />
           </View>
+        </View>
+      )}
+
+      {bottomSheetIndex <= 0 && (
+        <View style={styles.filterContainer}>
+          <BottomSheetScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScrollContent}>
+            <Chip
+              selected={activeFilter === 'all'}
+              onPress={() => setActiveFilter('all')}
+              style={styles.filterChip}
+              icon="layers-outline"
+              selectedColor={theme.colors.primary}>
+              Everything
+            </Chip>
+            <Chip
+              selected={activeFilter === 'friends'}
+              onPress={() => setActiveFilter('friends')}
+              style={styles.filterChip}
+              icon="account-group-outline"
+              selectedColor={theme.colors.primary}>
+              Friends
+            </Chip>
+            <Chip
+              selected={activeFilter === 'shared'}
+              onPress={() => setActiveFilter('shared')}
+              style={styles.filterChip}
+              icon="map-marker-outline"
+              selectedColor={theme.colors.primary}>
+              Shared
+            </Chip>
+            <Chip
+              selected={activeFilter === 'post'}
+              onPress={() => setActiveFilter('post')}
+              style={styles.filterChip}
+              icon="image-outline"
+              selectedColor={theme.colors.primary}>
+              Posts
+            </Chip>
+            <Chip
+              selected={activeFilter === 'shoutout'}
+              onPress={() => setActiveFilter('shoutout')}
+              style={styles.filterChip}
+              icon="format-paint"
+              selectedColor="#FF00CC">
+              Graffiti
+            </Chip>
+          </BottomSheetScrollView>
         </View>
       )}
 
@@ -1866,6 +1938,23 @@ const styles = StyleSheet.create({
   },
   searchWrapper: {
     flex: 1,
+  },
+  filterContainer: {
+    position: 'absolute',
+    top: Constants.statusBarHeight + 65,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 5,
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    elevation: 2,
+    height: 34,
   },
   floatingControls: {
     position: 'absolute',
