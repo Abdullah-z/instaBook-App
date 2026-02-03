@@ -16,7 +16,7 @@ const ONBOARDING_DATA: {
   colors: readonly [string, string, ...string[]];
 }[] = [
   {
-    title: 'Welcome to instaBook',
+    title: 'Welcome to Prism',
     description: 'Your all-in-one social powerhouse for connecting and sharing.',
     icon: 'apps',
     colors: ['#D4F637', '#B8D430'],
