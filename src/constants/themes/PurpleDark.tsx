@@ -1,8 +1,10 @@
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
 
 export const PurpleDark = {
   ...MD3DarkTheme,
   roundness: 24,
+  ...fontConfig,
   colors: {
     primary: 'rgb(255, 177, 197)',
     onPrimary: 'rgb(94, 17, 47)',
@@ -46,3 +48,4 @@ export const PurpleDark = {
     backdrop: 'rgba(58, 45, 48, 0.4)',
   },
 };
+

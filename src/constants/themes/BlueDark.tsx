@@ -1,8 +1,10 @@
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
 
 export const BlueDark = {
   ...MD3DarkTheme,
   roundness: 24,
+  ...fontConfig,
   colors: {
     primary: 'rgb(170, 199, 255)',
     onPrimary: 'rgb(0, 47, 100)',
@@ -46,3 +48,4 @@ export const BlueDark = {
     backdrop: 'rgba(45, 48, 56, 0.4)',
   },
 };
+

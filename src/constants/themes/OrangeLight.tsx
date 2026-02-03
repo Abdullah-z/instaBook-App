@@ -1,8 +1,10 @@
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
 
 export const OrangeLight = {
   ...MD3LightTheme,
   roundness: 24,
+  ...fontConfig,
   colors: {
     ...MD3LightTheme.colors,
     primary: 'rgb(139, 80, 0)',
@@ -47,3 +49,4 @@ export const OrangeLight = {
     backdrop: 'rgba(57, 46, 37, 0.4)',
   },
 };
+

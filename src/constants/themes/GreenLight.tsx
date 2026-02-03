@@ -1,8 +1,10 @@
 import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
 
 export const GreenLight = {
   ...MD3LightTheme,
   roundness: 24,
+  ...fontConfig,
   colors: {
     ...MD3LightTheme.colors,
     primary: 'rgb(63, 105, 0)',
@@ -47,3 +49,4 @@ export const GreenLight = {
     backdrop: 'rgba(46, 50, 40, 0.4)',
   },
 };
+
