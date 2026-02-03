@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
 const HeaderLogo = () => {
@@ -7,10 +7,12 @@ const HeaderLogo = () => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.logoBox, { backgroundColor: theme.colors.primary }]}>
-        <Text style={[styles.logoP, { color: theme.colors.onPrimary }]}>iB.</Text>
-      </View>
-      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Instabook</Text>
+      <Image
+        source={require('../../assets/prism.png')}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
+      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Prism</Text>
     </View>
   );
 };
@@ -23,17 +25,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: 10,
   },
-  logoBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  logoP: {
-    fontWeight: 'bold',
-    fontSize: 18,
+  logoImage: {
+    width: 50,
+    height: 50,
+    marginRight: 0,
   },
   logoText: {
     fontWeight: 'bold',
