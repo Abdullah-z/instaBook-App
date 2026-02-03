@@ -118,9 +118,9 @@ const LoginScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <HeaderLogo />
-      </View>
+      </View> */}
 
       <View style={styles.content}>
         <View style={styles.imageContainer}>
@@ -155,7 +155,7 @@ const LoginScreen = () => {
           Best Social App to Make New Friends
         </Text>
         <Text style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-          With instaBook you will find new friends from various countries and regions of the world
+          With Prism you will find new friends from various countries and regions of the world
         </Text>
 
         <View style={styles.buttonContainer}>
