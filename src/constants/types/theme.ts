@@ -1,31 +1,24 @@
 import * as React from 'react';
-import {
-  ColorValue,
-  FlexStyle,
-  ImageSourcePropType,
-  ScaledSize,
-  TextStyle,
-} from 'react-native';
+import { ColorValue, FlexStyle, ImageSourcePropType, ScaledSize, TextStyle } from 'react-native';
 
 // Spacing types
-export interface ISpacing
-  extends Pick<
-    FlexStyle,
-    | 'margin'
-    | 'marginVertical'
-    | 'marginHorizontal'
-    | 'marginLeft'
-    | 'marginRight'
-    | 'marginTop'
-    | 'marginBottom'
-    | 'padding'
-    | 'paddingVertical'
-    | 'paddingHorizontal'
-    | 'paddingLeft'
-    | 'paddingRight'
-    | 'paddingTop'
-    | 'paddingBottom'
-  > {}
+export interface ISpacing extends Pick<
+  FlexStyle,
+  | 'margin'
+  | 'marginVertical'
+  | 'marginHorizontal'
+  | 'marginLeft'
+  | 'marginRight'
+  | 'marginTop'
+  | 'marginBottom'
+  | 'padding'
+  | 'paddingVertical'
+  | 'paddingHorizontal'
+  | 'paddingLeft'
+  | 'paddingRight'
+  | 'paddingTop'
+  | 'paddingBottom'
+> {}
 
 export type TWeight =
   /** fontWeight: 400 */
@@ -58,8 +51,8 @@ export interface ITheme {
   lines: ThemeLineHeights;
 }
 export interface ICommonTheme {
-  assets: ThemeAssets & ThemeIcons;
-  icons: ThemeIcons;
+  assets: ThemeAssets;
+  icons?: Partial<ThemeIcons>;
   fonts: ThemeFonts;
   weights: ThemeWeights;
   lines: ThemeLineHeights;
@@ -207,77 +200,71 @@ export interface ThemeWeights {
   black?: TextStyle['fontWeight'];
 }
 export interface ThemeIcons {
-  apple: ImageSourcePropType;
-  google: ImageSourcePropType;
-  facebook: ImageSourcePropType;
-  arrow: ImageSourcePropType;
-  articles: ImageSourcePropType;
-  basket: ImageSourcePropType;
-  bell: ImageSourcePropType;
-  calendar: ImageSourcePropType;
-  chat: ImageSourcePropType;
-  check: ImageSourcePropType;
-  clock: ImageSourcePropType;
-  close: ImageSourcePropType;
-  components: ImageSourcePropType;
-  document: ImageSourcePropType;
-  documentation: ImageSourcePropType;
-  extras: ImageSourcePropType;
-  flight: ImageSourcePropType;
-  home: ImageSourcePropType;
-  hotel: ImageSourcePropType;
-  image: ImageSourcePropType;
-  location: ImageSourcePropType;
-  menu: ImageSourcePropType;
-  more: ImageSourcePropType;
-  notification: ImageSourcePropType;
-  office: ImageSourcePropType;
-  payment: ImageSourcePropType;
-  profile: ImageSourcePropType;
-  register: ImageSourcePropType;
-  rental: ImageSourcePropType;
-  search: ImageSourcePropType;
-  settings: ImageSourcePropType;
-  star: ImageSourcePropType;
-  train: ImageSourcePropType;
-  users: ImageSourcePropType;
-  warning: ImageSourcePropType;
+  apple?: ImageSourcePropType;
+  google?: ImageSourcePropType;
+  facebook?: ImageSourcePropType;
+  arrow?: ImageSourcePropType;
+  articles?: ImageSourcePropType;
+  basket?: ImageSourcePropType;
+  bell?: ImageSourcePropType;
+  calendar?: ImageSourcePropType;
+  chat?: ImageSourcePropType;
+  check?: ImageSourcePropType;
+  clock?: ImageSourcePropType;
+  close?: ImageSourcePropType;
+  components?: ImageSourcePropType;
+  document?: ImageSourcePropType;
+  documentation?: ImageSourcePropType;
+  extras?: ImageSourcePropType;
+  flight?: ImageSourcePropType;
+  home?: ImageSourcePropType;
+  hotel?: ImageSourcePropType;
+  image?: ImageSourcePropType;
+  location?: ImageSourcePropType;
+  menu?: ImageSourcePropType;
+  more?: ImageSourcePropType;
+  notification?: ImageSourcePropType;
+  office?: ImageSourcePropType;
+  payment?: ImageSourcePropType;
+  profile?: ImageSourcePropType;
+  register?: ImageSourcePropType;
+  rental?: ImageSourcePropType;
+  search?: ImageSourcePropType;
+  settings?: ImageSourcePropType;
+  star?: ImageSourcePropType;
+  train?: ImageSourcePropType;
+  users?: ImageSourcePropType;
+  warning?: ImageSourcePropType;
 }
 
 export interface ThemeAssets {
-  OpenSansLight?: any;
-  OpenSansRegular?: any;
-  OpenSansSemiBold?: any;
-  OpenSansExtraBold?: any;
-  OpenSansBold?: any;
+  logo?: ImageSourcePropType;
+  header?: ImageSourcePropType;
+  background?: ImageSourcePropType;
 
-  logo: ImageSourcePropType;
-  header: ImageSourcePropType;
-  background: ImageSourcePropType;
+  card1?: ImageSourcePropType;
+  card2?: ImageSourcePropType;
+  card3?: ImageSourcePropType;
+  card4?: ImageSourcePropType;
+  card5?: ImageSourcePropType;
 
-  card1: ImageSourcePropType;
-  card2: ImageSourcePropType;
-  card3: ImageSourcePropType;
-  card4: ImageSourcePropType;
-  card5: ImageSourcePropType;
+  photo1?: ImageSourcePropType;
+  photo2?: ImageSourcePropType;
+  photo3?: ImageSourcePropType;
+  photo4?: ImageSourcePropType;
+  photo5?: ImageSourcePropType;
+  photo6?: ImageSourcePropType;
+  carousel1?: ImageSourcePropType;
 
-  photo1: ImageSourcePropType;
-  photo2: ImageSourcePropType;
-  photo3: ImageSourcePropType;
-  photo4: ImageSourcePropType;
-  photo5: ImageSourcePropType;
-  photo6: ImageSourcePropType;
-  carousel1: ImageSourcePropType;
+  avatar1?: ImageSourcePropType;
+  avatar2?: ImageSourcePropType;
 
-  avatar1: ImageSourcePropType;
-  avatar2: ImageSourcePropType;
+  x5?: ImageSourcePropType;
+  gle?: ImageSourcePropType;
+  tesla?: ImageSourcePropType;
 
-  x5: ImageSourcePropType;
-  gle: ImageSourcePropType;
-  tesla: ImageSourcePropType;
-
-  ios: ImageSourcePropType;
-  android: ImageSourcePropType;
+  ios?: ImageSourcePropType;
+  android?: ImageSourcePropType;
 }
 
 export interface ThemeFonts {
