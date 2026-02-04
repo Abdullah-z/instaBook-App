@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   DeviceEventEmitter,
+  ScrollView,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ExpoLocation from 'expo-location';
@@ -316,6 +317,39 @@ const MapScreen = () => {
     'all' | 'friends' | 'shared' | 'post' | 'shoutout'
   >('all');
 
+  const filterStyles = useMemo(
+    () => ({
+      chip: {
+        backgroundColor: theme.colors.surface,
+        elevation: 4,
+        height: 38,
+        borderWidth: 1,
+        borderColor: theme.colors.outlineVariant,
+        marginRight: 8,
+      },
+      activeChip: {
+        backgroundColor: theme.colors.primaryContainer,
+        borderColor: theme.colors.primary,
+      },
+      shoutoutActiveChip: {
+        backgroundColor: '#FF00CC22',
+        borderColor: '#FF00CC',
+      },
+      text: {
+        color: theme.colors.onSurface,
+      },
+      activeText: {
+        color: theme.colors.onPrimaryContainer,
+        fontWeight: 'bold' as const,
+      },
+      shoutoutActiveText: {
+        color: '#FF00CC',
+        fontWeight: 'bold' as const,
+      },
+    }),
+    [theme]
+  );
+
   // Picker mode detection
   const isPickerMode = route.params?.pickLocation === true;
   const [pickerAddress, setPickerAddress] = useState('');
@@ -415,7 +449,7 @@ const MapScreen = () => {
         if (!silent) setLoading(false);
       }
     },
-    [currentUser, deviceLocation, radius]
+    [currentUser, deviceLocation, radius, activeFilter]
   );
 
   const updateServerLocation = useCallback(
@@ -592,9 +626,36 @@ const MapScreen = () => {
       });
     });
 
-    console.log('[MapScreen] Final marker list size:', markerList.length);
+    console.log('[MapScreen] Final marker list size before filtering:', markerList.length);
+
+    // 4. Final strict filter based on activeFilter
+    if (activeFilter === 'post') {
+      return markerList.filter((m: any) => m.type === 'post');
+    }
+    if (activeFilter === 'shoutout') {
+      return markerList.filter((m: any) => m.type === 'shoutout');
+    }
+    if (activeFilter === 'shared') {
+      return markerList.filter((m: any) => m.type === 'live' || m.type === 'static');
+    }
+    if (activeFilter === 'friends') {
+      // Friends filter is handled by backend, but we can double check here if needed
+      // Actually, backend filtering is better. We just need to make sure we don't show events if we didn't want them.
+      // Usually "Friends" implies seeing where friends are (live/static/posts/shoutouts).
+      // Let's keep it as is from backend.
+      return markerList;
+    }
+
     return markerList;
-  }, [sharedLocations, selectedLocation, route.params, currentUser, events, isSelectingLocation]);
+  }, [
+    sharedLocations,
+    selectedLocation,
+    route.params,
+    currentUser,
+    events,
+    isSelectingLocation,
+    activeFilter,
+  ]);
 
   const updateMarkers = useCallback(() => {
     console.log('[MapScreen] updateMarkers called. LogRef:', !!webViewRef.current);
@@ -738,11 +799,33 @@ const MapScreen = () => {
               initialLoc ? 'SUCCESS' : 'NULL'
             );
 
-            setDeviceLocation(initialLoc);
-            // Alert.alert('Debug', `Location state set to: ${initialLoc.coords.latitude.toFixed(2)}`);
-            // Trigger fetch immediately with the fresh location
-            if (!isFocusedMode) {
-              fetchLocations({ overrideLocation: initialLoc });
+            if (initialLoc) {
+              setDeviceLocation(initialLoc);
+              if (!isFocusedMode) {
+                fetchLocations({ overrideLocation: initialLoc });
+              }
+            } else {
+              // Fallback if permission granted but fetch failed
+              console.log('🗺️ [MAP-DEBUG] Fetch failed after grant, using fallback 0,0');
+              const fallback = {
+                coords: {
+                  latitude: 0,
+                  longitude: 0,
+                  altitude: 0,
+                  accuracy: 0,
+                  heading: 0,
+                  speed: 0,
+                },
+                timestamp: Date.now(),
+              } as any;
+              setDeviceLocation(fallback);
+              if (!isFocusedMode) {
+                fetchLocations({ overrideLocation: fallback });
+              }
+              Alert.alert(
+                'Location Unavailable',
+                'Could not get your precise location. Using default center.'
+              );
             }
           } else if (!deviceLocation) {
             const fallback = {
@@ -750,7 +833,7 @@ const MapScreen = () => {
               timestamp: Date.now(),
             } as any;
             setDeviceLocation(fallback);
-            Alert.alert('Debug', 'Location failed, set to 0,0 fallback');
+            // Alert.alert('Debug', 'Location denied, set to 0,0 fallback');
           }
         }
         // Initial fetch logic
@@ -1155,7 +1238,9 @@ const MapScreen = () => {
 
   // Function to add a temporary marker on the map
   const addTemporaryMarker = (lat: number, lon: number, type: 'graffiti' | 'gps') => {
-    const markerColor = type === 'graffiti' ? '#FF00CC' : theme.colors.primary;
+    const primaryColor = theme.colors.primary;
+    const surfaceColor = theme.colors.surface;
+    const markerColor = type === 'graffiti' ? '#FF00CC' : primaryColor;
     const markerLabel = type === 'graffiti' ? '📍 Graffiti Location' : '📍 My Location';
 
     const js = `
@@ -1168,8 +1253,8 @@ const MapScreen = () => {
         // Create custom icon for temporary marker
         var icon = L.divIcon({
           className: 'custom-div-icon',
-          html: '<div class="marker-pin" style="background: ${markerColor}; border-color: ${theme.colors.surface}; width: 50px; height: 50px; margin: -25px 0 0 -25px; animation: pulse 1.5s infinite;">' +
-                  '<div class="marker-dot" style="background: ${theme.colors.surface};"></div>' +
+          html: '<div class="marker-pin" style="background: ${markerColor}; border-color: ${surfaceColor}; width: 50px; height: 50px; margin: -25px 0 0 -25px; animation: pulse 1.5s infinite;">' +
+                  '<div class="marker-dot" style="background: ${surfaceColor};"></div>' +
                   '<div class="label" style="bottom: -30px; font-size: 11px; font-weight: bold;">${markerLabel}</div>' +
                 '</div>',
           iconSize: [50, 50],
@@ -1250,51 +1335,101 @@ const MapScreen = () => {
 
       {bottomSheetIndex <= 0 && (
         <View style={styles.filterContainer}>
-          <BottomSheetScrollView
+          <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterScrollContent}>
             <Chip
               selected={activeFilter === 'all'}
               onPress={() => setActiveFilter('all')}
-              style={styles.filterChip}
-              icon="layers-outline"
-              selectedColor={theme.colors.primary}>
+              style={[filterStyles.chip, activeFilter === 'all' && filterStyles.activeChip]}
+              textStyle={activeFilter === 'all' ? filterStyles.activeText : filterStyles.text}
+              showSelectedOverlay
+              icon={() => (
+                <MaterialCommunityIcons
+                  name={activeFilter === 'all' ? 'layers' : 'layers-outline'}
+                  size={18}
+                  color={
+                    activeFilter === 'all' ? theme.colors.primary : theme.colors.onSurfaceVariant
+                  }
+                />
+              )}>
               Everything
             </Chip>
             <Chip
               selected={activeFilter === 'friends'}
               onPress={() => setActiveFilter('friends')}
-              style={styles.filterChip}
-              icon="account-group-outline"
-              selectedColor={theme.colors.primary}>
+              style={[filterStyles.chip, activeFilter === 'friends' && filterStyles.activeChip]}
+              textStyle={activeFilter === 'friends' ? filterStyles.activeText : filterStyles.text}
+              showSelectedOverlay
+              icon={() => (
+                <MaterialCommunityIcons
+                  name={activeFilter === 'friends' ? 'account-group' : 'account-group-outline'}
+                  size={18}
+                  color={
+                    activeFilter === 'friends'
+                      ? theme.colors.primary
+                      : theme.colors.onSurfaceVariant
+                  }
+                />
+              )}>
               Friends
             </Chip>
             <Chip
               selected={activeFilter === 'shared'}
               onPress={() => setActiveFilter('shared')}
-              style={styles.filterChip}
-              icon="map-marker-outline"
-              selectedColor={theme.colors.primary}>
+              style={[filterStyles.chip, activeFilter === 'shared' && filterStyles.activeChip]}
+              textStyle={activeFilter === 'shared' ? filterStyles.activeText : filterStyles.text}
+              showSelectedOverlay
+              icon={() => (
+                <MaterialCommunityIcons
+                  name={activeFilter === 'shared' ? 'map-marker' : 'map-marker-outline'}
+                  size={18}
+                  color={
+                    activeFilter === 'shared' ? theme.colors.primary : theme.colors.onSurfaceVariant
+                  }
+                />
+              )}>
               Shared
             </Chip>
             <Chip
               selected={activeFilter === 'post'}
               onPress={() => setActiveFilter('post')}
-              style={styles.filterChip}
-              icon="image-outline"
-              selectedColor={theme.colors.primary}>
+              style={[filterStyles.chip, activeFilter === 'post' && filterStyles.activeChip]}
+              textStyle={activeFilter === 'post' ? filterStyles.activeText : filterStyles.text}
+              showSelectedOverlay
+              icon={() => (
+                <MaterialCommunityIcons
+                  name={activeFilter === 'post' ? 'image' : 'image-outline'}
+                  size={18}
+                  color={
+                    activeFilter === 'post' ? theme.colors.primary : theme.colors.onSurfaceVariant
+                  }
+                />
+              )}>
               Posts
             </Chip>
             <Chip
               selected={activeFilter === 'shoutout'}
               onPress={() => setActiveFilter('shoutout')}
-              style={styles.filterChip}
-              icon="format-paint"
-              selectedColor="#FF00CC">
+              style={[
+                filterStyles.chip,
+                activeFilter === 'shoutout' && filterStyles.shoutoutActiveChip,
+              ]}
+              textStyle={
+                activeFilter === 'shoutout' ? filterStyles.shoutoutActiveText : filterStyles.text
+              }
+              showSelectedOverlay
+              icon={() => (
+                <MaterialCommunityIcons
+                  name="format-paint"
+                  size={18}
+                  color={activeFilter === 'shoutout' ? '#FF00CC' : theme.colors.onSurfaceVariant}
+                />
+              )}>
               Graffiti
             </Chip>
-          </BottomSheetScrollView>
+          </ScrollView>
         </View>
       )}
 
@@ -1664,8 +1799,16 @@ const MapScreen = () => {
                 </View>
               </View>
 
-              <View style={styles.shoutoutContentCard}>
-                <Text style={styles.shoutoutLargeText}>
+              <View
+                style={[
+                  styles.shoutoutContentCard,
+                  {
+                    borderColor: theme.dark ? '#D4F637' : theme.colors.primary,
+                    shadowColor: theme.colors.primary,
+                  },
+                ]}>
+                <Text
+                  style={[styles.shoutoutLargeText, { color: theme.dark ? '#D4F637' : '#fff' }]}>
                   "{selectedShoutout.shoutoutData.content}"
                 </Text>
               </View>
@@ -1942,6 +2085,7 @@ const styles = StyleSheet.create({
   filterContainer: {
     position: 'absolute',
     top: Constants.statusBarHeight + 65,
+    marginTop: 10,
     left: 0,
     right: 0,
     zIndex: 1000,
@@ -1949,18 +2093,13 @@ const styles = StyleSheet.create({
   filterScrollContent: {
     paddingHorizontal: 15,
     paddingBottom: 5,
-    gap: 8,
-  },
-  filterChip: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    elevation: 2,
-    height: 34,
   },
   floatingControls: {
     position: 'absolute',
     bottom: 30,
     right: 20,
     flexDirection: 'column',
+    alignItems: 'flex-end',
     gap: 10,
     zIndex: 10,
   },
@@ -2111,15 +2250,12 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     transform: [{ rotate: '-2deg' }],
     borderWidth: 3,
-    borderColor: '#D4F637',
-    shadowColor: '#FF00CC',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 10,
   },
   shoutoutLargeText: {
-    color: '#D4F637',
     fontSize: 24,
     fontWeight: '900',
     fontFamily: Platform.OS === 'ios' ? 'Marker Felt' : 'monospace',
