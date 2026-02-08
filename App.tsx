@@ -32,14 +32,12 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
-    'Montserrat-Regular':
-      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Regular.ttf',
-    'Montserrat-Medium':
-      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Medium.ttf',
-    'Montserrat-SemiBold':
-      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-SemiBold.ttf',
-    'Montserrat-Bold':
-      'https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Bold.ttf',
+    'Inter-Regular':
+      'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bslnt%2Cwght%5D.ttf',
+    'Inter-Medium': 'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bslnt%2Cwght%5D.ttf',
+    'Inter-SemiBold':
+      'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bslnt%2Cwght%5D.ttf',
+    'Inter-Bold': 'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bslnt%2Cwght%5D.ttf',
   });
 
   useEffect(() => {
