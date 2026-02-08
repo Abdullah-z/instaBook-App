@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import EditProfileModal from './EditProfileModal';
 import ThemeSwitcher from '../ThemeSwitcher';
 import { downloadAndSaveImage } from '../../utils/MediaUtils';
+import moment from 'moment';
 
 const ProfileHeader = ({
   profile,
@@ -131,39 +132,88 @@ const ProfileHeader = ({
             )}
           />
 
-          <View style={{ marginTop: 16, alignItems: 'center' }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: theme.colors.onSurface,
+              textAlign: 'center',
+            }}>
+            {profile.fullname}
+          </Text>
+          <Text
+            style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 14, marginTop: 2 }}>
+            {'@' + profile.username}
+          </Text>
+          {profile.story ? (
             <Text
               style={{
-                fontSize: 26,
-                fontWeight: 'bold',
                 color: theme.colors.onSurface,
                 marginTop: 12,
-              }}>
-              {profile.fullname}
-            </Text>
-            <Text style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 15 }}>
-              {'@' + profile.username}
-            </Text>
-            <Text
-              style={{
-                color: theme.colors.onSurface,
-                marginTop: 8,
                 textAlign: 'center',
-                paddingHorizontal: 30,
+                paddingHorizontal: 20,
                 fontSize: 14,
                 lineHeight: 20,
               }}>
               {profile.story}
             </Text>
+          ) : null}
 
+          {/* Metadata Row */}
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: 16,
+              gap: 12,
+            }}>
             {profile.address && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="location-outline" size={14} color={theme.colors.onSurfaceVariant} />
-                <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, marginLeft: 4 }}>
+                <Text
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    fontSize: 12,
+                    marginLeft: 4,
+                    fontWeight: '500',
+                  }}>
                   {profile.address}
                 </Text>
               </View>
             )}
+
+            {profile.website && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(profile.website)}
+                style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="link-outline" size={14} color={theme.colors.primary} />
+                <Text
+                  style={{
+                    color: theme.colors.primary,
+                    fontSize: 12,
+                    marginLeft: 4,
+                    fontWeight: '600',
+                    textDecorationLine: 'underline',
+                  }}>
+                  {profile.website.replace(/^https?:\/\//, '')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="calendar-outline" size={14} color={theme.colors.onSurfaceVariant} />
+              <Text
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  fontSize: 12,
+                  marginLeft: 4,
+                  fontWeight: '500',
+                }}>
+                Joined {moment(profile.createdAt).fromNow()}
+              </Text>
+            </View>
           </View>
         </View>
 
