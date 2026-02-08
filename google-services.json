@@ -1,40 +1,21 @@
 {
   "project_info": {
-    "project_number": "745851419170",
-    "project_id": "instabook-a4803",
-    "storage_bucket": "instabook-a4803.firebasestorage.app"
+    "project_number": "741588417245",
+    "project_id": "circles-8046e",
+    "storage_bucket": "circles-8046e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:745851419170:android:4f6febb24b71ef032b687b",
+        "mobilesdk_app_id": "1:741588417245:android:d4cf68742daaf20c8ab934",
         "android_client_info": {
-          "package_name": "com.instabook.social"
+          "package_name": "com.circles.social"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCQf450r9-7T1OTz1R5BY04SFIPNe8tFMU"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:745851419170:android:c777bc24ca79da602b687b",
-        "android_client_info": {
-          "package_name": "com.prism.social"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCQf450r9-7T1OTz1R5BY04SFIPNe8tFMU"
+          "current_key": "AIzaSyAx9b_RgzLDh7lxLtv6lo1ftbq0erOdF_U"
         }
       ],
       "services": {
