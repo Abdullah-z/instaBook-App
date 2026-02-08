@@ -8,11 +8,11 @@ const HeaderLogo = () => {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/prism.png')}
+        source={require('../../assets/circles.png')}
         style={styles.logoImage}
         resizeMode="contain"
       />
-      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Prism</Text>
+      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Circles</Text>
     </View>
   );
 };
@@ -31,7 +31,8 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
   logoText: {
-    fontWeight: 'bold',
-    fontSize: 20,
+    fontWeight: '900',
+    fontSize: 28,
+    letterSpacing: -1.5,
   },
 });
