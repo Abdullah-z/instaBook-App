@@ -3,9 +3,9 @@ import { configureFonts } from 'react-native-paper';
 
 const baseFontConfig = {
   fontFamily: Platform.select({
-    web: 'Montserrat-Regular, Arial, sans-serif',
-    ios: 'Montserrat-Regular',
-    default: 'Montserrat-Regular',
+    web: 'Inter-Regular, Arial, sans-serif',
+    ios: 'Inter-Regular',
+    default: 'Inter-Regular',
   }),
 };
 
@@ -19,37 +19,37 @@ export const fontConfig = {
       headlineMedium: { ...baseFontConfig, fontSize: 28, lineHeight: 36, fontWeight: '400' },
       headlineSmall: { ...baseFontConfig, fontSize: 24, lineHeight: 32, fontWeight: '400' },
       titleLarge: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 22,
         lineHeight: 28,
         fontWeight: '500',
       },
       titleMedium: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 16,
         lineHeight: 24,
         fontWeight: '500',
       },
       titleSmall: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 14,
         lineHeight: 20,
         fontWeight: '500',
       },
       labelLarge: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 14,
         lineHeight: 20,
         fontWeight: '500',
       },
       labelMedium: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 12,
         lineHeight: 16,
         fontWeight: '500',
       },
       labelSmall: {
-        fontFamily: 'Montserrat-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 11,
         lineHeight: 16,
         fontWeight: '500',
