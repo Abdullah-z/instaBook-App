@@ -504,6 +504,7 @@ const MapScreen = () => {
           fullname: loc.user.fullname,
           avatar: loc.user.avatar,
           isMe: userId === currentUserId,
+          userId: userId, // Added userId
           type: 'shoutout',
           lastUpdate: loc.lastUpdate || loc.updatedAt,
           shoutoutData: {
@@ -521,6 +522,7 @@ const MapScreen = () => {
           fullname: loc.user.fullname,
           avatar: loc.user.avatar,
           isMe: userId === currentUserId,
+          userId: userId, // Added userId
           type: 'post',
           lastUpdate: loc.lastUpdate || loc.updatedAt,
           postData: loc.postData,
@@ -557,6 +559,7 @@ const MapScreen = () => {
         fullname: loc.user.fullname,
         avatar: loc.user.avatar,
         isMe: String(loc.user._id) === currentUserId,
+        userId: String(loc.user._id), // Added userId
         type: loc.type || 'live',
         lastUpdate: loc.lastUpdate || loc.updatedAt,
         postData: loc.postData,
@@ -599,6 +602,7 @@ const MapScreen = () => {
           fullname: pinTitle,
           avatar: currentUser?.avatar || '',
           isMe: false,
+          userId: isFocusedMode ? route.params.id : currentUser?._id, // Added userId
           type: isFocusedMode ? 'focused' : 'static',
           lastUpdate: new Date().toISOString(),
           postData: undefined,
@@ -672,6 +676,7 @@ const MapScreen = () => {
       username: m.username,
       fullname: m.fullname,
       isMe: m.isMe,
+      userId: m.userId, // Added userId
       postData: m.postData,
       lastUpdate: m.lastUpdate,
       address: m.address,
@@ -1712,7 +1717,7 @@ const MapScreen = () => {
                   if (selectedUser.isMe) {
                     navigation.navigate('Profile');
                   } else {
-                    navigation.navigate('Profile', { id: selectedUser.id });
+                    navigation.navigate('Profile', { id: selectedUser.userId }); // Use userId instead of id
                   }
                 }}>
                 View Profile
@@ -1827,7 +1832,7 @@ const MapScreen = () => {
                 style={styles.viewProfileBtn}
                 onPress={() => {
                   bottomSheetRef.current?.close();
-                  navigation.navigate('Profile', { id: selectedShoutout.user._id });
+                  navigation.navigate('Profile', { id: selectedShoutout.userId }); // Fix: shoutout marker has userId now
                 }}>
                 View Author Profile
               </Button>
