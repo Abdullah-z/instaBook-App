@@ -45,7 +45,7 @@ const RegisterScreen = () => {
       <View style={styles.formContainer}>
         <Text style={[styles.title, { color: theme.colors.onSurface }]}>Create Account</Text>
         <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-          Join Prism to make new friends!
+          Join Circles to make new friends!
         </Text>
 
         <TextInput

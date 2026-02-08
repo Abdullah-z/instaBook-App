@@ -16,7 +16,7 @@ const ONBOARDING_DATA: {
   colors: readonly [string, string, ...string[]];
 }[] = [
   {
-    title: 'Welcome to Prism',
+    title: 'Welcome to Circles',
     description: 'Your all-in-one social powerhouse for connecting and sharing.',
     icon: 'apps',
     colors: ['#D4F637', '#B8D430'],

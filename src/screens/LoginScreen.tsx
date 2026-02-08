@@ -155,7 +155,7 @@ const LoginScreen = () => {
           Best Social App to Make New Friends
         </Text>
         <Text style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-          With Prism you will find new friends from various countries and regions of the world
+          With Circles you will find new friends from various countries and regions of the world
         </Text>
 
         <View style={styles.buttonContainer}>
