@@ -5,6 +5,7 @@ import { View, Text, Image, Dimensions, TouchableOpacity, ActivityIndicator } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from 'react-native-paper';
 import { POST_BACKGROUNDS } from '../../constants/postTheme';
+import { Ionicons } from '@expo/vector-icons';
 
 const windowWidth = Dimensions.get('window').width;
 const imageSize = windowWidth / 3;
@@ -52,23 +53,31 @@ const PostGrid = ({
         let isNativeVideo = false;
         let imageUrl = 'https://via.placeholder.com/150';
 
-        if (item.images?.[0]?.url) {
-          imageUrl = item.images[0].url;
-          isNativeVideo =
-            item.images[0].resource_type === 'video' || item.images[0].url.endsWith('.mp4');
+        const firstImage = item.images?.[0];
+        if (firstImage) {
+          if (typeof firstImage === 'string') {
+            imageUrl = firstImage;
+            isNativeVideo = imageUrl.endsWith('.mp4');
+          } else {
+            imageUrl = firstImage.url;
+            isNativeVideo =
+              firstImage.resource_type === 'video' || (imageUrl && imageUrl.endsWith('.mp4'));
+          }
 
-          if (isNativeVideo && imageUrl.includes('cloudinary.com')) {
+          if (isNativeVideo && imageUrl && imageUrl.includes('cloudinary.com')) {
             imageUrl = imageUrl.replace(/\.[^/.]+$/, '.jpg');
           }
         } else if (youtubeId) {
           imageUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
         }
 
-        if (!item.images?.[0]?.url && !youtubeId) {
-          const bgColors =
-            item.background && item.background !== 'default'
-              ? POST_BACKGROUNDS.find((b) => b.id === item.background)?.colors || ['#ccc', '#ccc']
-              : ['#ffffff', '#ffffff'];
+        if (!firstImage && !youtubeId) {
+          const isDefaultBg = !item.background || item.background === 'default';
+          const bgColors = isDefaultBg
+            ? ['#ffffff', '#ffffff']
+            : POST_BACKGROUNDS.find((b) => b.id === item.background)?.colors || ['#ccc', '#ccc'];
+
+          const defaultTextColor = isDefaultBg ? '#000000' : '#fff';
           return (
             <TouchableOpacity
               onPress={() => navigation.navigate('PostDetail', { postId: item._id, post: item })}>
@@ -87,7 +96,7 @@ const PostGrid = ({
                 <Text
                   numberOfLines={4}
                   style={{
-                    color: item.textStyle?.color || '#fff',
+                    color: item.textStyle?.color || defaultTextColor,
                     fontSize: 10,
                     fontWeight: 'bold',
                     textAlign: 'center',
@@ -123,9 +132,18 @@ const PostGrid = ({
                   bottom: 0,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  backgroundColor: 'rgba(0,0,0,0.1)',
                 }}>
-                <Text style={{ color: '#fff', fontSize: 24 }}>▶</Text>
+                <View
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    padding: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.2)',
+                  }}>
+                  <Ionicons name="play" size={16} color="#fff" style={{ marginLeft: 2 }} />
+                </View>
               </View>
             )}
           </TouchableOpacity>
