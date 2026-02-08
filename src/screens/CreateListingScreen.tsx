@@ -54,6 +54,20 @@ const CreateListingScreen = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<'date' | 'time'>('date');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+  const categories = [
+    'Electronics',
+    'Furniture',
+    'Vehicles',
+    'Clothing',
+    'Real Estate',
+    'Services',
+    'Collectibles',
+    'Home & Garden',
+    'Books',
+    'Other',
+  ];
 
   const [images, setImages] = useState<any[]>(
     editListing?.images?.map((url: string) => ({ uri: url })) || []
@@ -238,6 +252,21 @@ const CreateListingScreen = () => {
           textColor={theme.colors.onSurface}
         />
 
+        <TouchableOpacity onPress={() => setShowCategoryModal(true)}>
+          <View pointerEvents="none">
+            <TextInput
+              label="Category"
+              value={listing.category}
+              style={[styles.input, { backgroundColor: theme.colors.surface }]}
+              mode="outlined"
+              outlineColor={theme.colors.outline}
+              activeOutlineColor={theme.colors.primary}
+              textColor={theme.colors.onSurface}
+              right={<TextInput.Icon icon="chevron-down" />}
+            />
+          </View>
+        </TouchableOpacity>
+
         <TextInput
           label="Description"
           value={listing.description}
@@ -415,6 +444,55 @@ const CreateListingScreen = () => {
           Post Listing
         </Button>
       </ScrollView>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.colors.outlineVariant }]}>
+              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                Select Category
+              </Text>
+              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryItem,
+                    listing.category === cat && { backgroundColor: theme.colors.primaryContainer },
+                  ]}
+                  onPress={() => {
+                    setListing({ ...listing, category: cat });
+                    setShowCategoryModal(false);
+                  }}>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      { color: theme.colors.onSurface },
+                      listing.category === cat && {
+                        fontWeight: 'bold',
+                        color: theme.colors.primary,
+                      },
+                    ]}>
+                    {cat}
+                  </Text>
+                  {listing.category === cat && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -499,6 +577,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#007AFF',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  categoryItem: {
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  categoryText: {
+    fontSize: 16,
   },
 });
 
