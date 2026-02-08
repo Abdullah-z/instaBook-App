@@ -1,4 +1,4 @@
-package com.prism.social
+package com.circles.social
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

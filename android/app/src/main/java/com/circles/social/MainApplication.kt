@@ -1,4 +1,4 @@
-package com.prism.social
+package com.circles.social
 
 import android.app.Application
 import android.content.res.Configuration
