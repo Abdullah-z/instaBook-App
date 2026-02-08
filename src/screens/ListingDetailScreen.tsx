@@ -302,6 +302,9 @@ const ListingDetailScreen = () => {
         )}
 
         <Text style={[styles.time, { color: theme.colors.onSurfaceVariant }]}>
+          Condition: New • {listing.category}
+        </Text>
+        <Text style={[styles.time, { color: theme.colors.onSurfaceVariant }]}>
           Listed {moment(listing.createdAt).format('MMM D, YYYY')} at{' '}
           {moment(listing.createdAt).format('h:mm A')}
         </Text>
