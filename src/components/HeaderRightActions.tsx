@@ -5,10 +5,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
+import { useData } from '../hooks';
 
 const HeaderRightActions = () => {
   const { user } = useContext(AuthContext);
   const { unreadCount } = useContext(SocketContext);
+  const { isDark, handleIsDark } = useData();
   const navigation = useNavigation<any>();
   const theme = useTheme();
 
@@ -18,6 +20,14 @@ const HeaderRightActions = () => {
         style={styles.iconBtn}
         onPress={() => navigation.navigate('Search' as never)}>
         <Ionicons name="search-outline" size={24} color={theme.colors.onSurface} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.iconBtn} onPress={() => handleIsDark()}>
+        <Ionicons
+          name={isDark ? 'sunny-outline' : 'moon-outline'}
+          size={24}
+          color={theme.colors.onSurface}
+        />
       </TouchableOpacity>
 
       <TouchableOpacity
