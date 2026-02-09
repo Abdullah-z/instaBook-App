@@ -1,4 +1,4 @@
-import { MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
+import { MD3LightTheme } from 'react-native-paper';
 import { fontConfig } from './fontConfig';
 
 export const GreenLight = {
@@ -23,14 +23,14 @@ export const GreenLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)', // Neutral-98
+    background: 'rgb(246, 246, 246)',
     onBackground: 'rgb(27, 28, 24)',
-    surface: 'rgb(255, 255, 255)', // Pure White
+    surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(27, 28, 24)',
     surfaceVariant: 'rgb(225, 228, 213)',
     onSurfaceVariant: 'rgb(68, 72, 61)',
     outline: 'rgb(117, 121, 108)',
-    outlineVariant: 'rgb(220, 220, 220)', // Subtle border color
+    outlineVariant: 'rgb(220, 220, 220)',
     shadow: 'rgb(0, 0, 0)',
     scrim: 'rgb(0, 0, 0)',
     inverseSurface: 'rgb(48, 49, 44)',
@@ -49,4 +49,3 @@ export const GreenLight = {
     backdrop: 'rgba(46, 50, 40, 0.4)',
   },
 };
-
