@@ -9,6 +9,18 @@ import { YellowLight } from '../constants/themes/YellowLight';
 import { YellowDark } from '../constants/themes/YellowDark';
 import { BlueLight } from '../constants/themes/BlueLight';
 import { BlueDark } from '../constants/themes/BlueDark';
+import { PurpleLight } from '../constants/themes/PurpleLight';
+import { PurpleDark } from '../constants/themes/PurpleDark';
+import { OrangeLight } from '../constants/themes/OrangeLight';
+import { OrangeDark } from '../constants/themes/OrangeDark';
+import { NeonPinkLight } from '../constants/themes/NeonPinkLight';
+import { NeonPinkDark } from '../constants/themes/NeonPinkDark';
+import { NeonCyanLight } from '../constants/themes/NeonCyanLight';
+import { NeonCyanDark } from '../constants/themes/NeonCyanDark';
+import { NeonLimeLight } from '../constants/themes/NeonLimeLight';
+import { NeonLimeDark } from '../constants/themes/NeonLimeDark';
+import { ElectricBlueLight } from '../constants/themes/ElectricBlueLight';
+import { ElectricBlueDark } from '../constants/themes/ElectricBlueDark';
 import { light } from '../constants';
 import { ITheme, IUseData } from '../constants/types';
 
@@ -18,7 +30,7 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
   const [isDark, setIsDark] = useState(false);
   const [theme, setTheme] = useState<ITheme>(light);
 
-  const [themeColor, setThemeColor] = useState('b');
+  const [themeColor, setThemeColor] = useState('g');
   const [userData, setUserData] = useState(null);
   const [userID, setUserID] = useState(null);
   const [token, setToken] = useState(null);
@@ -46,15 +58,16 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   // handle isDark mode
   const handleIsDark = useCallback(
-    async (payload: boolean) => {
-      setIsDark(payload);
+    async (payload?: boolean) => {
+      const newValue = payload !== undefined ? payload : !isDark;
+      setIsDark(newValue);
       try {
-        await Storage.setItem('isDark', JSON.stringify(payload));
+        await Storage.setItem('isDark', JSON.stringify(newValue));
       } catch (e) {
         console.error('Failed to save isDark setting', e);
       }
     },
-    [setIsDark]
+    [isDark, setIsDark]
   );
 
   const handleSetThemeColor = useCallback(
@@ -69,80 +82,74 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
     [setThemeColor]
   );
 
-  // handle users / profiles
-  // const handleUsers = useCallback(
-  //   (payload: IUser[]) => {
-  //     // set users / compare if has updated
-  //     if (JSON.stringify(payload) !== JSON.stringify(users)) {
-  //       setUsers({ ...users, ...payload });
-  //     }
-  //   },
-  //   [users, setUsers]
-  // );
-
-  // // handle user
-  // const handleUser = useCallback(
-  //   (payload: IUser) => {
-  //     // set user / compare if has updated
-  //     if (JSON.stringify(payload) !== JSON.stringify(user)) {
-  //       setUser(payload);
-  //     }
-  //   },
-  //   [user, setUser]
-  // );
-
-  // // handle Article
-  // const handleArticle = useCallback(
-  //   (payload: IArticle) => {
-  //     // set article / compare if has updated
-  //     if (JSON.stringify(payload) !== JSON.stringify(article)) {
-  //       setArticle(payload);
-  //     }
-  //   },
-  //   [article, setArticle]
-  // );
-
   const changeTheme = () => {
-    console.log('callssed');
     if (themeColor === 'g') {
       return {
         light: GreenLight,
         dark: GreenDark,
       };
+    } else if (themeColor === 'b') {
+      return {
+        light: BlueLight,
+        dark: BlueDark,
+      };
+    } else if (themeColor === 'p') {
+      return {
+        light: PurpleLight,
+        dark: PurpleDark,
+      };
     } else if (themeColor === 'r') {
       return {
         light: RedLight,
-
         dark: RedDark,
+      };
+    } else if (themeColor === 'o') {
+      return {
+        light: OrangeLight,
+        dark: OrangeDark,
       };
     } else if (themeColor === 'y') {
       return {
         light: YellowLight,
         dark: YellowDark,
       };
+    } else if (themeColor === 'np') {
+      return {
+        light: NeonPinkLight,
+        dark: NeonPinkDark,
+      };
+    } else if (themeColor === 'nc') {
+      return {
+        light: NeonCyanLight,
+        dark: NeonCyanDark,
+      };
+    } else if (themeColor === 'nl') {
+      return {
+        light: NeonLimeLight,
+        dark: NeonLimeDark,
+      };
+    } else if (themeColor === 'eb') {
+      return {
+        light: ElectricBlueLight,
+        dark: ElectricBlueDark,
+      };
     } else {
       return {
-        light: BlueLight,
-        dark: BlueDark,
+        light: GreenLight,
+        dark: GreenDark,
       };
     }
   };
 
   useEffect(() => {
-    changeTheme();
-  }, [themeColor]);
+    const themes = changeTheme();
+    setTheme(isDark ? themes.dark : themes.light);
+  }, [themeColor, isDark]);
 
   // get initial data for: isDark & themeColor
   useEffect(() => {
     getInitialTheme();
   }, [getInitialTheme]);
-
-  // change theme based on isDark updates
-  useEffect(() => {
-    // Note: The custom matching ITheme for dark mode is not yet fully implemented
-    // in constants, but we ensure the state is reactive to transitions.
-    setTheme(isDark ? light : light);
-  }, [isDark]);
 
   const contextValue = {
     isDark,
