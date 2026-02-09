@@ -4,12 +4,16 @@ import { Icon, Text, Switch, useTheme } from 'react-native-paper';
 import { useData } from '../hooks';
 
 const COLORS = [
-  { id: 'b', color: '#2196F3', label: 'Blue' },
-  { id: 'g', color: '#4CAF50', label: 'Green' },
-  { id: 'y', color: '#FFEB3B', label: 'Yellow' },
-  { id: 'r', color: '#F44336', label: 'Red' },
-  { id: 'p', color: '#9C27B0', label: 'Purple' },
-  { id: 'o', color: '#FF9800', label: 'Orange' },
+  { id: 'g', color: '#3F6900', label: 'Green' },
+  { id: 'b', color: '#00639A', label: 'Blue' },
+  { id: 'p', color: '#6C577A', label: 'Purple' },
+  { id: 'r', color: '#952B29', label: 'Red' },
+  { id: 'o', color: '#8B5000', label: 'Orange' },
+  { id: 'y', color: '#6E5D00', label: 'Yellow' },
+  { id: 'np', color: '#FF1493', label: 'Neon Pink' },
+  { id: 'nc', color: '#00FFFF', label: 'Neon Cyan' },
+  { id: 'nl', color: '#CCFF00', label: 'Neon Lime' },
+  { id: 'eb', color: '#7DF9FF', label: 'Electric Blue' },
 ];
 
 const ThemeSwitcher = () => {
@@ -18,18 +22,18 @@ const ThemeSwitcher = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-      <View style={styles.section}>
+      <View style={styles.darkModeSection}>
         <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
           Dark Mode
         </Text>
-        <Switch value={isDark} onValueChange={handleIsDark} color={theme.colors.primary} />
+        <Switch value={isDark} onValueChange={() => handleIsDark()} color={theme.colors.primary} />
       </View>
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 10 }}>
+        <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
           Theme Color
         </Text>
-        <View style={styles.colorRow}>
+        <View style={styles.colorGrid}>
           {COLORS.map((item) => (
             <TouchableOpacity
               key={item.id}
@@ -40,7 +44,11 @@ const ThemeSwitcher = () => {
                 themeColor === item.id && styles.selectedCircle,
               ]}>
               {themeColor === item.id && (
-                <Icon source="check" color={item.id === 'y' ? '#000' : '#fff'} size={16} />
+                <Icon
+                  source="check"
+                  color={['nc', 'nl', 'eb'].includes(item.id) ? '#000' : '#fff'}
+                  size={16}
+                />
               )}
             </TouchableOpacity>
           ))}
@@ -61,21 +69,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
-  section: {
+  darkModeSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 20,
   },
-  colorRow: {
+  section: {
+    marginBottom: 20,
+  },
+  colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 14,
+    justifyContent: 'flex-start',
   },
   colorCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -83,7 +95,7 @@ const styles = StyleSheet.create({
   },
   selectedCircle: {
     borderColor: '#000',
-    borderWidth: 2,
+    borderWidth: 3,
   },
 });
 
