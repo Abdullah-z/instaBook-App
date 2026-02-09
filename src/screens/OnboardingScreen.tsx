@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions, SafeAreaView } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,37 +56,45 @@ const ONBOARDING_DATA: {
 
 const OnboardingScreen = () => {
   const { completeOnboarding } = useContext(AuthContext);
-  const navigation = useNavigation();
+  const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const handleFinish = async () => {
     await completeOnboarding();
   };
 
-  const renderItem = ({ item, index }: { item: (typeof ONBOARDING_DATA)[0]; index: number }) => (
+  const renderItem = ({ item }: { item: (typeof ONBOARDING_DATA)[0]; index: number }) => (
     <View style={styles.slide}>
-      <LinearGradient colors={item.colors as any} style={styles.iconContainer}>
-        <Ionicons name={item.icon as any} size={100} color="#fff" />
+      <LinearGradient
+        colors={item.colors as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.iconContainer}>
+        <Ionicons name={item.icon as any} size={84} color="#fff" />
       </LinearGradient>
       <View style={styles.textContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>{item.title}</Text>
+        <Text style={[styles.description, { color: theme.colors.onSurfaceVariant }]}>
+          {item.description}
+        </Text>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Carousel
-        loop={false}
-        width={width}
-        height={height * 0.7}
-        autoPlay={false}
-        data={ONBOARDING_DATA}
-        scrollAnimationDuration={500}
-        onSnapToItem={(index) => setActiveIndex(index)}
-        renderItem={renderItem}
-      />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.carouselWrapper}>
+        <Carousel
+          loop={false}
+          width={width}
+          height={height * 0.7}
+          autoPlay={false}
+          data={ONBOARDING_DATA}
+          scrollAnimationDuration={500}
+          onSnapToItem={(index) => setActiveIndex(index)}
+          renderItem={renderItem}
+        />
+      </View>
 
       <View style={styles.footer}>
         <View style={styles.pagination}>
@@ -95,8 +104,10 @@ const OnboardingScreen = () => {
               style={[
                 styles.dot,
                 {
-                  backgroundColor: activeIndex === index ? '#D4F637' : '#eee',
-                  width: activeIndex === index ? 20 : 8,
+                  backgroundColor:
+                    activeIndex === index ? theme.colors.primary : theme.colors.outlineVariant,
+                  width: activeIndex === index ? 24 : 8,
+                  opacity: activeIndex === index ? 1 : 0.5,
                 },
               ]}
             />
@@ -104,11 +115,20 @@ const OnboardingScreen = () => {
         </View>
 
         <TouchableOpacity
-          style={styles.button}
+          activeOpacity={0.8}
+          style={[styles.button, { backgroundColor: theme.colors.primary }]}
           onPress={activeIndex === ONBOARDING_DATA.length - 1 ? handleFinish : () => {}}>
-          <Text style={styles.buttonText}>
+          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>
             {activeIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Swipe to Explore'}
           </Text>
+          {activeIndex === ONBOARDING_DATA.length - 1 ? (
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color={theme.colors.onPrimary}
+              style={{ marginLeft: 8 }}
+            />
+          ) : null}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -120,51 +140,56 @@ export default OnboardingScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  carouselWrapper: {
+    flex: 1,
+    justifyContent: 'center',
   },
   slide: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 30,
   },
   iconContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 60,
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
   },
   textContainer: {
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 34,
+    fontWeight: '900',
     marginBottom: 20,
     textAlign: 'center',
+    letterSpacing: -1,
   },
   description: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 17,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 26,
+    fontWeight: '500',
+    opacity: 0.8,
   },
   footer: {
-    paddingHorizontal: 40,
-    paddingBottom: 40,
+    paddingHorizontal: 30,
+    paddingBottom: 50,
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   dot: {
     height: 8,
@@ -172,15 +197,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   button: {
-    backgroundColor: '#000',
-    height: 60,
-    borderRadius: 30,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
 });

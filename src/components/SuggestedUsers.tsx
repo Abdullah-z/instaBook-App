@@ -14,6 +14,7 @@ import { createNotification, removeNotification } from '../api/notificationAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { SocketContext } from '../auth/SocketContext';
 import { Ionicons } from '@expo/vector-icons';
+import { addOpacity } from '../utils/colorUtils';
 
 const SuggestedUsers = ({ users }: { users: any[] }) => {
   const navigation = useNavigation<any>();
@@ -79,9 +80,7 @@ const SuggestedUsers = ({ users }: { users: any[] }) => {
         style={[
           styles.card,
           {
-            backgroundColor: theme.dark
-              ? theme.colors.secondaryContainer + '26'
-              : theme.colors.secondaryContainer + '0D',
+            backgroundColor: addOpacity(theme.colors.secondaryContainer, theme.dark ? 0.15 : 0.05),
             borderColor: theme.colors.outlineVariant,
           },
         ]}>

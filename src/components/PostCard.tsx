@@ -33,6 +33,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import PollView from './PollView';
 import HashtagText from './HashtagText';
 import { BlurView } from 'expo-blur';
+import { addOpacity } from '../utils/colorUtils';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -484,7 +485,7 @@ const PostCard = ({
                           marginHorizontal: 16,
                           marginVertical: 16,
                           borderWidth: 1,
-                          borderColor: theme.colors.outlineVariant + '33',
+                          borderColor: addOpacity(theme.colors.outlineVariant, 0.2),
                         }}>
                         <VideoItem item={item} />
                       </View>
@@ -513,7 +514,7 @@ const PostCard = ({
                           overflow: 'hidden',
                           backgroundColor: '#000',
                           borderWidth: 1,
-                          borderColor: theme.colors.outlineVariant + '33',
+                          borderColor: addOpacity(theme.colors.outlineVariant, 0.2),
                         }}>
                         {/* 🌟 Ambient Background (Conditional) */}
                         {isAmbientEnabled && (
@@ -922,19 +923,24 @@ export default React.memo(PostCard);
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 10,
+    marginVertical: 12,
     marginHorizontal: 16,
-    borderRadius: 28, // Expressive roundness
+    borderRadius: 32, // More expressive roundness
     borderWidth: 1, // Subtle border
+    elevation: 0, // More pronounced elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   cardContent: {
-    borderRadius: 28,
+    borderRadius: 32,
     overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // ensure spacing
+    justifyContent: 'space-between',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -942,19 +948,20 @@ const styles = StyleSheet.create({
   },
 
   userInfo: {
-    marginLeft: 12,
+    marginLeft: 14,
     justifyContent: 'center',
   },
   username: {
-    fontWeight: 'bold',
-    fontSize: 15,
+    fontWeight: '700', // Bolder username
+    fontSize: 16,
+    letterSpacing: -0.3,
   },
   timestampContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   timestamp: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
   locationContainer: {
@@ -971,29 +978,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   content: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 10,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 12,
     paddingHorizontal: 16,
+    letterSpacing: -0.2,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 16,
-    paddingTop: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: 'rgba(0,0,0,0.03)',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: 24,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.02)', // Subtle background for actions
   },
   actionCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+    letterSpacing: -0.2,
   },
   iconButton: {
     padding: 4,

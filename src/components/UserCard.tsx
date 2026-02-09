@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
+import { addOpacity } from '../utils/colorUtils';
 
 interface UserCardProps {
   user: {
@@ -26,11 +27,9 @@ const UserCard = ({ user, onPress, color }: UserCardProps) => {
     }
   };
 
-  const dynamicBg = theme.dark
-    ? theme.colors.secondaryContainer + '26' // 15% opacity for Dark Mode
-    : theme.colors.secondaryContainer + '0D'; // 5% opacity for Light Mode
+  const dynamicBg = addOpacity(theme.colors.secondaryContainer, theme.dark ? 0.15 : 0.05);
 
-  const dynamicBorder = color ? color + '33' : theme.colors.outlineVariant;
+  const dynamicBorder = color ? addOpacity(color, 0.2) : theme.colors.outlineVariant;
   const textColor = color || theme.colors.onSurface;
 
   return (

@@ -12,6 +12,7 @@ import EditProfileModal from './EditProfileModal';
 import ThemeSwitcher from '../ThemeSwitcher';
 import { downloadAndSaveImage } from '../../utils/MediaUtils';
 import moment from 'moment';
+import { addOpacity } from '../../utils/colorUtils';
 
 const ProfileHeader = ({
   profile,
@@ -85,22 +86,22 @@ const ProfileHeader = ({
             style={{
               padding: 4,
               backgroundColor: theme.colors.surface,
-              borderRadius: 70,
-              elevation: 8,
+              borderRadius: 65,
+              elevation: 4,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 10,
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
             }}>
-            <TouchableOpacity onPress={() => setViewerVisible(true)}>
+            <TouchableOpacity onPress={() => setViewerVisible(true)} activeOpacity={0.9}>
               <Image
                 source={{ uri: profile.avatar }}
                 style={{
                   width: 120,
                   height: 120,
                   borderRadius: 60,
-                  borderWidth: 4,
-                  borderColor: '#000',
+                  borderWidth: 2,
+                  borderColor: theme.colors.outlineVariant,
                 }}
               />
             </TouchableOpacity>
@@ -134,15 +135,22 @@ const ProfileHeader = ({
 
           <Text
             style={{
-              fontSize: 24,
-              fontWeight: 'bold',
+              fontSize: 28,
+              fontWeight: '900',
               color: theme.colors.onSurface,
               textAlign: 'center',
+              letterSpacing: -0.5,
             }}>
             {profile.fullname}
           </Text>
           <Text
-            style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 14, marginTop: 2 }}>
+            style={{
+              color: theme.colors.primary,
+              fontWeight: '800',
+              fontSize: 14,
+              marginTop: 0,
+              opacity: 0.9,
+            }}>
             {'@' + profile.username}
           </Text>
           {profile.story ? (
@@ -166,18 +174,26 @@ const ProfileHeader = ({
               flexWrap: 'wrap',
               justifyContent: 'center',
               alignItems: 'center',
-              marginTop: 16,
-              gap: 12,
+              marginTop: 18,
+              gap: 8,
             }}>
             {profile.address && (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="location-outline" size={14} color={theme.colors.onSurfaceVariant} />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: addOpacity(theme.colors.onSurfaceVariant, 0.05),
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                }}>
+                <Ionicons name="location" size={14} color={theme.colors.primary} />
                 <Text
                   style={{
-                    color: theme.colors.onSurfaceVariant,
+                    color: theme.colors.onSurface,
                     fontSize: 12,
                     marginLeft: 4,
-                    fontWeight: '500',
+                    fontWeight: '700',
                   }}>
                   {profile.address}
                 </Text>
@@ -187,31 +203,45 @@ const ProfileHeader = ({
             {profile.website && (
               <TouchableOpacity
                 onPress={() => Linking.openURL(profile.website)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="link-outline" size={14} color={theme.colors.primary} />
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: addOpacity(theme.colors.primary, 0.1),
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                }}>
+                <Ionicons name="link" size={14} color={theme.colors.primary} />
                 <Text
                   style={{
                     color: theme.colors.primary,
                     fontSize: 12,
                     marginLeft: 4,
-                    fontWeight: '600',
-                    textDecorationLine: 'underline',
+                    fontWeight: '800',
                   }}>
                   {profile.website.replace(/^https?:\/\//, '')}
                 </Text>
               </TouchableOpacity>
             )}
 
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="calendar-outline" size={14} color={theme.colors.onSurfaceVariant} />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: addOpacity(theme.colors.onSurfaceVariant, 0.05),
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 20,
+              }}>
+              <Ionicons name="calendar" size={14} color={theme.colors.onSurfaceVariant} />
               <Text
                 style={{
                   color: theme.colors.onSurfaceVariant,
                   fontSize: 12,
                   marginLeft: 4,
-                  fontWeight: '500',
+                  fontWeight: '600',
                 }}>
-                Joined {moment(profile.createdAt).fromNow()}
+                Joined {moment(profile.createdAt).format('MMM YYYY')}
               </Text>
             </View>
           </View>
@@ -221,52 +251,77 @@ const ProfileHeader = ({
         <View
           style={{
             flexDirection: 'row',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
             width: '100%',
-            marginTop: 32,
+            marginTop: 24,
             paddingHorizontal: 20,
+            gap: 12,
           }}>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              backgroundColor: theme.colors.surfaceVariant,
+              paddingVertical: 12,
+              borderRadius: 20,
+            }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: theme.colors.onSurface }}>
               {postCount}
             </Text>
             <Text
               style={{
                 fontSize: 10,
-                fontWeight: 'bold',
+                fontWeight: '800',
                 color: theme.colors.onSurfaceVariant,
                 textTransform: 'uppercase',
-                letterSpacing: 1.5,
+                letterSpacing: 1,
+                marginTop: 2,
               }}>
               Posts
             </Text>
           </View>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              backgroundColor: theme.colors.surfaceVariant,
+              paddingVertical: 12,
+              borderRadius: 20,
+            }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: theme.colors.onSurface }}>
               {followerCount}
             </Text>
             <Text
               style={{
                 fontSize: 10,
-                fontWeight: 'bold',
+                fontWeight: '800',
                 color: theme.colors.onSurfaceVariant,
                 textTransform: 'uppercase',
-                letterSpacing: 1.5,
+                letterSpacing: 1,
+                marginTop: 2,
               }}>
               Followers
             </Text>
           </View>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.onSurface }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              backgroundColor: theme.colors.surfaceVariant,
+              paddingVertical: 12,
+              borderRadius: 20,
+            }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: theme.colors.onSurface }}>
               {profile.following?.length || 0}
             </Text>
             <Text
               style={{
                 fontSize: 10,
-                fontWeight: 'bold',
+                fontWeight: '800',
                 color: theme.colors.onSurfaceVariant,
                 textTransform: 'uppercase',
-                letterSpacing: 1.5,
+                letterSpacing: 1,
+                marginTop: 2,
               }}>
               Following
             </Text>
@@ -274,7 +329,7 @@ const ProfileHeader = ({
         </View>
 
         {/* Action Buttons */}
-        <View style={{ flexDirection: 'row', marginTop: 32, paddingHorizontal: 20, gap: 10 }}>
+        <View style={{ flexDirection: 'row', marginTop: 24, paddingHorizontal: 20, gap: 10 }}>
           {isOwner ? (
             <>
               <TouchableOpacity
@@ -282,12 +337,20 @@ const ProfileHeader = ({
                 style={{
                   flex: 1,
                   backgroundColor: theme.colors.primary,
-                  paddingVertical: 12,
-                  borderRadius: 30,
+                  paddingVertical: 14,
+                  borderRadius: 20,
                   alignItems: 'center',
                   elevation: 2,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
                 }}>
-                <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 14 }}>
+                <Ionicons
+                  name="create"
+                  size={18}
+                  color={theme.colors.onPrimary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={{ color: theme.colors.onPrimary, fontWeight: '900', fontSize: 14 }}>
                   Edit
                 </Text>
               </TouchableOpacity>
@@ -298,15 +361,15 @@ const ProfileHeader = ({
                   style={{
                     flex: 1,
                     backgroundColor: theme.colors.secondaryContainer,
-                    paddingVertical: 12,
-                    borderRadius: 30,
+                    paddingVertical: 14,
+                    borderRadius: 20,
                     alignItems: 'center',
                     elevation: 2,
                   }}>
                   <Text
                     style={{
                       color: theme.colors.onSecondaryContainer,
-                      fontWeight: 'bold',
+                      fontWeight: '900',
                       fontSize: 14,
                     }}>
                     Requests ({profile.followRequests.length})
@@ -317,15 +380,14 @@ const ProfileHeader = ({
               <TouchableOpacity
                 onPress={logout}
                 style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(255, 68, 68, 0.1)',
-                  paddingVertical: 12,
-                  borderRadius: 30,
+                  padding: 14,
+                  backgroundColor: addOpacity(theme.colors.error, 0.1),
+                  borderRadius: 20,
                   alignItems: 'center',
                   borderWidth: 1,
-                  borderColor: 'rgba(255, 68, 68, 0.2)',
+                  borderColor: addOpacity(theme.colors.error, 0.2),
                 }}>
-                <Text style={{ color: '#ff4444', fontWeight: 'bold', fontSize: 14 }}>Logout</Text>
+                <Ionicons name="log-out-outline" size={22} color={theme.colors.error} />
               </TouchableOpacity>
             </>
           ) : (
@@ -339,20 +401,32 @@ const ProfileHeader = ({
                     : isRequested
                       ? theme.colors.surfaceVariant
                       : theme.colors.primary,
-                  paddingVertical: 12,
-                  borderRadius: 30,
+                  paddingVertical: 14,
+                  borderRadius: 20,
                   alignItems: 'center',
                   elevation: 2,
                   borderWidth: isRequested ? 1 : 0,
                   borderColor: theme.colors.outlineVariant,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
                 }}>
+                <Ionicons
+                  name={isFollowing ? 'person-remove' : isRequested ? 'time' : 'person-add'}
+                  size={18}
+                  color={
+                    isFollowing || isRequested
+                      ? theme.colors.onSurfaceVariant
+                      : theme.colors.onPrimary
+                  }
+                  style={{ marginRight: 8 }}
+                />
                 <Text
                   style={{
                     color:
                       isFollowing || isRequested
                         ? theme.colors.onSurfaceVariant
                         : theme.colors.onPrimary,
-                    fontWeight: 'bold',
+                    fontWeight: '900',
                     fontSize: 14,
                   }}>
                   {isFollowing ? 'Unfollow' : isRequested ? 'Requested' : 'Follow'}
@@ -367,14 +441,14 @@ const ProfileHeader = ({
                   })
                 }
                 style={{
-                  padding: 12,
+                  padding: 14,
                   backgroundColor: theme.colors.surface,
                   borderWidth: 1,
                   borderColor: theme.colors.outlineVariant,
-                  borderRadius: 30,
+                  borderRadius: 20,
                   alignItems: 'center',
                 }}>
-                <Ionicons name="mail-outline" size={22} color={theme.colors.onSurface} />
+                <Ionicons name="chatbubble-ellipses" size={22} color={theme.colors.primary} />
               </TouchableOpacity>
             </>
           )}
@@ -386,28 +460,28 @@ const ProfileHeader = ({
               })
             }
             style={{
-              padding: 12,
+              padding: 14,
               backgroundColor: theme.colors.surface,
               borderWidth: 1,
               borderColor: theme.colors.outlineVariant,
-              borderRadius: 30,
+              borderRadius: 20,
               alignItems: 'center',
             }}>
-            <Ionicons name="location-outline" size={22} color={theme.colors.onSurface} />
+            <Ionicons name="map" size={22} color={theme.colors.onSurface} />
           </TouchableOpacity>
 
           {isOwner && (
             <TouchableOpacity
               onPress={() => setShowThemeModal(true)}
               style={{
-                padding: 12,
+                padding: 14,
                 backgroundColor: theme.colors.surface,
                 borderWidth: 1,
                 borderColor: theme.colors.outlineVariant,
-                borderRadius: 30,
+                borderRadius: 20,
                 alignItems: 'center',
               }}>
-              <Ionicons name="color-palette-outline" size={22} color={theme.colors.onSurface} />
+              <Ionicons name="color-palette" size={22} color={theme.colors.onSurface} />
             </TouchableOpacity>
           )}
         </View>

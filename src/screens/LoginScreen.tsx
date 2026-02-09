@@ -1,10 +1,22 @@
 import React, { useState, useContext } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
-import { TextInput, Button, Text, useTheme, Surface } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
+import { TextInput, Button, Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import HeaderLogo from '../components/HeaderLogo';
+import { addOpacity } from '../utils/colorUtils';
 
 const LoginScreen = () => {
   const { login } = useContext(AuthContext);
@@ -41,9 +53,6 @@ const LoginScreen = () => {
         text2: errorMsg,
       });
     } finally {
-      setLoading(true); // Stay loading until navigation if success, though AuthContext usually handles redirect
-      // Wait, AuthContext usually changes the state which triggers AppNavigator to re-render.
-      // Let's set loading false if we catch error.
       setLoading(false);
     }
   };
@@ -51,131 +60,183 @@ const LoginScreen = () => {
   if (isLoginView) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setIsLoginView(false)}>
-            <Text style={[styles.backButton, { color: theme.colors.onSurface }]}>←</Text>
+        <View style={styles.formHeader}>
+          <TouchableOpacity
+            style={[styles.backIconBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+            onPress={() => setIsLoginView(false)}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.onSurface} />
           </TouchableOpacity>
         </View>
 
-        {/* <Surface> */}
-        <View style={styles.formContainer}>
-          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
-            Welcome Back
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-            Please enter your details to sign in.
-          </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.formContainer}>
+            <Text style={[styles.title, { color: theme.colors.onSurface }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+              Enter your credentials to continue your journey.
+            </Text>
 
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            style={[styles.input, { backgroundColor: theme.colors.surface }]}
-            mode="outlined"
-            outlineColor={theme.colors.outline}
-            activeOutlineColor={theme.colors.primary}
-            textColor={theme.colors.onSurface}
-            contentStyle={{ height: 50 }}
-          />
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            style={[styles.input, { backgroundColor: theme.colors.surface }]}
-            mode="outlined"
-            outlineColor={theme.colors.outline}
-            activeOutlineColor={theme.colors.primary}
-            textColor={theme.colors.onSurface}
-            contentStyle={{ height: 50 }}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? 'eye-off' : 'eye'}
-                onPress={() => setShowPassword(!showPassword)}
-                color="#666"
-              />
-            }
-          />
+            <TextInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.input, { backgroundColor: theme.colors.surface }]}
+              mode="outlined"
+              outlineColor={theme.colors.outline}
+              activeOutlineColor={theme.colors.primary}
+              textColor={theme.colors.onSurface}
+              contentStyle={{ height: 56 }}
+              outlineStyle={{ borderRadius: 16 }}
+            />
+            <TextInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              style={[styles.input, { backgroundColor: theme.colors.surface }]}
+              mode="outlined"
+              outlineColor={theme.colors.outline}
+              activeOutlineColor={theme.colors.primary}
+              textColor={theme.colors.onSurface}
+              contentStyle={{ height: 56 }}
+              outlineStyle={{ borderRadius: 16 }}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? 'eye-off' : 'eye'}
+                  onPress={() => setShowPassword(!showPassword)}
+                  color={theme.colors.onSurfaceVariant}
+                />
+              }
+            />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            <TouchableOpacity style={styles.forgotBtn}>
+              <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>
+                Forgot password?
+              </Text>
+            </TouchableOpacity>
 
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={[styles.loginButton, { backgroundColor: theme.colors.primary }]}
-            contentStyle={{ height: 50 }}
-            labelStyle={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 16 }}>
-            Login
-          </Button>
-        </View>
-        {/* </Surface> */}
+            {error ? (
+              <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>
+            ) : null}
+
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+              style={[styles.loginButton, { backgroundColor: theme.colors.primary }]}
+              contentStyle={{ height: 56 }}
+              labelStyle={{ color: theme.colors.onPrimary, fontWeight: '900', fontSize: 16 }}>
+              Sign In
+            </Button>
+
+            <View style={styles.dividerContainer}>
+              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+              <Text style={[styles.dividerText, { color: theme.colors.onSurfaceVariant }]}>
+                or continue with
+              </Text>
+              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+            </View>
+
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={[styles.socialBtn, { borderColor: theme.colors.outlineVariant }]}>
+                <Ionicons name="logo-google" size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.socialBtn, { borderColor: theme.colors.outlineVariant }]}>
+                <Ionicons name="logo-apple" size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.socialBtn, { borderColor: theme.colors.outlineVariant }]}>
+                <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* <View style={styles.header}>
-        <HeaderLogo />
-      </View> */}
-
       <View style={styles.content}>
-        <View style={styles.imageContainer}>
-          {/* Placeholder for the collage illustration */}
-          <View style={[styles.circle1, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Image
-              source={{
-                uri: 'https://camo.githubusercontent.com/9105e4cd984bdf30d9027d64564d5541774e471fdfb84db12ef7a707b533dd61/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f31372e706e67',
-              }}
-              style={{ width: 200, height: 200 }}
-            />
-          </View>
-          <View style={[styles.circle2, { backgroundColor: theme.colors.secondaryContainer }]}>
-            <Image
-              source={{
-                uri: 'https://camo.githubusercontent.com/7a6cfad569ac8a93acf81baab8218547473c367c38c0a783ab24031df7735579/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32352e706e67',
-              }}
-              style={{ width: 120, height: 120 }}
-            />
-          </View>
-          <View style={[styles.circle3, { backgroundColor: theme.colors.tertiaryContainer }]}>
-            <Image
-              source={{
-                uri: 'https://camo.githubusercontent.com/46eb94ece1df6fc5ef7112d225f2bd1c152f586bd2216f54bb33ecc49e65ec4e/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32342e706e67',
-              }}
-              style={{ width: 100, height: 100 }}
-            />
+        <View style={styles.heroSection}>
+          <View style={styles.imageGrid}>
+            <View
+              style={[
+                styles.heroCircle,
+                styles.mainCircle,
+                { backgroundColor: theme.colors.primaryContainer },
+              ]}>
+              <Image
+                source={{
+                  uri: 'https://camo.githubusercontent.com/9105e4cd984bdf30d9027d64564d5541774e471fdfb84db12ef7a707b533dd61/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f31372e706e67',
+                }}
+                style={styles.heroImg}
+              />
+            </View>
+            <View
+              style={[
+                styles.heroCircle,
+                styles.smallCircle1,
+                { backgroundColor: theme.colors.secondaryContainer },
+              ]}>
+              <Image
+                source={{
+                  uri: 'https://camo.githubusercontent.com/7a6cfad569ac8a93acf81baab8218547473c367c38c0a783ab24031df7735579/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32352e706e67',
+                }}
+                style={styles.heroImgSmall}
+              />
+            </View>
+            <View
+              style={[
+                styles.heroCircle,
+                styles.smallCircle2,
+                { backgroundColor: theme.colors.tertiaryContainer },
+              ]}>
+              <Image
+                source={{
+                  uri: 'https://camo.githubusercontent.com/46eb94ece1df6fc5ef7112d225f2bd1c152f586bd2216f54bb33ecc49e65ec4e/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f32342e706e67',
+                }}
+                style={styles.heroImgSmall}
+              />
+            </View>
           </View>
         </View>
 
-        <Text style={[styles.heroTitle, { color: theme.colors.onSurface }]}>
-          Best Social App to Make New Friends
-        </Text>
-        <Text style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-          With Circles you will find new friends from various countries and regions of the world
-        </Text>
+        <View style={styles.heroBottom}>
+          <Text style={[styles.heroTitle, { color: theme.colors.onSurface }]}>
+            Best Social App to Make New Friends
+          </Text>
+          <Text style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+            With Circles you will find new friends from various countries and regions of the world
+          </Text>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={() => navigation.navigate('Register')}
-            style={[styles.getStartedButton, { backgroundColor: theme.colors.primary }]}
-            contentStyle={{ height: 55 }}
-            labelStyle={{ color: theme.colors.onPrimary, fontWeight: 'bold', fontSize: 16 }}>
-            Get Started
-          </Button>
+          <View style={styles.heroButtons}>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('Register')}
+              style={[styles.mainBtn, { backgroundColor: theme.colors.primary }]}
+              contentStyle={{ height: 60 }}
+              labelStyle={{ color: theme.colors.onPrimary, fontWeight: '900', fontSize: 18 }}>
+              Get Started
+            </Button>
 
-          <Button
-            mode="outlined"
-            onPress={() => setIsLoginView(true)}
-            style={[styles.loginOutlineButton, { borderColor: theme.colors.outline }]}
-            contentStyle={{ height: 55 }}
-            labelStyle={{ color: theme.colors.primary, fontWeight: 'bold', fontSize: 16 }}>
-            Login
-          </Button>
+            <TouchableOpacity
+              onPress={() => setIsLoginView(true)}
+              style={[
+                styles.secondaryBtn,
+                { borderColor: theme.colors.outlineVariant, borderWidth: 1 },
+              ]}>
+              <Text style={{ color: theme.colors.onSurface, fontWeight: '900', fontSize: 16 }}>
+                Sign In
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -185,104 +246,164 @@ const LoginScreen = () => {
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  formHeader: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  logoContainer: { flexDirection: 'row', alignItems: 'center' },
-  logoBox: {
-    backgroundColor: '#D4F637', // Lime green
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+  backIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
   },
-  logoP: { fontWeight: 'bold', fontSize: 18 },
-  logoText: { fontWeight: 'bold', fontSize: 20 },
-  skipText: { color: '#666', fontSize: 16 },
-
-  content: { flex: 1, paddingHorizontal: 24, justifyContent: 'flex-end', paddingBottom: 40 },
-
-  imageContainer: {
+  formContainer: {
     flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '900',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 32,
+    fontWeight: '500',
+    lineHeight: 24,
+  },
+  input: {
+    marginBottom: 20,
+  },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  error: {
+    marginBottom: 20,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  loginButton: {
+    borderRadius: 18,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 32,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 40,
+  },
+  socialBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: { flex: 1 },
+  heroSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageGrid: {
+    width: width,
+    height: 350,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
-  circle1: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#f0f0f0',
-    position: 'absolute',
-    top: 50,
+  heroCircle: {
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
   },
-  circle2: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#e0e0e0',
-    position: 'absolute',
-    top: 150,
-    right: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  mainCircle: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    zIndex: 2,
   },
-  circle3: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#d0d0d0',
+  smallCircle1: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     position: 'absolute',
-    top: 200,
+    top: 20,
+    right: 30,
+    zIndex: 1,
+  },
+  smallCircle2: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    position: 'absolute',
+    bottom: 30,
     left: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    zIndex: 3,
   },
-
+  heroImg: { width: 180, height: 180 },
+  heroImgSmall: { width: 80, height: 80 },
+  heroBottom: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
   heroTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 34,
+    fontWeight: '900',
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 40,
+    letterSpacing: -1,
   },
   heroSubtitle: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 16,
     textAlign: 'center',
     marginBottom: 40,
-    lineHeight: 22,
+    lineHeight: 24,
+    fontWeight: '500',
+    opacity: 0.7,
   },
-  buttonContainer: { gap: 16 },
-  getStartedButton: {
-    backgroundColor: '#D4F637', // Lime green
-    borderRadius: 30,
+  heroButtons: {
+    gap: 16,
   },
-  loginOutlineButton: {
-    borderColor: '#eee',
-    borderWidth: 1,
-    borderRadius: 30,
+  mainBtn: {
+    borderRadius: 20,
+    elevation: 4,
   },
-
-  // Form Styles
-  backButton: { fontSize: 24, padding: 10 },
-  formContainer: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontWeight: 'bold', marginBottom: 8 },
-  subtitle: { color: '#666', marginBottom: 32 },
-  input: { marginBottom: 16, backgroundColor: '#fff' },
-  error: { color: 'red', marginBottom: 16 },
-  loginButton: {
-    backgroundColor: '#000',
-    borderRadius: 30,
-    marginTop: 10,
+  secondaryBtn: {
+    height: 60,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

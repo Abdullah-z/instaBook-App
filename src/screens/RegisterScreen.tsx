@@ -1,8 +1,10 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, RadioButton, useTheme } from 'react-native-paper';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { TextInput, Button, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
+import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 
 const RegisterScreen = () => {
   const navigation = useNavigation<any>();
@@ -18,195 +20,234 @@ const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (!fullname || !username || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill in all fields',
+      });
       return;
     }
 
     try {
       setLoading(true);
       await register({ fullname, username, email, password, gender });
-      // Navigation to Home is handled by AuthContext state change (user becomes not null)
     } catch (err: any) {
-      Alert.alert('Registration Failed', err.response?.data?.msg || 'Something went wrong');
+      Toast.show({
+        type: 'error',
+        text1: 'Registration Failed',
+        text2: err.response?.data?.msg || 'Something went wrong',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={[styles.backIconBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+          onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
-      </View> */}
-
-      <View style={styles.formContainer}>
-        <Text style={[styles.title, { color: theme.colors.onSurface }]}>Create Account</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-          Join Circles to make new friends!
-        </Text>
-
-        <TextInput
-          label="Full Name"
-          value={fullname}
-          onChangeText={setFullname}
-          mode="outlined"
-          style={[styles.input, { backgroundColor: theme.colors.surface }]}
-          outlineColor={theme.colors.outline}
-          activeOutlineColor={theme.colors.primary}
-          textColor={theme.colors.onSurface}
-          contentStyle={{ height: 50 }}
-        />
-
-        <TextInput
-          label="Username"
-          value={username}
-          onChangeText={setUsername}
-          mode="outlined"
-          autoCapitalize="none"
-          style={[styles.input, { backgroundColor: theme.colors.surface }]}
-          outlineColor={theme.colors.outline}
-          activeOutlineColor={theme.colors.primary}
-          textColor={theme.colors.onSurface}
-          contentStyle={{ height: 50 }}
-        />
-
-        <TextInput
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          mode="outlined"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          style={[styles.input, { backgroundColor: theme.colors.surface }]}
-          outlineColor={theme.colors.outline}
-          activeOutlineColor={theme.colors.primary}
-          textColor={theme.colors.onSurface}
-          contentStyle={{ height: 50 }}
-        />
-
-        <TextInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          mode="outlined"
-          secureTextEntry
-          style={[styles.input, { backgroundColor: theme.colors.surface }]}
-          outlineColor={theme.colors.outline}
-          activeOutlineColor={theme.colors.primary}
-          textColor={theme.colors.onSurface}
-          contentStyle={{ height: 50 }}
-        />
-
-        <View style={styles.genderContainer}>
-          <Text style={[styles.genderLabel, { color: theme.colors.onSurface }]}>Gender:</Text>
-          <RadioButton.Group onValueChange={(newValue) => setGender(newValue)} value={gender}>
-            <View style={styles.radioRow}>
-              <View style={styles.radioItem}>
-                <RadioButton value="male" color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.onSurface }}>Male</Text>
-              </View>
-              <View style={styles.radioItem}>
-                <RadioButton value="female" color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.onSurface }}>Female</Text>
-              </View>
-              <View style={styles.radioItem}>
-                <RadioButton value="other" color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.onSurface }}>Other</Text>
-              </View>
-            </View>
-          </RadioButton.Group>
-        </View>
-
-        <Button
-          mode="contained"
-          onPress={handleRegister}
-          loading={loading}
-          style={[styles.button, { backgroundColor: theme.colors.primary }]}
-          labelStyle={[styles.buttonLabel, { color: theme.colors.onPrimary }]}>
-          Register
-        </Button>
-
-        <View style={styles.footer}>
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={[styles.link, { color: theme.colors.primary }]}>Login</Text>
-          </TouchableOpacity>
-        </View>
       </View>
-    </ScrollView>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.formContainer}>
+          <Text style={[styles.title, { color: theme.colors.onSurface }]}>Create Account</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+            Join the community and start connecting!
+          </Text>
+
+          <TextInput
+            label="Full Name"
+            value={fullname}
+            onChangeText={setFullname}
+            mode="outlined"
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 56 }}
+            outlineStyle={{ borderRadius: 16 }}
+          />
+
+          <TextInput
+            label="Username"
+            value={username}
+            onChangeText={setUsername}
+            mode="outlined"
+            autoCapitalize="none"
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 56 }}
+            outlineStyle={{ borderRadius: 16 }}
+          />
+
+          <TextInput
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            mode="outlined"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 56 }}
+            outlineStyle={{ borderRadius: 16 }}
+          />
+
+          <TextInput
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            mode="outlined"
+            secureTextEntry
+            style={[styles.input, { backgroundColor: theme.colors.surface }]}
+            outlineColor={theme.colors.outline}
+            activeOutlineColor={theme.colors.primary}
+            textColor={theme.colors.onSurface}
+            contentStyle={{ height: 56 }}
+            outlineStyle={{ borderRadius: 16 }}
+          />
+
+          <View style={styles.genderContainer}>
+            <Text style={[styles.genderLabel, { color: theme.colors.onSurface }]}>Identify as</Text>
+            <View style={styles.genderRow}>
+              {['male', 'female', 'other'].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  onPress={() => setGender(g)}
+                  style={[
+                    styles.genderPill,
+                    {
+                      backgroundColor:
+                        gender === g ? theme.colors.primary : theme.colors.surfaceVariant,
+                      borderColor:
+                        gender === g ? theme.colors.primary : theme.colors.outlineVariant,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.genderText,
+                      {
+                        color:
+                          gender === g ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
+                      },
+                    ]}>
+                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <Button
+            mode="contained"
+            onPress={handleRegister}
+            loading={loading}
+            style={[styles.registerButton, { backgroundColor: theme.colors.primary }]}
+            contentStyle={{ height: 56 }}
+            labelStyle={{ color: theme.colors.onPrimary, fontWeight: '900', fontSize: 16 }}>
+            Create Account
+          </Button>
+
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: theme.colors.onSurfaceVariant }]}>
+              Already have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={[styles.loginLink, { color: theme.colors.primary }]}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 export default RegisterScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
+  container: { flex: 1 },
   header: {
-    marginTop: 40,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  backButton: {
-    fontSize: 30,
-    color: '#000',
+  backIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  scrollContent: { flexGrow: 1, paddingBottom: 40 },
   formContainer: {
-    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 10,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontSize: 36,
+    fontWeight: '900',
+    marginBottom: 8,
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
+    marginBottom: 32,
+    fontWeight: '500',
+    lineHeight: 24,
   },
   input: {
-    marginBottom: 15,
-    backgroundColor: '#fff',
+    marginBottom: 16,
   },
   genderContainer: {
-    marginBottom: 20,
+    marginTop: 8,
+    marginBottom: 32,
   },
   genderLabel: {
     fontSize: 16,
-    marginBottom: 10,
-    color: '#333',
+    fontWeight: '700',
+    marginBottom: 12,
   },
-  radioRow: {
+  genderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
   },
-  radioItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  genderPill: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#000',
-    paddingVertical: 6,
-    borderRadius: 8,
+  genderText: {
+    fontWeight: '700',
+    fontSize: 14,
   },
-  buttonLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#D4F637', // Lime Green text
+  registerButton: {
+    borderRadius: 18,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 30,
+    marginTop: 32,
   },
-  link: {
-    fontWeight: 'bold',
-    color: '#000', // Or Lime Green if preferred, but black is standard for links here
+  footerText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  loginLink: {
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

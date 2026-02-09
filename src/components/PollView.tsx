@@ -3,6 +3,7 @@ import { useTheme } from 'react-native-paper';
 import { votePollAPI } from '../api/postAPI';
 import { AuthContext } from '../auth/AuthContext';
 import { useContext, useState } from 'react';
+import { addOpacity } from '../utils/colorUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -57,7 +58,10 @@ const PollView: React.FC<Props> = ({ postId, question, options, onUpdate }) => {
             disabled={!!loading}
             style={[
               styles.optionContainer,
-              { backgroundColor: theme.colors.surfaceVariant + '08', borderColor: 'transparent' },
+              {
+                backgroundColor: addOpacity(theme.colors.surfaceVariant, 0.08),
+                borderColor: 'transparent',
+              },
             ]}>
             <View
               style={[

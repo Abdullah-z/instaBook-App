@@ -16,7 +16,7 @@ import {
   Pressable,
   Modal,
 } from 'react-native';
-import { useTheme } from 'react-native-paper';
+import { Avatar, useTheme } from 'react-native-paper';
 import ImageView from 'react-native-image-viewing';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -36,6 +36,7 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 import * as Notifications from 'expo-notifications';
 import { Linking } from 'react-native';
 import { getRobustLocation } from '../utils/locationHelper';
+import { addOpacity } from '../utils/colorUtils';
 
 // Configure notifications handler
 Notifications.setNotificationHandler({
@@ -83,20 +84,50 @@ const ChatScreen = () => {
     navigation.setOptions({
       headerTitle: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.onSurface }}>
-            {username || 'Chat'}
-          </Text>
-          {!isGroup && (
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: isUserOnline ? '#4CAF50' : '#999',
-                marginLeft: 8,
-              }}
+          {recipientAvatar ? (
+            <Image
+              source={{ uri: recipientAvatar }}
+              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
+            />
+          ) : (
+            <Avatar.Icon
+              size={36}
+              icon={isGroup ? 'account-group' : 'account'}
+              style={{ marginRight: 10, backgroundColor: theme.colors.surfaceVariant }}
             />
           )}
+          <View>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '900',
+                color: theme.colors.onSurface,
+                letterSpacing: -0.2,
+              }}>
+              {username || 'Chat'}
+            </Text>
+            {!isGroup && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: isUserOnline ? '#4CAF50' : '#999',
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: theme.colors.onSurfaceVariant,
+                    marginLeft: 4,
+                    fontWeight: '700',
+                  }}>
+                  {isUserOnline ? 'Online' : 'Offline'}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       ),
       headerRight: () => (
@@ -1091,55 +1122,61 @@ const ChatScreen = () => {
       )}
 
       {/* Input Area */}
-      <View
-        style={[
-          styles.inputContainer,
-          { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
-        ]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
-          <View style={styles.hdToggleContainer}>
-            <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>HD</Text>
-            <Switch
-              value={isHD}
-              onValueChange={setIsHD}
-              trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
-              thumbColor={theme.colors.surface}
-              style={{ transform: [{ scaleX: 0.55 }, { scaleY: 0.55 }] }}
-            />
+      <View style={[styles.inputAreaWrapper, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.iconBtn} onPress={handlePickImage} activeOpacity={0.7}>
+              <Ionicons name="images-outline" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => setLocationModalVisible(true)}
+              activeOpacity={0.7}>
+              <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <View style={styles.hdToggleContainer}>
+              <Text style={[styles.hdToggleText, { color: theme.colors.onSurfaceVariant }]}>
+                HD
+              </Text>
+              <Switch
+                value={isHD}
+                onValueChange={setIsHD}
+                trackColor={{ false: theme.colors.onSurfaceVariant, true: theme.colors.primary }}
+                thumbColor={theme.colors.surface}
+                style={{ transform: [{ scaleX: 0.55 }, { scaleY: 0.55 }] }}
+              />
+            </View>
           </View>
-          <TouchableOpacity style={{ padding: 8 }} onPress={handlePickImage}>
-            <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ padding: 8 }} onPress={() => setLocationModalVisible(true)}>
-            <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: addOpacity(theme.colors.onSurface, 0.05),
+                color: theme.colors.onSurface,
+              },
+            ]}
+            placeholder="Message..."
+            placeholderTextColor={theme.colors.onSurfaceVariant}
+            value={text}
+            onChangeText={setText}
+            multiline
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: theme.colors.primary },
+              (!text.trim() && media.length === 0) || sending ? styles.sendButtonDisabled : null,
+            ]}
+            onPress={() => handleSend()}>
+            {sending ? (
+              <ActivityIndicator color={theme.colors.onPrimary} size="small" />
+            ) : (
+              <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
+            )}
           </TouchableOpacity>
         </View>
-
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.colors.surfaceVariant, color: theme.colors.onSurface },
-          ]}
-          placeholder="Type a message..."
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          value={text}
-          onChangeText={setText}
-          multiline
-        />
-
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            { backgroundColor: theme.colors.primary },
-            (!text.trim() && media.length === 0) || sending ? styles.sendButtonDisabled : null,
-          ]}
-          onPress={() => handleSend()}>
-          {sending ? (
-            <ActivityIndicator color={theme.colors.onPrimary} size="small" />
-          ) : (
-            <Ionicons name="send" size={18} color={theme.colors.onPrimary} />
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* Location Selector Modal */}
@@ -1209,7 +1246,7 @@ const ChatScreen = () => {
             style={{
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              padding: 20,
+              paddingHorizontal: 20,
               paddingTop: 50,
             }}>
             <TouchableOpacity
@@ -1217,9 +1254,12 @@ const ChatScreen = () => {
                 viewerImages[imageIndex] && downloadAndSaveImage(viewerImages[imageIndex].uri)
               }
               style={{
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                padding: 10,
-                borderRadius: 25,
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                justifyContent: 'center',
+                alignItems: 'center',
               }}>
               <Ionicons name="download-outline" size={24} color="#fff" />
             </TouchableOpacity>
@@ -1233,7 +1273,6 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   centerContainer: {
     flex: 1,
@@ -1241,12 +1280,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   messagesList: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 20,
   },
   messageContainer: {
-    marginBottom: 12,
-    maxWidth: '75%',
+    marginBottom: 4,
+    maxWidth: '82%',
   },
   sentContainer: {
     alignSelf: 'flex-end',
@@ -1255,54 +1294,61 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   messageBubble: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 24,
+    borderRadius: 28,
   },
   sentBubble: {
-    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
   },
   receivedBubble: {
-    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 4,
   },
   mediaContainer: {
     marginBottom: 8,
   },
   messageImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 12,
+    width: 240,
+    height: 240,
+    borderRadius: 24,
     marginBottom: 4,
   },
   messageText: {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
   },
-  sentText: {},
+  sentText: {
+    fontWeight: '600',
+  },
   receivedText: {},
   timestamp: {
     fontSize: 10,
-    marginTop: 4,
+    marginTop: 2,
+    marginBottom: 8,
+    opacity: 0.6,
   },
   sentTimestamp: {
-    opacity: 0.6,
     textAlign: 'right',
+    marginRight: 4,
   },
-  receivedTimestamp: {},
+  receivedTimestamp: {
+    marginLeft: 4,
+  },
   mediaPreview: {
-    maxHeight: 100,
+    maxHeight: 120,
     borderTopWidth: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
   },
   previewImageContainer: {
     position: 'relative',
-    marginRight: 8,
+    marginRight: 10,
   },
   previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 90,
+    height: 100,
+    borderRadius: 16,
   },
   deleteMediaButton: {
     position: 'absolute',
@@ -1310,39 +1356,65 @@ const styles = StyleSheet.create({
     right: -8,
     backgroundColor: '#ff4444',
     borderRadius: 12,
+    elevation: 2,
+  },
+  inputAreaWrapper: {
+    paddingHorizontal: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    paddingTop: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 36,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  imageButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+  actionButtons: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+  },
+  hdToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 12,
+    paddingRight: 0,
+    marginHorizontal: 4,
+  },
+  hdToggleText: {
+    fontSize: 9,
+    fontWeight: '900',
+    marginLeft: 6,
+  },
+  iconBtn: {
+    padding: 8,
   },
   input: {
     flex: 1,
-    borderRadius: 28,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginRight: 10,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 4,
     maxHeight: 120,
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '500',
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.3,
   },
   emptyContainer: {
     flex: 1,
@@ -1406,15 +1478,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2196F3',
     marginTop: 2,
-  },
-  hdToggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 4,
-  },
-  hdToggleText: {
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   locationMessageContainer: {
     marginTop: 8,

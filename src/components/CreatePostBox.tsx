@@ -31,6 +31,7 @@ import { getReadableAddress, getRobustLocation } from '../utils/locationHelper';
 import LocationAutocomplete from './LocationAutocomplete';
 import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { addOpacity } from '../utils/colorUtils';
 
 const SUGGESTION_COLOR_KEYS = ['primary', 'secondary', 'tertiary', 'error'] as const;
 
@@ -514,9 +515,10 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
                 style={[
                   styles.mentionItem,
                   {
-                    backgroundColor: theme.dark
-                      ? theme.colors.secondaryContainer + '26'
-                      : theme.colors.secondaryContainer + '0D',
+                    backgroundColor: addOpacity(
+                      theme.colors.secondaryContainer,
+                      theme.dark ? 0.15 : 0.05
+                    ),
                   },
                 ]}
                 onPress={() => insertMention(user.username)}>

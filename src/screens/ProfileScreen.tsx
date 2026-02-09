@@ -236,9 +236,9 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
           style={{
             flexDirection: 'row',
             marginTop: 24,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.outlineVariant,
-            paddingHorizontal: 10,
+            paddingHorizontal: 20,
+            gap: 8,
+            paddingBottom: 8,
           }}>
           {['posts', 'text', 'saved'].map((tab: any) => {
             if (tab === 'saved' && (!user || id !== user._id)) return null;
@@ -249,32 +249,23 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
                 onPress={() => setActiveTab(tab)}
                 style={{
                   flex: 1,
-                  paddingVertical: 12,
+                  paddingVertical: 10,
                   alignItems: 'center',
+                  borderRadius: 20,
+                  backgroundColor: isActive ? theme.colors.primaryContainer : 'transparent',
                 }}>
                 <Text
                   style={{
-                    fontSize: 14,
-                    fontWeight: 'bold',
+                    fontSize: 13,
+                    fontWeight: '900',
                     textTransform: 'uppercase',
-                    letterSpacing: 1,
-                    color: isActive ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                    color: isActive
+                      ? theme.colors.onPrimaryContainer
+                      : theme.colors.onSurfaceVariant,
                   }}>
-                  {tab}
+                  {tab === 'text' ? 'Thoughts' : tab}
                 </Text>
-                {isActive && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      width: '40%',
-                      height: 3,
-                      backgroundColor: theme.colors.primary,
-                      borderTopLeftRadius: 3,
-                      borderTopRightRadius: 3,
-                    }}
-                  />
-                )}
               </TouchableOpacity>
             );
           })}

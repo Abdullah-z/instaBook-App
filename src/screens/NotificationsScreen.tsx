@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -14,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getNotifications, markAsRead, deleteAllNotifications } from '../api/notificationAPI';
 import moment from 'moment';
+import { addOpacity } from '../utils/colorUtils';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation<any>();
@@ -116,49 +118,104 @@ const NotificationsScreen = () => {
     }
   };
 
-  const renderNotification = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.outlineVariant,
-        },
-        !item.isRead && {
-          backgroundColor: theme.dark
-            ? theme.colors.secondaryContainer + '26' // 15% opacity for Dark Mode
-            : theme.colors.secondaryContainer + '0D', // 5% opacity for Light Mode
-        },
-      ]}
-      onPress={() => handleNotificationPress(item)}>
-      <Avatar.Image size={50} source={{ uri: item.user?.avatar }} />
+  const renderNotification = ({ item }: { item: any }) => {
+    const isUnread = !item.isRead;
 
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationText}>
-          <Text style={[styles.username, { color: theme.colors.onSurface }]}>
-            {item.user?.username}
-          </Text>
-          <Text style={[styles.text, { color: theme.colors.onSurfaceVariant }]}> {item.text}</Text>
-        </View>
-        {item.content && (
-          <Text
-            style={[styles.content, { color: theme.colors.onSurfaceVariant }]}
-            numberOfLines={1}>
-            {item.content}
-          </Text>
-        )}
-        <View style={styles.footer}>
-          <Text style={[styles.timestamp, { color: theme.colors.onSurfaceVariant }]}>
-            {moment(item.createdAt).fromNow()}
-          </Text>
-        </View>
-      </View>
+    // Determine icon based on text content
+    let iconName: any = 'notifications';
+    let iconColor = theme.colors.primary;
 
-      {item.image && (
-        <Avatar.Image size={40} source={{ uri: item.image }} style={styles.notificationImage} />
-      )}
-    </TouchableOpacity>
-  );
+    const text = item.text?.toLowerCase() || '';
+    if (text.includes('like')) {
+      iconName = 'heart';
+      iconColor = '#FF4BB3';
+    } else if (text.includes('comment')) {
+      iconName = 'chatbubble';
+      iconColor = '#4B7BFF';
+    } else if (text.includes('follow')) {
+      iconName = 'person-add';
+      iconColor = '#4CAF50';
+    }
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.notificationItem,
+          {
+            backgroundColor: theme.colors.surface,
+          },
+          isUnread && {
+            backgroundColor: addOpacity(theme.colors.primary, theme.dark ? 0.12 : 0.05),
+          },
+        ]}
+        onPress={() => handleNotificationPress(item)}>
+        <View style={styles.avatarWrapper}>
+          <Avatar.Image
+            size={56}
+            source={{ uri: item.user?.avatar }}
+            style={{ backgroundColor: theme.colors.surfaceVariant }}
+          />
+          <View
+            style={[
+              styles.typeIconBadge,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.surface },
+            ]}>
+            <Ionicons name={iconName} size={12} color={iconColor} />
+          </View>
+        </View>
+
+        <View style={styles.notificationContent}>
+          <View style={styles.notificationText}>
+            <Text
+              style={[
+                styles.username,
+                { color: theme.colors.onSurface, fontWeight: '900', fontSize: 15 },
+              ]}>
+              {item.user?.username}
+            </Text>
+            <Text
+              style={[
+                styles.text,
+                { color: theme.colors.onSurfaceVariant, fontSize: 14, lineHeight: 20 },
+              ]}>
+              {' '}
+              {item.text}
+            </Text>
+          </View>
+          {item.content && (
+            <Text
+              style={[
+                styles.contentPreview,
+                {
+                  color: theme.colors.onSurfaceVariant,
+                  backgroundColor: addOpacity(theme.colors.onSurface, 0.05),
+                },
+              ]}
+              numberOfLines={1}>
+              {item.content}
+            </Text>
+          )}
+          <View style={styles.footer}>
+            <Text
+              style={[
+                styles.timestamp,
+                {
+                  color: isUnread ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                  fontWeight: isUnread ? '800' : '500',
+                },
+              ]}>
+              {moment(item.createdAt).fromNow()}
+            </Text>
+            {isUnread && (
+              <View style={[styles.unreadDot, { backgroundColor: theme.colors.primary }]} />
+            )}
+          </View>
+        </View>
+
+        {item.image && <Image source={{ uri: item.image }} style={styles.notificationImage} />}
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -174,12 +231,30 @@ const NotificationsScreen = () => {
       <View
         style={[
           styles.header,
-          { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant },
+          {
+            backgroundColor: theme.colors.surface,
+            borderBottomColor: addOpacity(theme.colors.onSurface, 0.05),
+          },
         ]}>
-        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Notifications</Text>
+        <Text
+          style={[
+            styles.headerTitle,
+            { color: theme.colors.onSurface, fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
+          ]}>
+          Notifications
+        </Text>
         {notifications.length > 0 && (
-          <TouchableOpacity onPress={handleDeleteAll}>
-            <Text style={[styles.deleteButton, { color: theme.colors.error }]}>Delete All</Text>
+          <TouchableOpacity
+            onPress={handleDeleteAll}
+            style={{
+              backgroundColor: addOpacity(theme.colors.error, 0.1),
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 20,
+            }}>
+            <Text style={[styles.deleteButton, { color: theme.colors.error, fontWeight: '800' }]}>
+              Clear All
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -187,9 +262,28 @@ const NotificationsScreen = () => {
       {/* Notifications List */}
       {notifications.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="notifications-off-outline" size={80} color={theme.colors.outline} />
-          <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-            No notifications yet
+          <View
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: theme.colors.surfaceVariant,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 20,
+              opacity: 0.5,
+            }}>
+            <Ionicons name="notifications-outline" size={60} color={theme.colors.primary} />
+          </View>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: theme.colors.onSurface, fontSize: 20, fontWeight: '900' },
+            ]}>
+            Quiet for now
+          </Text>
+          <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+            We'll notify you when something happens.
           </Text>
         </View>
       ) : (
@@ -204,6 +298,7 @@ const NotificationsScreen = () => {
                 setRefreshing(true);
                 loadNotifications();
               }}
+              tintColor={theme.colors.primary}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -216,7 +311,6 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   centerContainer: {
     flex: 1,
@@ -227,40 +321,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingTop: 20,
+    paddingTop: 50,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  headerTitle: {},
   deleteButton: {
-    color: '#ff4444',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   notificationItem: {
     flexDirection: 'row',
-    padding: 16,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginHorizontal: 12,
+    marginTop: 8,
     borderRadius: 24,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    backgroundColor: '#fff',
+    alignItems: 'center',
   },
-  unreadItem: {
-    backgroundColor: '#f9f9f9',
+  avatarWrapper: {
+    position: 'relative',
+  },
+  typeIconBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   notificationContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 16,
     justifyContent: 'center',
   },
   notificationText: {
@@ -268,48 +371,48 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
   },
-  username: {
-    fontWeight: 'bold',
-    color: '#333',
-    fontSize: 14,
-  },
-  text: {
-    color: '#666',
-    fontSize: 14,
-  },
-  content: {
-    color: '#999',
-    fontSize: 12,
-    marginTop: 4,
+  username: {},
+  text: {},
+  contentPreview: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    fontSize: 13,
+    fontStyle: 'italic',
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
   timestamp: {
-    color: '#999',
-    fontSize: 12,
+    fontSize: 11,
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D4F637',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginLeft: 8,
   },
   notificationImage: {
-    marginLeft: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    marginLeft: 12,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 40,
   },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#999',
+  emptyText: {},
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 15,
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });
 
