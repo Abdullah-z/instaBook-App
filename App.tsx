@@ -28,8 +28,12 @@ import { NeonLimeLight } from './src/constants/themes/NeonLimeLight';
 import { NeonLimeDark } from './src/constants/themes/NeonLimeDark';
 import { ElectricBlueLight } from './src/constants/themes/ElectricBlueLight';
 import { ElectricBlueDark } from './src/constants/themes/ElectricBlueDark';
-import { DataProvider, useData, usePushNotifications } from './src/hooks';
+import { PastelOrangeDark } from './src/constants/themes/PastelOrangeDark';
+import { PastelOrangeLight } from './src/constants/themes/PastelOrangeLight';
+import { DataProvider, useData, usePushNotifications, ThemeProvider } from './src/hooks';
 import * as Notifications from 'expo-notifications';
+import { light } from './src/constants';
+import { ITheme } from './src/constants/types';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -92,16 +96,29 @@ function MainApp() {
     nc: isDark ? NeonCyanDark : NeonCyanLight,
     nl: isDark ? NeonLimeDark : NeonLimeLight,
     eb: isDark ? ElectricBlueDark : ElectricBlueLight,
+    po: isDark ? PastelOrangeDark : PastelOrangeLight,
   };
 
-  const theme = themeMap[themeColor as keyof typeof themeMap] || themeMap['g'];
+  const paperTheme = themeMap[themeColor as keyof typeof themeMap] || themeMap['g'];
+
+  const theme: ITheme = {
+    ...light,
+    ...paperTheme,
+    colors: {
+      ...light.colors,
+      ...paperTheme.colors,
+    },
+    fonts: light.fonts,
+  };
 
   return (
     <AuthProvider>
       <SocketProvider>
         <VoiceCallProvider>
-          <PaperProvider theme={theme}>
-            <AppContent />
+          <PaperProvider theme={paperTheme}>
+            <ThemeProvider theme={theme}>
+              <AppContent />
+            </ThemeProvider>
           </PaperProvider>
         </VoiceCallProvider>
       </SocketProvider>

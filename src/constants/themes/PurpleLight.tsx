@@ -7,7 +7,7 @@ export const PurpleLight = {
   ...fontConfig,
   colors: {
     ...MD3LightTheme.colors,
-    primary: 'rgb(153, 64, 93)',
+    primary: 'rgb(108, 87, 122)',
     onPrimary: 'rgb(255, 255, 255)',
     primaryContainer: 'rgb(255, 217, 225)',
     onPrimaryContainer: 'rgb(63, 0, 27)',
@@ -49,4 +49,3 @@ export const PurpleLight = {
     backdrop: 'rgba(58, 45, 48, 0.4)',
   },
 };
-

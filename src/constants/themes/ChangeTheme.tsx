@@ -18,6 +18,8 @@ import { NeonLimeDark } from './NeonLimeDark';
 import { NeonLimeLight } from './NeonLimeLight';
 import { ElectricBlueDark } from './ElectricBlueDark';
 import { ElectricBlueLight } from './ElectricBlueLight';
+import { PastelOrangeDark } from './PastelOrangeDark';
+import { PastelOrangeLight } from './PastelOrangeLight';
 
 export const changeTheme = (themeColor: string) => {
   console.log('called');
@@ -50,6 +52,11 @@ export const changeTheme = (themeColor: string) => {
     return {
       light: OrangeLight,
       dark: OrangeDark,
+    };
+  } else if (themeColor === 'po') {
+    return {
+      light: PastelOrangeLight,
+      dark: PastelOrangeDark,
     };
   } else if (themeColor === 'np') {
     return {

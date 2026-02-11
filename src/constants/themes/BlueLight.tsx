@@ -7,7 +7,7 @@ export const BlueLight = {
   ...fontConfig,
   colors: {
     ...MD3LightTheme.colors,
-    primary: 'rgb(0, 100, 150)', // More vibrant blue
+    primary: 'rgb(0, 99, 154)',
     onPrimary: 'rgb(255, 255, 255)',
     primaryContainer: 'rgb(180, 230, 255)', // Lighter and more prominent
     onPrimaryContainer: 'rgb(0, 30, 50)',
@@ -23,7 +23,7 @@ export const BlueLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(250, 251, 255)', // Cleaner, slightly tinted background
+    background: 'rgb(246, 246, 246)',
     onBackground: 'rgb(25, 28, 30)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(25, 28, 30)',

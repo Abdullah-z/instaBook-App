@@ -1,0 +1,43 @@
+import { MD3LightTheme } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
+
+export const PastelOrangeLight = {
+  ...MD3LightTheme,
+  roundness: 24,
+  ...fontConfig,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: 'rgb(255, 179, 128)',
+    onPrimary: 'rgb(255, 255, 255)',
+    primaryContainer: 'rgb(255, 235, 220)',
+    onPrimaryContainer: 'rgb(50, 30, 10)',
+    secondary: 'rgb(139, 115, 91)',
+    onSecondary: 'rgb(255, 255, 255)',
+    secondaryContainer: 'rgb(245, 230, 215)',
+    onSecondaryContainer: 'rgb(40, 30, 20)',
+    background: 'rgb(255, 245, 238)',
+    onBackground: 'rgb(74, 55, 40)',
+    surface: 'rgb(255, 255, 255)',
+    onSurface: 'rgb(74, 55, 40)',
+    surfaceVariant: 'rgb(245, 235, 225)',
+    onSurfaceVariant: 'rgb(139, 115, 91)',
+    outline: 'rgb(200, 180, 160)',
+    outlineVariant: 'rgb(235, 225, 215)',
+    shadow: 'rgb(0, 0, 0)',
+    scrim: 'rgb(0, 0, 0)',
+    inverseSurface: 'rgb(61, 50, 42)',
+    inverseOnSurface: 'rgb(245, 235, 224)',
+    inversePrimary: 'rgb(255, 179, 128)',
+    elevation: {
+      level0: 'transparent',
+      level1: 'rgb(255, 250, 245)',
+      level2: 'rgb(255, 248, 240)',
+      level3: 'rgb(255, 246, 235)',
+      level4: 'rgb(255, 245, 232)',
+      level5: 'rgb(255, 244, 230)',
+    },
+    surfaceDisabled: 'rgba(74, 55, 40, 0.12)',
+    onSurfaceDisabled: 'rgba(74, 55, 40, 0.38)',
+    backdrop: 'rgba(60, 50, 40, 0.4)',
+  },
+};

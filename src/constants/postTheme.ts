@@ -11,6 +11,7 @@ export const POST_BACKGROUNDS = [
   { id: 'flare', colors: ['#f12711', '#f5af19'] },
   { id: 'cool_blue', colors: ['#5433FF', '#20BDFF', '#A5FECB'] },
   { id: 'pinky', colors: ['#EC008C', '#FC6767'] },
+  { id: 'pastel_orange', colors: ['#FFB380', '#FFB380'] },
 ];
 
 export const TEXT_COLORS = [
@@ -25,6 +26,7 @@ export const TEXT_COLORS = [
   '#00FFFF', // Cyan
   '#800080', // Purple
   '#FFA500', // Orange
+  '#FFB380', // Pastel Orange
 ];
 
 export const FONT_SIZES = [16, 20, 24, 30, 40];
