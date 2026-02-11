@@ -37,3 +37,8 @@ export const updateGroupAPI = async (id: string, data: any) => {
   const res = await API.patch(`/group/${id}`, data);
   return res.data;
 };
+
+export const leaveGroupAPI = async (id: string, newAdminId?: string) => {
+  const res = await API.post(`/group/${id}/leave`, { newAdminId });
+  return res.data;
+};

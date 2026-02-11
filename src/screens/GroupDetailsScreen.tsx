@@ -14,7 +14,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { updateGroupAPI, getConversations } from '../api/messageAPI';
+import { updateGroupAPI, getConversations, leaveGroupAPI } from '../api/messageAPI';
 import { searchUser } from '../api/userAPI';
 import { imageUpload } from '../utils/imageUpload';
 import { AuthContext } from '../auth/AuthContext';
@@ -37,6 +37,10 @@ const GroupDetailsScreen = () => {
   const [addMemberMode, setAddMemberMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // Admin transfer modal
+  const [showAdminTransfer, setShowAdminTransfer] = useState(false);
+  const [selectedNewAdmin, setSelectedNewAdmin] = useState<string | null>(null);
 
   useEffect(() => {
     loadGroupData();
@@ -95,6 +99,8 @@ const GroupDetailsScreen = () => {
         recipients: members.map((m) => m._id),
       });
       setIsEditing(false);
+      setAvatarFile(null); // Reset file reference
+      await loadGroupData(); // Reload to get updated avatar
       Alert.alert('Success', 'Group updated successfully');
     } catch (err) {
       console.error(err);
@@ -105,7 +111,7 @@ const GroupDetailsScreen = () => {
   };
 
   const removeMember = (memberId: string) => {
-    if (members.length <= 2) {
+    if (members.length <= 3) {
       Alert.alert('Cannot remove', 'Group must have at least 3 members');
       return;
     }
@@ -155,18 +161,50 @@ const GroupDetailsScreen = () => {
   };
 
   const handleLeaveGroup = () => {
+    if (!user) return;
+
+    // Check if user is admin and last admin
+    const isAdmin = groupData?.admins?.some((adminId: any) => adminId === user._id);
+    const remainingAdmins = groupData?.admins?.filter((adminId: any) => adminId !== user._id) || [];
+    const isLastAdmin = isAdmin && remainingAdmins.length === 0;
+
+    if (isLastAdmin) {
+      setShowAdminTransfer(true);
+      return;
+    }
+
     Alert.alert('Leave Group', 'Are you sure you want to leave?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Leave',
         style: 'destructive',
         onPress: async () => {
-          const newMembers = members.filter((m) => m._id !== user._id);
-          await updateGroupAPI(conversationId, { recipients: newMembers.map((m) => m._id) });
-          navigation.popToTop(); // Go back to messages
+          try {
+            await leaveGroupAPI(conversationId);
+            Alert.alert('Success', 'Left group successfully');
+            navigation.popToTop();
+          } catch (err: any) {
+            Alert.alert('Error', err.response?.data?.msg || 'Failed to leave group');
+          }
         },
       },
     ]);
+  };
+
+  const handleConfirmLeaveWithTransfer = async () => {
+    if (!selectedNewAdmin) {
+      Alert.alert('Error', 'Please select a new admin');
+      return;
+    }
+
+    try {
+      await leaveGroupAPI(conversationId, selectedNewAdmin);
+      Alert.alert('Success', 'Admin transferred. Left group successfully');
+      setShowAdminTransfer(false);
+      navigation.popToTop();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.msg || 'Failed to leave group');
+    }
   };
 
   if (loading) {
@@ -285,6 +323,62 @@ const GroupDetailsScreen = () => {
           <Text style={styles.leaveText}>Leave Group</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Admin Transfer Modal */}
+      {showAdminTransfer && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.adminModal}>
+            <Text style={styles.modalTitle}>Transfer Admin Role</Text>
+            <Text style={styles.modalSubtitle}>
+              You are the last admin. Please select a new admin before leaving.
+            </Text>
+
+            <ScrollView style={styles.adminList}>
+              {members
+                .filter((m) => user && m._id !== user._id)
+                .map((member) => (
+                  <TouchableOpacity
+                    key={member._id}
+                    style={[
+                      styles.adminOption,
+                      selectedNewAdmin === member._id && styles.adminOptionSelected,
+                    ]}
+                    onPress={() => setSelectedNewAdmin(member._id)}>
+                    <Image source={{ uri: member.avatar }} style={styles.smallAvatar} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{member.username}</Text>
+                      <Text style={styles.memberFullname}>{member.fullname}</Text>
+                    </View>
+                    {selectedNewAdmin === member._id && (
+                      <Ionicons name="checkmark-circle" size={24} color="#D4F637" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => {
+                  setShowAdminTransfer(false);
+                  setSelectedNewAdmin(null);
+                }}>
+                <Text>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  styles.confirmBtn,
+                  !selectedNewAdmin && styles.btnDisabled,
+                ]}
+                onPress={handleConfirmLeaveWithTransfer}
+                disabled={!selectedNewAdmin}>
+                <Text style={styles.confirmBtnText}>Transfer & Leave</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -416,6 +510,76 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     marginRight: 10,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adminModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '85%',
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    color: '#666',
+    marginBottom: 16,
+    fontSize: 14,
+  },
+  adminList: {
+    maxHeight: 250,
+  },
+  adminOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#f9f9f9',
+  },
+  adminOptionSelected: {
+    backgroundColor: '#D4F637' + '20',
+    borderWidth: 1,
+    borderColor: '#D4F637',
+  },
+  memberFullname: {
+    fontSize: 12,
+    color: '#999',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  modalBtn: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelBtn: {
+    backgroundColor: '#f0f0f0',
+  },
+  confirmBtn: {
+    backgroundColor: '#D4F637',
+  },
+  confirmBtnText: {
+    fontWeight: 'bold',
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
 });
 
