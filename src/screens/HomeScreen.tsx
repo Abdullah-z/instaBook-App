@@ -58,7 +58,7 @@ const HomeScreen = () => {
     }
   };
 
-  const loadInitialPosts = async () => {
+  const loadInitialPosts = useCallback(async () => {
     try {
       if (!token) return;
       setRefreshing(true);
@@ -79,7 +79,7 @@ const HomeScreen = () => {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [token]);
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -107,9 +107,21 @@ const HomeScreen = () => {
     setVisiblePosts((prev) => prev.map((p) => (p._id === updatedPost._id ? updatedPost : p)));
   }, []);
 
+  const flatListRef = useRef<FlatList>(null);
+
   useEffect(() => {
     loadInitialPosts();
   }, [token]);
+
+  useEffect(() => {
+    const { DeviceEventEmitter } = require('react-native');
+    const subscription = DeviceEventEmitter.addListener('home_double_tap', () => {
+      console.log('📱 Home Screen received double tap event');
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      loadInitialPosts();
+    });
+    return () => subscription.remove();
+  }, [loadInitialPosts]);
 
   // Construct story list: First item is always "Me"
   const myStoryData = stories.find((s) => s.user._id === user?._id);
@@ -234,6 +246,7 @@ const HomeScreen = () => {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={visiblePosts}
         ListHeaderComponent={renderHeader}
         renderItem={renderItem}

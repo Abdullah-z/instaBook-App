@@ -1,5 +1,5 @@
-import React, { useContext, useMemo } from 'react';
-import { BottomNavigation, Avatar, useTheme } from 'react-native-paper';
+import React, { useContext, useMemo, useRef } from 'react';
+import { BottomNavigation, Avatar, useTheme, TouchableRipple } from 'react-native-paper';
 import { View, Text } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -16,8 +16,6 @@ const MainTabNavigator = () => {
   const { user } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const theme = useTheme();
-
-  const [index, setIndex] = React.useState(0);
 
   const routes = useMemo(
     () => [
@@ -59,13 +57,11 @@ const MainTabNavigator = () => {
     weather: WeatherNewsScreen,
   });
 
+  const [index, setIndex] = React.useState(0);
+  const lastTapRef = useRef(0);
+
   const handleIndexChange = (newIndex: number) => {
-    if (newIndex === 2) {
-      // Create tab pressed
-      setIndex(newIndex);
-    } else {
-      setIndex(newIndex);
-    }
+    setIndex(newIndex);
   };
 
   const renderSceneWithCreate = ({ route, jumpTo }: any) => {
@@ -84,6 +80,28 @@ const MainTabNavigator = () => {
       navigationState={{ index, routes }}
       onIndexChange={handleIndexChange}
       renderScene={renderSceneWithCreate}
+      renderTouchable={(props: any) => {
+        const { route, onPress } = props;
+        return (
+          <TouchableRipple
+            {...props}
+            onPress={() => {
+              if (route.key === 'home' && index === 0) {
+                const now = Date.now();
+                if (now - lastTapRef.current < 400) {
+                  // Increased window to 400ms
+                  console.log('📱 Home Double Tap Detected via Touchable');
+                  const { DeviceEventEmitter } = require('react-native');
+                  DeviceEventEmitter.emit('home_double_tap');
+                }
+                lastTapRef.current = now;
+              }
+              onPress();
+            }}>
+            {props.children}
+          </TouchableRipple>
+        );
+      }}
       barStyle={{
         backgroundColor: theme.colors.surface,
         borderTopWidth: 1,
