@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
@@ -41,22 +42,6 @@ const HomeScreen = () => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['80%'], []);
   const navigation = useNavigation<any>();
-
-  const openComments = (post: any) => {
-    setSelectedPost(post);
-    requestAnimationFrame(() => {
-      bottomSheetRef.current?.snapToIndex(0);
-    });
-  };
-
-  const handleDeletePost = async (postId: string) => {
-    try {
-      await deletePostAPI(postId);
-      setVisiblePosts((prev) => prev.filter((p) => p._id !== postId));
-    } catch (err) {
-      console.error('❌ Failed to delete post:', err);
-    }
-  };
 
   const loadInitialPosts = useCallback(async () => {
     try {
@@ -107,6 +92,22 @@ const HomeScreen = () => {
     setVisiblePosts((prev) => prev.map((p) => (p._id === updatedPost._id ? updatedPost : p)));
   }, []);
 
+  const openComments = useCallback((post: any) => {
+    setSelectedPost(post);
+    requestAnimationFrame(() => {
+      bottomSheetRef.current?.snapToIndex(0);
+    });
+  }, []);
+
+  const handleDeletePost = useCallback(async (postId: string) => {
+    try {
+      await deletePostAPI(postId);
+      setVisiblePosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch (err) {
+      console.error('❌ Failed to delete post:', err);
+    }
+  }, []);
+
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -127,97 +128,87 @@ const HomeScreen = () => {
   const myStoryData = stories.find((s) => s.user._id === user?._id);
   const otherStories = stories.filter((s) => s.user._id !== user?._id);
 
-  const renderHeader = () => (
-    <View>
-      {/* Stories Bar */}
-      <View style={styles.storiesContainer}>
-        <FlatList
-          data={[
-            { _id: 'me', isMe: true, user: user, stories: myStoryData?.stories || [] },
-            ...otherStories,
-          ]}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => (item.isMe ? 'me' : item.user._id)}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => {
-            const hasStory = item.stories && item.stories.length > 0;
-            const avatarUrl = item.isMe ? user?.avatar : item.user.avatar;
-            const username = item.isMe ? 'Your story' : item.user.username;
+  const renderHeader = useCallback(
+    () => (
+      <View>
+        {/* Stories Bar */}
+        <View style={styles.storiesContainer}>
+          <FlatList
+            data={[
+              { _id: 'me', isMe: true, user: user, stories: myStoryData?.stories || [] },
+              ...otherStories,
+            ]}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => (item.isMe ? 'me' : item.user._id)}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+            renderItem={({ item }) => {
+              const hasStory = item.stories && item.stories.length > 0;
+              const avatarUrl = item.isMe ? user?.avatar : item.user.avatar;
+              const username = item.isMe ? 'Your story' : item.user.username;
 
-            return (
-              <TouchableOpacity
-                style={styles.storyItem}
-                onPress={() => {
-                  // Navigate to story viewer
-                  if (hasStory) {
-                    navigation.navigate('StoryViewer', { userStories: item });
-                  } else if (item.isMe) {
-                    navigation.navigate('CreatePostScreen', { initialPostType: 'story' });
-                  }
-                }}>
-                <View
-                  style={[
-                    styles.storyRing,
-                    hasStory && { borderColor: theme.colors.primary },
-                    !hasStory && { borderColor: theme.colors.outlineVariant },
-                  ]}>
-                  <Image source={{ uri: avatarUrl }} style={styles.storyAvatar} />
-                  {item.isMe && !hasStory && (
-                    <View
-                      style={[
-                        styles.addStoryBadge,
-                        {
-                          backgroundColor: theme.colors.primary,
-                          borderColor: theme.colors.surface,
-                        },
-                      ]}>
-                      <Text style={{ color: theme.colors.onPrimary, fontSize: 10 }}>+</Text>
-                    </View>
-                  )}
-                </View>
-                <Text
-                  style={[styles.storyUsername, { color: theme.colors.onSurface }]}
-                  numberOfLines={1}>
-                  {username}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
+              return (
+                <TouchableOpacity
+                  style={styles.storyItem}
+                  onPress={() => {
+                    // Navigate to story viewer
+                    if (hasStory) {
+                      navigation.navigate('StoryViewer', { userStories: item });
+                    } else if (item.isMe) {
+                      navigation.navigate('CreatePostScreen', { initialPostType: 'story' });
+                    }
+                  }}>
+                  <View
+                    style={[
+                      styles.storyRing,
+                      hasStory && { borderColor: theme.colors.primary },
+                      !hasStory && { borderColor: theme.colors.outlineVariant },
+                    ]}>
+                    <Image source={{ uri: avatarUrl }} style={styles.storyAvatar} />
+                    {item.isMe && !hasStory && (
+                      <View
+                        style={[
+                          styles.addStoryBadge,
+                          {
+                            backgroundColor: theme.colors.primary,
+                            borderColor: theme.colors.surface,
+                          },
+                        ]}>
+                        <Text style={{ color: theme.colors.onPrimary, fontSize: 10 }}>+</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text
+                    style={[styles.storyUsername, { color: theme.colors.onSurface }]}
+                    numberOfLines={1}>
+                    {username}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
       </View>
-
-      {/* Tabs */}
-      {/* <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          onPress={() => setActiveTab('Home')}
-          style={[styles.tab, activeTab === 'Home' && styles.activeTab]}>
-          <Text style={[styles.tabText, activeTab === 'Home' && styles.activeTabText]}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('For You')}
-          style={[styles.tab, activeTab === 'For You' && styles.activeTab]}>
-          <Text style={[styles.tabText, activeTab === 'For You' && styles.activeTabText]}>
-            For you
-          </Text>
-        </TouchableOpacity>
-      </View> */}
-    </View>
+    ),
+    [user, myStoryData, otherStories, theme, navigation]
   );
 
-  const renderItem = ({ item, index }: { item: any; index: number }) => {
-    return (
-      <View>
-        <PostCard
-          post={item}
-          onPostUpdate={handlePostUpdate}
-          onOpenComments={openComments}
-          onDelete={handleDeletePost}
-        />
-        {index === 4 && <SuggestedUsers users={suggestedUsers} />}
-      </View>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item, index }: { item: any; index: number }) => {
+      return (
+        <View>
+          <PostCard
+            post={item}
+            onPostUpdate={handlePostUpdate}
+            onOpenComments={openComments}
+            onDelete={handleDeletePost}
+          />
+          {index === 4 && <SuggestedUsers users={suggestedUsers} />}
+        </View>
+      );
+    },
+    [handlePostUpdate, openComments, handleDeletePost, suggestedUsers]
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -256,6 +247,10 @@ const HomeScreen = () => {
         onEndReachedThreshold={0.5}
         refreshing={refreshing}
         onRefresh={loadInitialPosts}
+        initialNumToRender={4}
+        maxToRenderPerBatch={2}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.loadingMore}>

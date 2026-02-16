@@ -22,7 +22,6 @@ import { SocketContext } from '../auth/SocketContext';
 import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
-import { useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { Video, ResizeMode } from 'expo-av';
@@ -34,6 +33,13 @@ import PollView from './PollView';
 import HashtagText from './HashtagText';
 import { BlurView } from 'expo-blur';
 import { addOpacity } from '../utils/colorUtils';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -147,6 +153,14 @@ const PostCard = ({
   const [viewerIndex, setViewerIndex] = useState(0);
   const theme = useTheme();
 
+  const likeScale = useSharedValue(1);
+
+  const animatedLikeStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: likeScale.value }],
+    };
+  });
+
   // Extract YouTube ID from content
   const youtubeId = post.content ? getYoutubeId(post.content) : null;
 
@@ -166,6 +180,7 @@ const PostCard = ({
     onPostUpdate(newPost);
 
     try {
+      likeScale.value = withSequence(withSpring(1.5), withSpring(1));
       await likePostAPI(post._id);
 
       // Notify
@@ -197,6 +212,7 @@ const PostCard = ({
     onPostUpdate(newPost);
 
     try {
+      likeScale.value = withSequence(withSpring(1.5), withSpring(1));
       await unlikePostAPI(post._id);
 
       // Remove Notify
@@ -262,7 +278,8 @@ const PostCard = ({
   };
 
   return (
-    <View
+    <Animated.View
+      entering={FadeInDown.duration(600).springify()}
       style={[
         styles.card,
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
@@ -710,11 +727,13 @@ const PostCard = ({
             <TouchableOpacity
               onPress={isLiked ? handleUnlike : handleLike}
               style={styles.actionButton}>
-              <Ionicons
-                name={isLiked ? 'heart' : 'heart-outline'}
-                size={24}
-                color={isLiked ? theme.colors.error : theme.colors.onSurfaceVariant}
-              />
+              <Animated.View style={animatedLikeStyle}>
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={24}
+                  color={isLiked ? theme.colors.error : theme.colors.onSurfaceVariant}
+                />
+              </Animated.View>
               <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
                 {likes}
               </Text>
@@ -801,125 +820,137 @@ const PostCard = ({
             </View>
           </TouchableOpacity>
         )}
-      </View>
 
-      <ImageView
-        images={images.filter((img: any) => img.url).map((img: any) => ({ uri: img.url }))}
-        imageIndex={viewerIndex}
-        visible={viewerVisible}
-        onRequestClose={() => setViewerVisible(false)}
-        swipeToCloseEnabled={true}
-        doubleTapToZoomEnabled={true}
-        HeaderComponent={({ imageIndex }) => {
-          const currentImage = images.filter((img: any) => img.url)[imageIndex];
-          return (
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                padding: 20,
-                paddingTop: 50,
-              }}>
-              <TouchableOpacity
-                onPress={() => currentImage && downloadAndSaveImage(currentImage.url)}
+        <ImageView
+          images={images.filter((img: any) => img.url).map((img: any) => ({ uri: img.url }))}
+          imageIndex={viewerIndex}
+          visible={viewerVisible}
+          onRequestClose={() => setViewerVisible(false)}
+          swipeToCloseEnabled={true}
+          doubleTapToZoomEnabled={true}
+          HeaderComponent={({ imageIndex }) => {
+            const currentImage = images.filter((img: any) => img.url)[imageIndex];
+            return (
+              <View
                 style={{
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  padding: 10,
-                  borderRadius: 25,
+                  flexDirection: 'row',
+                  justifyContent: 'flex-end',
+                  padding: 20,
+                  paddingTop: 50,
                 }}>
-                <Ionicons name="download-outline" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          );
-        }}
-      />
-
-      {/* ✅ Share Modal */}
-      <RNModal
-        visible={shareModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShareModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>Share Post</Text>
-              <TouchableOpacity onPress={() => setShareModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.onSurface} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.shareInputContainer}>
-              <Avatar.Image size={40} source={{ uri: user?.avatar }} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
-                  {user?.username}
-                </Text>
-                <TextInput
-                  placeholder="Say something about this..."
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  multiline
-                  value={shareContent}
-                  onChangeText={setShareContent}
+                <TouchableOpacity
+                  onPress={() => currentImage && downloadAndSaveImage(currentImage.url)}
                   style={{
-                    color: theme.colors.onSurface,
-                    fontSize: 16,
-                    minHeight: 80,
-                    textAlignVertical: 'top',
-                    marginTop: 8,
-                  }}
-                />
-              </View>
-            </View>
-
-            {/* Original Post Preview in Modal */}
-            <View
-              style={{
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: theme.colors.outlineVariant,
-                padding: 10,
-                backgroundColor: theme.colors.surfaceVariant + '22',
-              }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Avatar.Image size={20} source={{ uri: post.user?.avatar }} />
-                <Text
-                  style={{
-                    marginLeft: 6,
-                    fontWeight: 'bold',
-                    fontSize: 12,
-                    color: theme.colors.onSurface,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    padding: 10,
+                    borderRadius: 25,
                   }}>
-                  {post.user?.username}
+                  <Ionicons name="download-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            );
+          }}
+        />
+
+        {/* ✅ Share Modal */}
+        <RNModal
+          visible={shareModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShareModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                  Share Post
+                </Text>
+                <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={theme.colors.onSurface} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.shareInputContainer}>
+                <Avatar.Image size={40} source={{ uri: user?.avatar }} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                    {user?.username}
+                  </Text>
+                  <TextInput
+                    placeholder="Say something about this..."
+                    placeholderTextColor={theme.colors.onSurfaceVariant}
+                    multiline
+                    value={shareContent}
+                    onChangeText={setShareContent}
+                    style={{
+                      color: theme.colors.onSurface,
+                      fontSize: 16,
+                      minHeight: 80,
+                      textAlignVertical: 'top',
+                      marginTop: 8,
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Original Post Preview in Modal */}
+              <View
+                style={{
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme.colors.outlineVariant,
+                  padding: 10,
+                  backgroundColor: theme.colors.surfaceVariant + '22',
+                }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Avatar.Image size={20} source={{ uri: post.user?.avatar }} />
+                  <Text
+                    style={{
+                      marginLeft: 6,
+                      fontWeight: 'bold',
+                      fontSize: 12,
+                      color: theme.colors.onSurface,
+                    }}>
+                    {post.user?.username}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: theme.colors.onSurface }} numberOfLines={2}>
+                  {post.content}
                 </Text>
               </View>
-              <Text style={{ fontSize: 12, color: theme.colors.onSurface }} numberOfLines={2}>
-                {post.content}
-              </Text>
-            </View>
 
-            <TouchableOpacity
-              style={[
-                styles.shareSubmitBtn,
-                { backgroundColor: theme.colors.primary },
-                isSharing && { opacity: 0.7 },
-              ]}
-              disabled={isSharing}
-              onPress={handleShare}>
-              {isSharing ? (
-                <ActivityIndicator color={theme.colors.onPrimary} size="small" />
-              ) : (
-                <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>Share Now</Text>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.shareSubmitBtn,
+                  { backgroundColor: theme.colors.primary },
+                  isSharing && { opacity: 0.7 },
+                ]}
+                disabled={isSharing}
+                onPress={handleShare}>
+                {isSharing ? (
+                  <ActivityIndicator color={theme.colors.onPrimary} size="small" />
+                ) : (
+                  <Text style={{ color: theme.colors.onPrimary, fontWeight: 'bold' }}>
+                    Share Now
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </RNModal>
-    </View>
+        </RNModal>
+      </View>
+    </Animated.View>
   );
 };
 
-export default React.memo(PostCard);
+export default React.memo(PostCard, (prevProps, nextProps) => {
+  return (
+    prevProps.post._id === nextProps.post._id &&
+    prevProps.post.likes.length === nextProps.post.likes.length &&
+    prevProps.post.comments.length === nextProps.post.comments.length &&
+    prevProps.post.isEdited === nextProps.post.isEdited &&
+    prevProps.post.content === nextProps.post.content
+  );
+});
 
 const styles = StyleSheet.create({
   card: {

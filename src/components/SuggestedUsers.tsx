@@ -153,7 +153,7 @@ const SuggestedUsers = ({ users }: { users: any[] }) => {
   );
 };
 
-export default SuggestedUsers;
+export default React.memo(SuggestedUsers);
 
 const styles = StyleSheet.create({
   container: {
