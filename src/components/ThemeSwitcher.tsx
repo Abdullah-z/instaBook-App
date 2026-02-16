@@ -14,6 +14,9 @@ const COLORS = [
   { id: 'nc', color: '#00FFFF', label: 'Neon Cyan' },
   { id: 'nl', color: '#CCFF00', label: 'Neon Lime' },
   { id: 'eb', color: '#7DF9FF', label: 'Electric Blue' },
+  { id: 'po', color: '#FFB380', label: 'Pastel Orange' },
+  { id: 'n', color: '#1B1B1D', label: 'Nothing' },
+  { id: 'm', color: '#1A1C1E', label: 'Monochrome' },
 ];
 
 const ThemeSwitcher = () => {
@@ -46,7 +49,7 @@ const ThemeSwitcher = () => {
               {themeColor === item.id && (
                 <Icon
                   source="check"
-                  color={['nc', 'nl', 'eb'].includes(item.id) ? '#000' : '#fff'}
+                  color={['nc', 'nl', 'eb', 'po'].includes(item.id) ? '#000' : '#fff'}
                   size={16}
                 />
               )}

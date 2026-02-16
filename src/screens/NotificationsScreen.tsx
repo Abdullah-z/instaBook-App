@@ -128,13 +128,13 @@ const NotificationsScreen = () => {
     const text = item.text?.toLowerCase() || '';
     if (text.includes('like')) {
       iconName = 'heart';
-      iconColor = '#FF4BB3';
+      iconColor = theme.colors.primary;
     } else if (text.includes('comment')) {
       iconName = 'chatbubble';
-      iconColor = '#4B7BFF';
+      iconColor = theme.colors.primary;
     } else if (text.includes('follow')) {
       iconName = 'person-add';
-      iconColor = '#4CAF50';
+      iconColor = theme.colors.primary;
     }
 
     return (
@@ -145,7 +145,7 @@ const NotificationsScreen = () => {
             backgroundColor: theme.colors.surface,
           },
           isUnread && {
-            backgroundColor: addOpacity(theme.colors.primary, theme.dark ? 0.12 : 0.05),
+            backgroundColor: theme.colors.secondaryContainer,
           },
         ]}
         onPress={() => handleNotificationPress(item)}>

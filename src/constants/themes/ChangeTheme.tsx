@@ -18,6 +18,12 @@ import { NeonLimeDark } from './NeonLimeDark';
 import { NeonLimeLight } from './NeonLimeLight';
 import { ElectricBlueDark } from './ElectricBlueDark';
 import { ElectricBlueLight } from './ElectricBlueLight';
+import { PastelOrangeDark } from './PastelOrangeDark';
+import { PastelOrangeLight } from './PastelOrangeLight';
+import { NothingDark } from './NothingDark';
+import { NothingLight } from './NothingLight';
+import { MonochromeDark } from './MonochromeDark';
+import { MonochromeLight } from './MonochromeLight';
 
 export const changeTheme = (themeColor: string) => {
   console.log('called');
@@ -51,6 +57,11 @@ export const changeTheme = (themeColor: string) => {
       light: OrangeLight,
       dark: OrangeDark,
     };
+  } else if (themeColor === 'po') {
+    return {
+      light: PastelOrangeLight,
+      dark: PastelOrangeDark,
+    };
   } else if (themeColor === 'np') {
     return {
       light: NeonPinkLight,
@@ -70,6 +81,16 @@ export const changeTheme = (themeColor: string) => {
     return {
       light: ElectricBlueLight,
       dark: ElectricBlueDark,
+    };
+  } else if (themeColor === 'n') {
+    return {
+      light: NothingLight,
+      dark: NothingDark,
+    };
+  } else if (themeColor === 'm') {
+    return {
+      light: MonochromeLight,
+      dark: MonochromeDark,
     };
   } else {
     return {};

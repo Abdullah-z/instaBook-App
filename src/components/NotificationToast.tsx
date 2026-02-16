@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useContext } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
+import { AuthContext } from '../auth/AuthContext';
 
 interface NotificationToastProps {
   visible: boolean;
@@ -12,6 +14,7 @@ interface NotificationToastProps {
 const NotificationToast = ({ visible, message, onClose }: NotificationToastProps) => {
   const translateY = useRef(new Animated.Value(-200)).current;
   const navigation = useNavigation<any>();
+  const theme = useTheme();
 
   useEffect(() => {
     if (visible) {
@@ -44,8 +47,6 @@ const NotificationToast = ({ visible, message, onClose }: NotificationToastProps
   const handlePress = () => {
     handleClose();
     if (message?.url) {
-      // In a real app we would parse the URL and navigate
-      // For now, let's just navigate to Notifications or specific screen
       navigation.navigate('Notifications');
     } else {
       navigation.navigate('Notifications');
@@ -55,7 +56,15 @@ const NotificationToast = ({ visible, message, onClose }: NotificationToastProps
   if (!message) return null;
 
   return (
-    <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outlineVariant,
+          transform: [{ translateY }],
+        },
+      ]}>
       <TouchableOpacity style={styles.content} onPress={handlePress}>
         <View style={styles.avatarContainer}>
           {message.user?.avatar &&
@@ -63,20 +72,33 @@ const NotificationToast = ({ visible, message, onClose }: NotificationToastProps
           message.user.avatar.trim() !== '' ? (
             <Image source={{ uri: message.user.avatar }} style={styles.avatar} />
           ) : (
-            <View style={styles.placeholderAvatar}>
-              <Ionicons name="notifications" size={24} color="#FFF" />
+            <View
+              style={[
+                styles.placeholderAvatar,
+                { backgroundColor: theme.colors.primaryContainer },
+              ]}>
+              <Ionicons name="notifications" size={24} color={theme.colors.onPrimaryContainer} />
             </View>
           )}
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>{message.user?.username || 'New Notification'}</Text>
-          <Text style={styles.message} numberOfLines={2}>
+          <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+            {message.user?.username || 'New Notification'}
+          </Text>
+          <Text
+            style={[styles.message, { color: theme.colors.onSurfaceVariant }]}
+            numberOfLines={2}>
             {message.text}
-            {message.content && <Text style={styles.activeText}> {message.content}</Text>}
+            {message.content && (
+              <Text style={[styles.activeText, { color: theme.colors.onSurface }]}>
+                {' '}
+                {message.content}
+              </Text>
+            )}
           </Text>
         </View>
         <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-          <Ionicons name="close" size={20} color="#666" />
+          <Ionicons name="close" size={20} color={theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
@@ -86,12 +108,12 @@ const NotificationToast = ({ visible, message, onClose }: NotificationToastProps
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50, // Below status bar
+    top: 50,
     left: 16,
     right: 16,
     zIndex: 9999,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 24, // Consistent with themes
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -104,21 +126,20 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
   },
   avatarContainer: {
     marginRight: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   placeholderAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#D4F637',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -127,21 +148,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: 'bold',
-    fontSize: 14,
-    color: '#333',
+    fontSize: 15,
     marginBottom: 2,
   },
   message: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
     lineHeight: 18,
   },
   activeText: {
-    color: '#333',
-    fontWeight: '500',
+    fontWeight: 'bold',
   },
   closeBtn: {
     padding: 4,
+    marginLeft: 8,
   },
 });
 

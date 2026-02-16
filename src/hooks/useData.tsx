@@ -21,6 +21,12 @@ import { NeonLimeLight } from '../constants/themes/NeonLimeLight';
 import { NeonLimeDark } from '../constants/themes/NeonLimeDark';
 import { ElectricBlueLight } from '../constants/themes/ElectricBlueLight';
 import { ElectricBlueDark } from '../constants/themes/ElectricBlueDark';
+import { PastelOrangeLight } from '../constants/themes/PastelOrangeLight';
+import { PastelOrangeDark } from '../constants/themes/PastelOrangeDark';
+import { NothingDark } from '../constants/themes/NothingDark';
+import { NothingLight } from '../constants/themes/NothingLight';
+import { MonochromeDark } from '../constants/themes/MonochromeDark';
+import { MonochromeLight } from '../constants/themes/MonochromeLight';
 import { light } from '../constants';
 import { ITheme, IUseData } from '../constants/types';
 
@@ -133,6 +139,21 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
         light: ElectricBlueLight,
         dark: ElectricBlueDark,
       };
+    } else if (themeColor === 'po') {
+      return {
+        light: PastelOrangeLight,
+        dark: PastelOrangeDark,
+      };
+    } else if (themeColor === 'n') {
+      return {
+        light: NothingLight,
+        dark: NothingDark,
+      };
+    } else if (themeColor === 'm') {
+      return {
+        light: MonochromeLight,
+        dark: MonochromeDark,
+      };
     } else {
       return {
         light: GreenLight,
@@ -143,7 +164,17 @@ export const DataProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const themes = changeTheme();
-    setTheme(isDark ? themes.dark : themes.light);
+    const selectedPaperTheme = isDark ? themes.dark : themes.light;
+    const fullTheme: ITheme = {
+      ...light,
+      ...selectedPaperTheme,
+      colors: {
+        ...light.colors,
+        ...selectedPaperTheme.colors,
+      },
+      fonts: light.fonts,
+    };
+    setTheme(fullTheme);
   }, [themeColor, isDark]);
 
   // get initial data for: isDark & themeColor
