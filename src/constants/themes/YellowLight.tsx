@@ -23,7 +23,7 @@ export const YellowLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(255, 254, 235)',
     onBackground: 'rgb(29, 27, 22)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(29, 27, 22)',
@@ -49,4 +49,3 @@ export const YellowLight = {
     backdrop: 'rgba(52, 48, 36, 0.4)',
   },
 };
-

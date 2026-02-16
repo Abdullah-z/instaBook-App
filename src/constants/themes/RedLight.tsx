@@ -23,7 +23,7 @@ export const RedLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(255, 242, 242)',
     onBackground: 'rgb(32, 26, 24)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(32, 26, 24)',
@@ -49,4 +49,3 @@ export const RedLight = {
     backdrop: 'rgba(55, 47, 45, 0.4)',
   },
 };
-

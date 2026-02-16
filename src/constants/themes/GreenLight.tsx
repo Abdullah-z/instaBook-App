@@ -23,7 +23,7 @@ export const GreenLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(242, 250, 238)',
     onBackground: 'rgb(27, 28, 24)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(27, 28, 24)',

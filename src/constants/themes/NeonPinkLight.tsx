@@ -23,7 +23,7 @@ export const NeonPinkLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(255, 242, 250)',
     onBackground: 'rgb(30, 26, 28)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(30, 26, 28)',

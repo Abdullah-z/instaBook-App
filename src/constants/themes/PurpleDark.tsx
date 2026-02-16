@@ -6,7 +6,7 @@ export const PurpleDark = {
   roundness: 24,
   ...fontConfig,
   colors: {
-    primary: 'rgb(255, 177, 197)',
+    primary: 'rgb(239, 176, 255)',
     onPrimary: 'rgb(94, 17, 47)',
     primaryContainer: 'rgb(123, 41, 70)',
     onPrimaryContainer: 'rgb(255, 217, 225)',
@@ -22,9 +22,9 @@ export const PurpleDark = {
     onError: 'rgb(105, 0, 5)',
     errorContainer: 'rgb(147, 0, 10)',
     onErrorContainer: 'rgb(255, 180, 171)',
-    background: 'rgb(22, 18, 24)',
+    background: 'rgb(18, 22, 17)',
     onBackground: 'rgb(236, 224, 225)',
-    surface: 'rgb(32, 24, 34)',
+    surface: 'rgb(28, 34, 26)',
     onSurface: 'rgb(236, 224, 225)',
     surfaceVariant: 'rgb(81, 67, 70)',
     onSurfaceVariant: 'rgb(214, 194, 197)',
@@ -48,4 +48,3 @@ export const PurpleDark = {
     backdrop: 'rgba(58, 45, 48, 0.4)',
   },
 };
-

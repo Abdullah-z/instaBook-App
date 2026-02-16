@@ -23,7 +23,7 @@ export const ElectricBlueLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(242, 255, 255)',
     onBackground: 'rgb(24, 28, 30)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(24, 28, 30)',

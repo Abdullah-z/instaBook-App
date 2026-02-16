@@ -23,7 +23,7 @@ export const NeonLimeLight = {
     onError: 'rgb(255, 255, 255)',
     errorContainer: 'rgb(255, 218, 214)',
     onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(246, 246, 246)',
+    background: 'rgb(250, 255, 240)',
     onBackground: 'rgb(28, 30, 24)',
     surface: 'rgb(255, 255, 255)',
     onSurface: 'rgb(28, 30, 24)',
