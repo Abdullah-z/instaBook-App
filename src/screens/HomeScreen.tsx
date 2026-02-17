@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
@@ -236,11 +237,15 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         ref={flatListRef}
         data={visiblePosts}
         ListHeaderComponent={renderHeader}
-        renderItem={renderItem}
+        renderItem={({ item, index }: { item: any; index: number }) => (
+          <Animated.View layout={LinearTransition.springify().duration(400)}>
+            {renderItem({ item, index })}
+          </Animated.View>
+        )}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         onEndReached={loadMore}

@@ -27,9 +27,12 @@ import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
+  FadeInDown,
 } from 'react-native-reanimated';
 
 const HEADER_HEIGHT = 200;
+const windowWidth = Dimensions.get('window').width;
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ userId }: { userId?: string }) => {
@@ -49,6 +52,31 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const tabX = useSharedValue(0);
+
+  useEffect(() => {
+    const tabs = ['posts', 'text', 'saved'].filter((tab) => {
+      if (tab === 'saved' && (!user || id !== user._id)) return false;
+      return true;
+    });
+    const index = tabs.indexOf(activeTab);
+    if (index !== -1) {
+      tabX.value = withSpring(index);
+    }
+  }, [activeTab, id, user]);
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    const tabs = ['posts', 'text', 'saved'].filter((tab) => {
+      if (tab === 'saved' && (!user || id !== user._id)) return false;
+      return true;
+    });
+    const tabCount = tabs.length || 1;
+    const tabWidth = (windowWidth - 40) / tabCount;
+    return {
+      transform: [{ translateX: tabX.value * tabWidth }],
+      width: tabWidth,
+    };
+  });
   const [savedPage, setSavedPage] = useState(1);
   const [savedResult, setSavedResult] = useState(0);
 
@@ -237,9 +265,21 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
             flexDirection: 'row',
             marginTop: 24,
             paddingHorizontal: 20,
-            gap: 8,
-            paddingBottom: 8,
+            position: 'relative',
           }}>
+          <Animated.View
+            style={[
+              indicatorStyle,
+              {
+                position: 'absolute',
+                bottom: 0,
+                left: 20,
+                height: 3,
+                backgroundColor: theme.colors.primary,
+                borderRadius: 2,
+              },
+            ]}
+          />
           {['posts', 'text', 'saved'].map((tab: any) => {
             if (tab === 'saved' && (!user || id !== user._id)) return null;
             const isActive = activeTab === tab;
@@ -249,10 +289,8 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
                 onPress={() => setActiveTab(tab)}
                 style={{
                   flex: 1,
-                  paddingVertical: 10,
+                  paddingVertical: 12,
                   alignItems: 'center',
-                  borderRadius: 20,
-                  backgroundColor: isActive ? theme.colors.primaryContainer : 'transparent',
                 }}>
                 <Text
                   style={{
@@ -260,9 +298,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
                     fontWeight: '900',
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
-                    color: isActive
-                      ? theme.colors.onPrimaryContainer
-                      : theme.colors.onSurfaceVariant,
+                    color: isActive ? theme.colors.primary : theme.colors.onSurfaceVariant,
                   }}>
                   {tab === 'text' ? 'Thoughts' : tab}
                 </Text>

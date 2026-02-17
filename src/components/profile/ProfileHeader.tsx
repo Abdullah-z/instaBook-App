@@ -13,6 +13,14 @@ import ThemeSwitcher from '../ThemeSwitcher';
 import { downloadAndSaveImage } from '../../utils/MediaUtils';
 import moment from 'moment';
 import { addOpacity } from '../../utils/colorUtils';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 
 const ProfileHeader = ({
   profile,
@@ -30,7 +38,17 @@ const ProfileHeader = ({
   const { user, logout, isAmbientEnabled, toggleAmbientMode } = useContext(AuthContext);
   const navigation = useNavigation<any>();
   const theme = useTheme();
-  console.log(profile);
+
+  const scale = useSharedValue(1);
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const animatePress = () => {
+    scale.value = withSequence(withSpring(0.92), withSpring(1));
+  };
+
   const [isFollowing, setIsFollowing] = useState(
     user ? profile.followers?.some((f: any) => f._id === user._id) : false
   );
@@ -43,13 +61,13 @@ const ProfileHeader = ({
   const [viewerVisible, setViewerVisible] = useState(false);
 
   const handleFollowToggle = async () => {
+    animatePress();
     try {
       if (isFollowing) {
         await unfollowUserAPI(profile._id);
         setIsFollowing(false);
         setFollowerCount((prev: number) => prev - 1);
       } else if (isRequested) {
-        // Cancel request
         await unfollowUserAPI(profile._id);
         setIsRequested(false);
       } else {
@@ -82,7 +100,8 @@ const ProfileHeader = ({
       <View style={{ backgroundColor: theme.colors.surface, paddingBottom: 20 }}>
         {/* Avatar Section */}
         <View style={{ paddingHorizontal: 20, marginTop: -60, alignItems: 'center' }}>
-          <View
+          <Animated.View
+            entering={FadeInDown.duration(600).springify()}
             style={{
               padding: 4,
               backgroundColor: theme.colors.surface,
@@ -105,7 +124,7 @@ const ProfileHeader = ({
                 }}
               />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
           <ImageView
             images={[{ uri: profile.avatar }]}
@@ -133,7 +152,8 @@ const ProfileHeader = ({
             )}
           />
 
-          <Text
+          <Animated.Text
+            entering={FadeIn.delay(200)}
             style={{
               fontSize: 28,
               fontWeight: '900',
@@ -142,8 +162,9 @@ const ProfileHeader = ({
               letterSpacing: -0.5,
             }}>
             {profile.fullname}
-          </Text>
-          <Text
+          </Animated.Text>
+          <Animated.Text
+            entering={FadeIn.delay(300)}
             style={{
               color: theme.colors.primary,
               fontWeight: '800',
@@ -152,9 +173,10 @@ const ProfileHeader = ({
               opacity: 0.9,
             }}>
             {'@' + profile.username}
-          </Text>
+          </Animated.Text>
           {profile.story ? (
-            <Text
+            <Animated.Text
+              entering={FadeIn.delay(400)}
               style={{
                 color: theme.colors.onSurface,
                 marginTop: 12,
@@ -164,11 +186,12 @@ const ProfileHeader = ({
                 lineHeight: 20,
               }}>
               {profile.story}
-            </Text>
+            </Animated.Text>
           ) : null}
 
           {/* Metadata Row */}
-          <View
+          <Animated.View
+            entering={FadeInDown.delay(500)}
             style={{
               flexDirection: 'row',
               flexWrap: 'wrap',
@@ -244,11 +267,12 @@ const ProfileHeader = ({
                 Joined {moment(profile.createdAt).format('MMM YYYY')}
               </Text>
             </View>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Stats Row */}
-        <View
+        <Animated.View
+          entering={FadeInDown.delay(600).springify()}
           style={{
             flexDirection: 'row',
             justifyContent: 'center',
@@ -326,7 +350,7 @@ const ProfileHeader = ({
               Following
             </Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Action Buttons */}
         <View style={{ flexDirection: 'row', marginTop: 24, paddingHorizontal: 20, gap: 10 }}>
@@ -392,46 +416,48 @@ const ProfileHeader = ({
             </>
           ) : (
             <>
-              <TouchableOpacity
-                onPress={handleFollowToggle}
-                style={{
-                  flex: 1,
-                  backgroundColor: isFollowing
-                    ? theme.colors.surfaceVariant
-                    : isRequested
-                      ? theme.colors.surfaceVariant
-                      : theme.colors.primary,
-                  paddingVertical: 14,
-                  borderRadius: 20,
-                  alignItems: 'center',
-                  elevation: 2,
-                  borderWidth: isRequested ? 1 : 0,
-                  borderColor: theme.colors.outlineVariant,
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                }}>
-                <Ionicons
-                  name={isFollowing ? 'person-remove' : isRequested ? 'time' : 'person-add'}
-                  size={18}
-                  color={
-                    isFollowing || isRequested
-                      ? theme.colors.onSurfaceVariant
-                      : theme.colors.onPrimary
-                  }
-                  style={{ marginRight: 8 }}
-                />
-                <Text
+              <Animated.View style={[{ flex: 1 }, buttonAnimatedStyle]}>
+                <TouchableOpacity
+                  onPress={handleFollowToggle}
                   style={{
-                    color:
+                    flex: 1,
+                    backgroundColor: isFollowing
+                      ? theme.colors.surfaceVariant
+                      : isRequested
+                        ? theme.colors.surfaceVariant
+                        : theme.colors.primary,
+                    paddingVertical: 14,
+                    borderRadius: 20,
+                    alignItems: 'center',
+                    elevation: 2,
+                    borderWidth: isRequested ? 1 : 0,
+                    borderColor: theme.colors.outlineVariant,
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                  }}>
+                  <Ionicons
+                    name={isFollowing ? 'person-remove' : isRequested ? 'time' : 'person-add'}
+                    size={18}
+                    color={
                       isFollowing || isRequested
                         ? theme.colors.onSurfaceVariant
-                        : theme.colors.onPrimary,
-                    fontWeight: '900',
-                    fontSize: 14,
-                  }}>
-                  {isFollowing ? 'Unfollow' : isRequested ? 'Requested' : 'Follow'}
-                </Text>
-              </TouchableOpacity>
+                        : theme.colors.onPrimary
+                    }
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    style={{
+                      color:
+                        isFollowing || isRequested
+                          ? theme.colors.onSurfaceVariant
+                          : theme.colors.onPrimary,
+                      fontWeight: '900',
+                      fontSize: 14,
+                    }}>
+                    {isFollowing ? 'Unfollow' : isRequested ? 'Requested' : 'Follow'}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
 
               <TouchableOpacity
                 onPress={() =>
