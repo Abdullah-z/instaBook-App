@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -179,6 +179,176 @@ const ListingDetailScreen = () => {
     initiateCall(listing.user._id, listing.user.username, listing.user.avatar);
   };
 
+  const isOwner = user?._id === listing?.user?._id;
+
+  const renderCarousel = useMemo(
+    () => (
+      <View style={styles.carouselContainer}>
+        {listing?.images && listing.images.length > 0 ? (
+          <Carousel
+            loop={false}
+            width={width}
+            height={width * 0.9}
+            data={listing.images}
+            scrollAnimationDuration={500}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  setViewerIndex(listing.images.indexOf(item));
+                  setViewerVisible(true);
+                }}
+                onLongPress={() => promptSaveImage(item as string)}>
+                <Image source={{ uri: item as string }} style={styles.carouselImage} />
+              </TouchableOpacity>
+            )}
+          />
+        ) : (
+          <View style={[styles.carouselImage, styles.center]}>
+            <Ionicons name="image-outline" size={50} color="#ccc" />
+          </View>
+        )}
+        {listing?.isSold && (
+          <View style={styles.soldOverlay}>
+            <Text style={styles.soldOverlayText}>SOLD</Text>
+          </View>
+        )}
+      </View>
+    ),
+    [listing?.images, listing?.isSold]
+  );
+
+  const renderHeaderInfo = useMemo(
+    () => (
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              styles.name,
+              {
+                color: theme.colors.onSurface,
+                fontWeight: '900',
+                fontSize: 28,
+                letterSpacing: -1,
+              },
+            ]}>
+            {listing?.name}
+          </Text>
+          <View style={styles.locationContainer}>
+            <Ionicons name="location" size={16} color={theme.colors.primary} />
+            <Text
+              style={[styles.address, { color: theme.colors.onSurfaceVariant, fontWeight: '600' }]}>
+              {listing?.address}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.priceBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+          <Text
+            style={[
+              styles.priceText,
+              { color: theme.colors.onPrimaryContainer, fontWeight: '900', fontSize: 24 },
+            ]}>
+            ${listing?.price}
+          </Text>
+        </View>
+      </View>
+    ),
+    [listing?.name, listing?.address, listing?.price, theme]
+  );
+
+  const renderInfoRow = useMemo(
+    () => (
+      <View style={styles.infoRow}>
+        <View style={styles.infoItem}>
+          <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
+            CONDITION
+          </Text>
+          <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>New</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>CATEGORY</Text>
+          <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
+            {listing?.category}
+          </Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>POSTED</Text>
+          <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
+            {listing?.createdAt ? moment(listing.createdAt).fromNow() : ''}
+          </Text>
+        </View>
+      </View>
+    ),
+    [listing?.category, listing?.createdAt, theme]
+  );
+
+  const renderDescription = useMemo(
+    () => (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionDot, { backgroundColor: theme.colors.primary }]} />
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface, fontWeight: '900' }]}>
+            Description
+          </Text>
+        </View>
+        <Text
+          style={[
+            styles.description,
+            { color: theme.colors.onSurface, lineHeight: 22, fontWeight: '500' },
+          ]}>
+          {listing?.description}
+        </Text>
+      </View>
+    ),
+    [listing?.description, theme]
+  );
+
+  const renderSellerInfo = useMemo(
+    () => (
+      <View style={styles.section}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.colors.onSurface, fontWeight: '900', marginBottom: 16 },
+          ]}>
+          Seller Information
+        </Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[
+            styles.sellerCard,
+            { backgroundColor: theme.colors.surfaceVariant, borderRadius: 24, padding: 16 },
+          ]}
+          onPress={() =>
+            listing?.user?._id && navigation.navigate('Profile', { id: listing.user._id })
+          }>
+          <Avatar.Image
+            size={60}
+            source={{ uri: listing?.user?.avatar || 'https://via.placeholder.com/60' }}
+          />
+          <View style={styles.sellerInfo}>
+            <Text
+              style={[
+                styles.sellerName,
+                { color: theme.colors.onSurface, fontWeight: '900', fontSize: 18 },
+              ]}>
+              {listing?.user?.fullname || listing?.user?.username || 'Unknown Seller'}
+            </Text>
+            <Text
+              style={[
+                styles.joinedTime,
+                { color: theme.colors.onSurfaceVariant, fontWeight: '600' },
+              ]}>
+              Community Member
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={theme.colors.onSurfaceVariant} />
+        </TouchableOpacity>
+      </View>
+    ),
+    [listing?.user, theme, navigation]
+  );
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -188,8 +358,6 @@ const ListingDetailScreen = () => {
   }
 
   if (!listing) return null;
-
-  const isOwner = user?._id === listing.user._id;
 
   return (
     <ScrollView
@@ -218,38 +386,7 @@ const ListingDetailScreen = () => {
         )}
       </View>
 
-      {/* Image Carousel */}
-      <View style={styles.carouselContainer}>
-        {listing.images && listing.images.length > 0 ? (
-          <Carousel
-            loop={false}
-            width={width}
-            height={width * 0.9}
-            data={listing.images}
-            scrollAnimationDuration={500}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => {
-                  setViewerIndex(listing.images.indexOf(item));
-                  setViewerVisible(true);
-                }}
-                onLongPress={() => promptSaveImage(item as string)}>
-                <Image source={{ uri: item as string }} style={styles.carouselImage} />
-              </TouchableOpacity>
-            )}
-          />
-        ) : (
-          <View style={[styles.carouselImage, styles.center]}>
-            <Ionicons name="image-outline" size={50} color="#ccc" />
-          </View>
-        )}
-        {listing.isSold && (
-          <View style={styles.soldOverlay}>
-            <Text style={styles.soldOverlayText}>SOLD</Text>
-          </View>
-        )}
-      </View>
+      {renderCarousel}
 
       <View
         style={[
@@ -261,64 +398,8 @@ const ListingDetailScreen = () => {
             backgroundColor: theme.colors.background,
           },
         ]}>
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                styles.name,
-                {
-                  color: theme.colors.onSurface,
-                  fontWeight: '900',
-                  fontSize: 28,
-                  letterSpacing: -1,
-                },
-              ]}>
-              {listing.name}
-            </Text>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location" size={16} color={theme.colors.primary} />
-              <Text
-                style={[
-                  styles.address,
-                  { color: theme.colors.onSurfaceVariant, fontWeight: '600' },
-                ]}>
-                {listing.address}
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.priceBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-            <Text
-              style={[
-                styles.priceText,
-                { color: theme.colors.onPrimaryContainer, fontWeight: '900', fontSize: 24 },
-              ]}>
-              ${listing.price}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-              CONDITION
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>New</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>
-              CATEGORY
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
-              {listing.category}
-            </Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={[styles.infoLabel, { color: theme.colors.onSurfaceVariant }]}>POSTED</Text>
-            <Text style={[styles.infoValue, { color: theme.colors.onSurface }]}>
-              {moment(listing.createdAt).fromNow()}
-            </Text>
-          </View>
-        </View>
+        {renderHeaderInfo}
+        {renderInfoRow}
 
         {(listing.listingType === 'Bid' || listing.listingType === 'Both') && (
           <View
@@ -416,22 +497,7 @@ const ListingDetailScreen = () => {
           </View>
         )}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionDot, { backgroundColor: theme.colors.primary }]} />
-            <Text
-              style={[styles.sectionTitle, { color: theme.colors.onSurface, fontWeight: '900' }]}>
-              Description
-            </Text>
-          </View>
-          <Text
-            style={[
-              styles.description,
-              { color: theme.colors.onSurface, lineHeight: 22, fontWeight: '500' },
-            ]}>
-            {listing.description}
-          </Text>
-        </View>
+        {renderDescription}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -469,6 +535,7 @@ const ListingDetailScreen = () => {
             </View>
             <TouchableOpacity
               onPress={() =>
+                listing.location?.coordinates &&
                 Linking.openURL(
                   `https://www.google.com/maps/search/?api=1&query=${listing.location.coordinates[1]},${listing.location.coordinates[0]}`
                 )
@@ -480,46 +547,7 @@ const ListingDetailScreen = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: theme.colors.onSurface, fontWeight: '900', marginBottom: 16 },
-            ]}>
-            Seller Information
-          </Text>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[
-              styles.sellerCard,
-              { backgroundColor: theme.colors.surfaceVariant, borderRadius: 24, padding: 16 },
-            ]}
-            onPress={() =>
-              listing.user?._id && navigation.navigate('Profile', { id: listing.user._id })
-            }>
-            <Avatar.Image
-              size={60}
-              source={{ uri: listing.user?.avatar || 'https://via.placeholder.com/60' }}
-            />
-            <View style={styles.sellerInfo}>
-              <Text
-                style={[
-                  styles.sellerName,
-                  { color: theme.colors.onSurface, fontWeight: '900', fontSize: 18 },
-                ]}>
-                {listing.user?.fullname || listing.user?.username || 'Unknown Seller'}
-              </Text>
-              <Text
-                style={[
-                  styles.joinedTime,
-                  { color: theme.colors.onSurfaceVariant, fontWeight: '600' },
-                ]}>
-                Community Member
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={theme.colors.onSurfaceVariant} />
-          </TouchableOpacity>
-        </View>
+        {renderSellerInfo}
 
         <View style={styles.contactActions}>
           {!isOwner ? (
