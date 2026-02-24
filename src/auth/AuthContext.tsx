@@ -30,6 +30,8 @@ interface AuthContextType {
   completeOnboarding: () => Promise<void>;
   isAmbientEnabled: boolean;
   toggleAmbientMode: (value: boolean) => Promise<void>;
+  isGridViewEnabled: boolean;
+  toggleGridView: (value: boolean) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -45,6 +47,8 @@ export const AuthContext = createContext<AuthContextType>({
   completeOnboarding: async () => {},
   isAmbientEnabled: true,
   toggleAmbientMode: async () => {},
+  isGridViewEnabled: true,
+  toggleGridView: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -54,12 +58,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [isAmbientEnabled, setIsAmbientEnabled] = useState<boolean>(true);
+  const [isGridViewEnabled, setIsGridViewEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     checkOnboarding();
     loadAmbientPref();
+    loadGridViewPref();
     refreshToken();
   }, []);
+
+  const loadGridViewPref = async () => {
+    try {
+      const val = await AsyncStorage.getItem('IS_GRID_VIEW_ENABLED');
+      if (val !== null) {
+        setIsGridViewEnabled(val === 'true');
+      }
+    } catch (e) {
+      console.log('Failed to load grid view pref', e);
+    }
+  };
+
+  const toggleGridView = async (value: boolean) => {
+    try {
+      setIsGridViewEnabled(value);
+      await AsyncStorage.setItem('IS_GRID_VIEW_ENABLED', value.toString());
+    } catch (e) {
+      console.log('Failed to save grid view pref', e);
+    }
+  };
 
   const loadAmbientPref = async () => {
     try {
@@ -184,6 +210,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         completeOnboarding,
         isAmbientEnabled,
         toggleAmbientMode,
+        isGridViewEnabled,
+        toggleGridView,
       }}>
       {children}
     </AuthContext.Provider>
