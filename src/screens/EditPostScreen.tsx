@@ -218,12 +218,13 @@ const EditPostScreen = () => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
+        selectionLimit: 8 - images.length,
         quality: 1,
       });
 
       if (!result.canceled) {
-        if (images.length + result.assets.length > 4) {
-          Alert.alert('You can only upload up to 4 images.');
+        if (images.length + result.assets.length > 8) {
+          Alert.alert('You can only upload up to 8 images.');
           return;
         }
 
@@ -293,8 +294,8 @@ const EditPostScreen = () => {
       });
 
       if (!result.canceled && result.assets.length > 0) {
-        if (images.length >= 4) {
-          Alert.alert('You can only upload up to 4 images.');
+        if (images.length >= 8) {
+          Alert.alert('You can only upload up to 8 images.');
           return;
         }
         const uri = result.assets[0].uri;
@@ -308,6 +309,19 @@ const EditPostScreen = () => {
 
   const removeImage = (indexToRemove: number) => {
     setImages((prev) => prev.filter((_, i) => i !== indexToRemove));
+  };
+
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    const newImages = [...images];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+
+    const temp = newImages[index];
+    newImages[index] = newImages[targetIndex];
+    newImages[targetIndex] = temp;
+
+    setImages(newImages);
   };
 
   const addPollOption = () => {
@@ -388,24 +402,34 @@ const EditPostScreen = () => {
       const oldImages = images.filter((img) => typeof img !== 'string');
 
       if (videoUri) {
-        // Upload Video
-        // Check if it's a new video (uri string) or existing (object) - simplistic check for now
-        // EditPost primarily deals with existing posts.
-        // If user picked a NEW video, videoUri is a file URI string.
-        // Existing video support not explicitly requested to survive edits but we should consider it.
-        // For now, assuming user replaces content.
         if (videoUri.startsWith('file://')) {
           media = await imageUpload([{ uri: videoUri, type: 'video' }], isHD);
         } else {
-          // It's an existing video URL? Not handling existing video *state* initialization yet.
-          // Assuming user adds NEW video.
           media = [{ url: videoUri, resource_type: 'video' }];
         }
-      } else if (newImages.length > 0) {
-        const uploadedMedia = await imageUpload(newImages, isHD);
-        media = [...oldImages, ...uploadedMedia];
-      } else {
-        media = oldImages;
+      } else if (images.length > 0) {
+        // We must preserve ORDER.
+        // Identify new images, upload them, then rebuild the array in order.
+        const newImageItems = images
+          .map((img, idx) => ({ img, idx }))
+          .filter((item) => typeof item.img === 'string');
+
+        if (newImageItems.length > 0) {
+          const uploaded = await imageUpload(
+            newImageItems.map((item) => item.img),
+            isHD
+          );
+          // Map back to original order
+          media = images.map((img) => {
+            if (typeof img === 'string') {
+              const uploadedIdx = newImageItems.findIndex((item) => item.img === img);
+              return uploaded[uploadedIdx];
+            }
+            return img;
+          });
+        } else {
+          media = images;
+        }
       }
 
       const updatedData = {
@@ -877,6 +901,23 @@ const EditPostScreen = () => {
             <TouchableOpacity onPress={() => removeImage(index)} style={styles.removeBtn}>
               <Text style={styles.removeText}>✖</Text>
             </TouchableOpacity>
+
+            <View style={styles.reorderBtns}>
+              {index > 0 && (
+                <TouchableOpacity
+                  onPress={() => moveImage(index, 'left')}
+                  style={styles.reorderBtn}>
+                  <Ionicons name="chevron-back" size={16} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {index < images.length - 1 && (
+                <TouchableOpacity
+                  onPress={() => moveImage(index, 'right')}
+                  style={styles.reorderBtn}>
+                  <Ionicons name="chevron-forward" size={16} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         ))}
 
@@ -1033,6 +1074,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  reorderBtns: {
+    position: 'absolute',
+    bottom: 2,
+    left: 2,
+    right: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 1,
+  },
+  reorderBtn: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    padding: 2,
   },
   updateButton: {
     padding: 15,

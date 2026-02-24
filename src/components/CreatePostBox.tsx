@@ -194,13 +194,13 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        selectionLimit: 4 - images.length,
+        selectionLimit: 8 - images.length,
         quality: 1,
       });
 
       if (!result.canceled) {
-        if (images.length + result.assets.length > 4) {
-          Alert.alert('You can only upload up to 4 images.');
+        if (images.length + result.assets.length > 8) {
+          Alert.alert('You can only upload up to 8 images.');
           return;
         }
 
@@ -303,9 +303,9 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         );
         return;
       }
-      if (images.length >= 4) {
+      if (images.length >= 8) {
         console.log('Blocked: max images');
-        Alert.alert('Limit Reached', 'You can only upload up to 4 images.');
+        Alert.alert('Limit Reached', 'You can only upload up to 8 images.');
         return;
       }
 
@@ -366,6 +366,19 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
 
   const removeImage = (indexToRemove: number) => {
     setImages((prev) => prev.filter((_, i) => i !== indexToRemove));
+  };
+
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    const newImages = [...images];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+
+    const temp = newImages[index];
+    newImages[index] = newImages[targetIndex];
+    newImages[targetIndex] = temp;
+
+    setImages(newImages);
   };
 
   const addPollOption = () => {
@@ -932,6 +945,23 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
             <TouchableOpacity onPress={() => removeImage(index)} style={styles.removeBtn}>
               <Text style={styles.removeText}>✖</Text>
             </TouchableOpacity>
+
+            <View style={styles.reorderBtns}>
+              {index > 0 && (
+                <TouchableOpacity
+                  onPress={() => moveImage(index, 'left')}
+                  style={styles.reorderBtn}>
+                  <Ionicons name="chevron-back" size={16} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {index < images.length - 1 && (
+                <TouchableOpacity
+                  onPress={() => moveImage(index, 'right')}
+                  style={styles.reorderBtn}>
+                  <Ionicons name="chevron-forward" size={16} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         ))}
 
@@ -1057,9 +1087,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   preview: {
-    width: 80,
-    height: 80,
-    borderRadius: 6,
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  reorderBtns: {
+    position: 'absolute',
+    bottom: 2,
+    left: 2,
+    right: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 1,
+  },
+  reorderBtn: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    padding: 2,
   },
   removeBtn: {
     position: 'absolute',
