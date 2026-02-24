@@ -60,7 +60,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   // Background & Text Style State
   const [selectedBgId, setSelectedBgId] = useState('default');
   const [textColor, setTextColor] = useState(theme.colors.onSurface);
-  const [fontSize, setFontSize] = useState(24);
+  const [fontSize, setFontSize] = useState(20);
   const [showStyleControls, setShowStyleControls] = useState(false);
 
   // Poll State
@@ -102,7 +102,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
       // the UI to show the current theme color.
       // The logic in handlePost will handle NOT saving it.
       setTextColor(theme.colors.onSurface);
-      setFontSize(24);
+      setFontSize(20);
     }
   }, [selectedBgId, theme.colors.onSurface]);
 
