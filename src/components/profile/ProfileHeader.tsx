@@ -35,7 +35,8 @@ const ProfileHeader = ({
   onRefresh?: () => void;
   onCoverPress?: () => void;
 }) => {
-  const { user, logout, isAmbientEnabled, toggleAmbientMode } = useContext(AuthContext);
+  const { user, logout, isAmbientEnabled, toggleAmbientMode, isGridViewEnabled, toggleGridView } =
+    useContext(AuthContext);
   const navigation = useNavigation<any>();
   const theme = useTheme();
 
@@ -581,6 +582,39 @@ const ProfileHeader = ({
                 <Switch
                   value={isAmbientEnabled}
                   onValueChange={toggleAmbientMode}
+                  color={theme.colors.primary}
+                />
+              </View>
+
+              <Divider style={{ marginVertical: 20, opacity: 0.5 }} />
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                <View style={{ flex: 1, marginRight: 16 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: theme.colors.onSurface,
+                    }}>
+                    Post Grid Layout
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: theme.colors.onSurfaceVariant,
+                      marginTop: 2,
+                    }}>
+                    Use Facebook-style grid for multiple images. Disable for carousel.
+                  </Text>
+                </View>
+                <Switch
+                  value={isGridViewEnabled}
+                  onValueChange={toggleGridView}
                   color={theme.colors.primary}
                 />
               </View>
