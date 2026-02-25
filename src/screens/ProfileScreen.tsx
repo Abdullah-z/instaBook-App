@@ -221,13 +221,10 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         {
           translateY: interpolate(
             scrollY.value,
-            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, -HEADER_HEIGHT * 0.5],
+            [0, HEADER_HEIGHT],
+            [0, -HEADER_HEIGHT * 0.5],
             'clamp'
           ),
-        },
-        {
-          scale: interpolate(scrollY.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1], 'clamp'),
         },
       ],
     };
@@ -248,7 +245,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         ? textResult === 9
         : result === 9;
 
-  const renderHeader = () => {
+  const renderHeader = React.useCallback(() => {
     if (!profileUser || !user) return null;
     return (
       <View>
@@ -308,7 +305,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         </View>
       </View>
     );
-  };
+  }, [profileUser, user, id, totalPosts, activeTab, theme, indicatorStyle, loadProfile]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -361,7 +358,7 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         isLoading={loading}
         isLoadingMore={loadingMore}
         loadMoreVisible={showLoadMoreButton}
-        ListHeaderComponent={renderHeader()}
+        ListHeaderComponent={renderHeader}
         onScroll={scrollHandler}
         contentContainerStyle={{ paddingTop: 0 }}
         scrollEnabled={true}
