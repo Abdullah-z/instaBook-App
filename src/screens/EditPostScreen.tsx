@@ -72,7 +72,7 @@ const EditPostScreen = () => {
   const [textColor, setTextColor] = useState(
     initialPost?.textStyle?.color || theme.colors.onSurface
   );
-  const [fontSize, setFontSize] = useState(initialPost?.textStyle?.fontSize || 24);
+  const [fontSize, setFontSize] = useState(initialPost?.textStyle?.fontSize || 16);
   const [showStyleControls, setShowStyleControls] = useState(false);
 
   // Poll State
