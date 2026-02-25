@@ -1,15 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import {
-  View,
-  Text,
-  Image,
-  Dimensions,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
+import { View, Text, Image, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from 'react-native-paper';
 import { POST_BACKGROUNDS } from '../../constants/postTheme';
@@ -63,8 +55,8 @@ const GridItem = React.memo(({ item, index, navigation, imageSize }: any) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 50)
-        .duration(400)
+      entering={FadeInDown.delay(Math.min(index * 50, 300))
+        .duration(350)
         .springify()}>
       <TouchableOpacity
         onPress={() => navigation.navigate('PostDetail', { postId: item._id, post: item })}>
@@ -111,6 +103,8 @@ const GridItem = React.memo(({ item, index, navigation, imageSize }: any) => {
                 margin: 0.5,
                 backgroundColor: '#eee',
               }}
+              resizeMode="cover"
+              fadeDuration={0}
             />
             {isVideo && (
               <View
@@ -171,12 +165,14 @@ const PostGrid = ({
       numColumns={3}
       keyExtractor={(item) => item._id}
       renderItem={renderItem}
-      initialNumToRender={12}
-      maxToRenderPerBatch={6}
-      windowSize={10}
-      removeClippedSubviews={Platform.OS === 'android'}
+      initialNumToRender={9}
+      maxToRenderPerBatch={9}
+      updateCellsBatchingPeriod={50}
+      windowSize={5}
+      removeClippedSubviews={true}
       ListHeaderComponent={ListHeaderComponent}
       onScroll={onScroll}
+      scrollEventThrottle={16}
       contentContainerStyle={contentContainerStyle}
       scrollEnabled={scrollEnabled}
       ListEmptyComponent={() => (
