@@ -1,7 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { View, Text, Image, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from 'react-native-paper';
 import { POST_BACKGROUNDS } from '../../constants/postTheme';
@@ -55,9 +57,13 @@ const GridItem = React.memo(({ item, index, navigation, imageSize }: any) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(Math.min(index * 50, 300))
-        .duration(350)
-        .springify()}>
+      entering={
+        index < 12
+          ? FadeInDown.delay(Math.min(index * 50, 300))
+              .duration(350)
+              .springify()
+          : undefined
+      }>
       <TouchableOpacity
         onPress={() => navigation.navigate('PostDetail', { postId: item._id, post: item })}>
         {!firstImage && !youtubeId ? (
@@ -103,8 +109,9 @@ const GridItem = React.memo(({ item, index, navigation, imageSize }: any) => {
                 margin: 0.5,
                 backgroundColor: '#eee',
               }}
-              resizeMode="cover"
-              fadeDuration={0}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
             {isVideo && (
               <View
@@ -159,16 +166,15 @@ const PostGrid = ({
     [navigation]
   );
 
+  const AnimatedFlashList = React.useMemo(() => Animated.createAnimatedComponent(FlashList), []);
+
   return (
-    <Animated.FlatList
+    <AnimatedFlashList
       data={posts}
       numColumns={3}
-      keyExtractor={(item) => item._id}
+      keyExtractor={(item: any) => item._id}
       renderItem={renderItem}
-      initialNumToRender={9}
-      maxToRenderPerBatch={9}
-      updateCellsBatchingPeriod={50}
-      windowSize={5}
+      estimatedItemSize={imageSize}
       removeClippedSubviews={true}
       ListHeaderComponent={ListHeaderComponent}
       onScroll={onScroll}

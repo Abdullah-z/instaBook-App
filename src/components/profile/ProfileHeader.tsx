@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, Linking, Image, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import ImageView from 'react-native-image-viewing';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Avatar, useTheme, Switch, Divider } from 'react-native-paper';
@@ -123,6 +124,8 @@ const ProfileHeader = ({
                   borderWidth: 2,
                   borderColor: theme.colors.outlineVariant,
                 }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
               />
             </TouchableOpacity>
           </Animated.View>

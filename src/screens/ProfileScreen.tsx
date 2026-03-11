@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import ImageView from 'react-native-image-viewing';
 import { useRoute } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
@@ -228,22 +228,9 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
         },
       ],
     };
-  });
+  }, []);
 
-  if (loading && !profileUser) {
-    return (
-      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
-
-  const showLoadMoreButton =
-    activeTab === 'saved'
-      ? savedResult === 9
-      : activeTab === 'text'
-        ? textResult === 9
-        : result === 9;
+  const AnimatedImage = React.useMemo(() => Animated.createAnimatedComponent(Image), []);
 
   const renderHeader = React.useCallback(() => {
     if (!profileUser || !user) return null;
@@ -307,12 +294,30 @@ const ProfileScreen = ({ userId }: { userId?: string }) => {
     );
   }, [profileUser, user, id, totalPosts, activeTab, theme, indicatorStyle, loadProfile]);
 
+  if (loading && !profileUser) {
+    return (
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  const showLoadMoreButton =
+    activeTab === 'saved'
+      ? savedResult === 9
+      : activeTab === 'text'
+        ? textResult === 9
+        : result === 9;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {profileUser && (
-        <Animated.Image
+        <AnimatedImage
           source={{ uri: profileUser.cover || 'https://picsum.photos/800/400' }}
           style={[styles.headerImage, headerAnimatedStyle]}
+          contentFit="cover"
+          priority="high"
+          cachePolicy="memory-disk"
         />
       )}
 
