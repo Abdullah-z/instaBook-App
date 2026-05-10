@@ -5,6 +5,7 @@ import moment from 'moment';
 import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
 import InputComment from './InputComment';
 import { CommentType } from '../types/types';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   reply: CommentType;
@@ -68,7 +69,11 @@ const ReplyDisplay: React.FC<Props> = ({
         </View>
         <View style={styles.likeSection}>
           <TouchableOpacity onPress={handleReplyLikeToggle}>
-            <Text style={styles.heart}>{replyHasLiked ? '❤️' : '🤍'}</Text>
+            <Ionicons
+              name={replyHasLiked ? 'heart' : 'heart-outline'}
+              size={16}
+              color={replyHasLiked ? theme.colors.error : theme.colors.onSurfaceVariant}
+            />
           </TouchableOpacity>
           <Text style={[styles.likeCount, { color: theme.colors.onSurfaceVariant }]}>
             {replyLikes.length}

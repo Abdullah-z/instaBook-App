@@ -12,6 +12,7 @@ import {
   Image,
   Dimensions,
   Modal as RNModal,
+  TextInput as RNTextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import ImageView from 'react-native-image-viewing';
@@ -25,7 +26,9 @@ import {
   savePost,
   unsavePost,
   deletePostAPI,
+  sharePostAPI,
 } from '../api/postAPI';
+import Toast from 'react-native-toast-message';
 import { addCommentAPI, deleteCommentAPI, updateCommentAPI } from '../api/commentAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
 import { SocketContext } from '../auth/SocketContext';
@@ -37,7 +40,12 @@ import { CommentType } from '../types/types';
 import { Ionicons } from '@expo/vector-icons';
 import HashtagText from '../components/HashtagText';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import YoutubePlayer from 'react-native-youtube-iframe';
@@ -81,6 +89,18 @@ const PostScreen = () => {
   const [playVideo, setPlayVideo] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareContent, setShareContent] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+
+  const likeScale = useSharedValue(1);
+
+  const animatedLikeStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: likeScale.value }],
+    };
+  });
 
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue(0);
@@ -200,6 +220,7 @@ const PostScreen = () => {
     setIsLiked(true);
     setLikes((prev) => prev + 1);
     try {
+      likeScale.value = withSequence(withSpring(1.5), withSpring(1));
       if (!user) return;
       await likePostAPI(post._id);
       const msg = {
@@ -223,6 +244,7 @@ const PostScreen = () => {
     setIsLiked(false);
     setLikes((prev) => prev - 1);
     try {
+      likeScale.value = withSequence(withSpring(1.5), withSpring(1));
       if (!user) return;
       await unlikePostAPI(post._id);
       const msg = {
@@ -251,6 +273,28 @@ const PostScreen = () => {
       }
     } catch (err) {
       console.error('Save error:', err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!post) return;
+    setIsSharing(true);
+    try {
+      await sharePostAPI(post._id, shareContent);
+      setShareModalVisible(false);
+      setShareContent('');
+      Toast.show({
+        type: 'success',
+        text1: 'Post shared successfully!',
+      });
+    } catch (err: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to share post',
+        text2: err.response?.data?.msg || err.message,
+      });
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -312,7 +356,13 @@ const PostScreen = () => {
                 {post?.user && (
                   <TouchableOpacity
                     onPress={() => (navigation as any).navigate('Profile', { id: post.user._id })}>
-                    <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
+                    {post.user.avatar &&
+                    typeof post.user.avatar === 'string' &&
+                    post.user.avatar.trim() !== '' ? (
+                      <Avatar.Image size={40} source={{ uri: post.user.avatar }} />
+                    ) : (
+                      <Avatar.Icon size={40} icon="account" />
+                    )}
                   </TouchableOpacity>
                 )}
                 <View style={styles.userInfo}>
@@ -325,7 +375,11 @@ const PostScreen = () => {
                   </Text>
                   {post.address ? (
                     <View style={styles.locationContainer}>
-                      <Ionicons name="location" size={12} color={theme.colors.onSurfaceVariant} />
+                      <Ionicons
+                        name="location-outline"
+                        size={11}
+                        color={theme.colors.onSurfaceVariant}
+                      />
                       <Text style={[styles.locationText, { color: theme.colors.onSurfaceVariant }]}>
                         {post.address}
                       </Text>
@@ -339,7 +393,13 @@ const PostScreen = () => {
                   <Menu
                     visible={menuVisible}
                     onDismiss={closeMenu}
-                    anchor={<IconButton icon="dots-vertical" onPress={openMenu} />}>
+                    anchor={
+                      <IconButton
+                        icon="dots-horizontal"
+                        onPress={openMenu}
+                        iconColor={theme.colors.onSurfaceVariant}
+                      />
+                    }>
                     <Menu.Item
                       onPress={() => {
                         closeMenu();
@@ -534,12 +594,12 @@ const PostScreen = () => {
                   marginTop: 10,
                   borderRadius: 10,
                   overflow: 'hidden',
-                  height: 240,
+                  height: 350,
                   backgroundColor: '#000',
                 }}>
                 {playVideo ? (
                   <YoutubePlayer
-                    height={240}
+                    height={450}
                     play={true}
                     videoId={getYoutubeId(post.content) || ''}
                     onChangeState={(state: string) => {
@@ -574,32 +634,54 @@ const PostScreen = () => {
             {/* Actions */}
             <View style={styles.actions}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <TouchableOpacity onPress={handleLike}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: isLiked ? theme.colors.error : theme.colors.onSurface,
-                    }}>
-                    {isLiked ? '❤️ Unlike' : '🤍 Like'}
+                <TouchableOpacity
+                  onPress={isLiked ? handleUnlike : handleLike}
+                  style={styles.actionButton}>
+                  <Animated.View style={animatedLikeStyle}>
+                    <Ionicons
+                      name={isLiked ? 'heart' : 'heart-outline'}
+                      size={24}
+                      color={isLiked ? theme.colors.error : theme.colors.onSurfaceVariant}
+                    />
+                  </Animated.View>
+                  <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                    {likes}
                   </Text>
                 </TouchableOpacity>
 
-                <Text style={{ marginLeft: 10, color: theme.colors.onSurface }}>{likes} likes</Text>
+                <View style={styles.actionButton}>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={22}
+                    color={theme.colors.onSurfaceVariant}
+                  />
+                  <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                    {comments.length}
+                  </Text>
+                </View>
 
-                <Text
-                  style={{ marginLeft: 20, fontSize: 14, color: theme.colors.onSurfaceVariant }}>
-                  💬 {comments.length} comment{comments.length !== 1 ? 's' : ''}
-                </Text>
+                {!post.sharedPost && (
+                  <TouchableOpacity
+                    onPress={() => setShareModalVisible(true)}
+                    style={styles.actionButton}>
+                    <Ionicons
+                      name="share-social-outline"
+                      size={22}
+                      color={theme.colors.onSurfaceVariant}
+                    />
+                    <Text style={[styles.actionCount, { color: theme.colors.onSurfaceVariant }]}>
+                      Share
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {post.user && user && post.user._id !== user._id && (
-                <TouchableOpacity
-                  onPress={handleToggleSave}
-                  style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity onPress={handleToggleSave} style={styles.iconButton}>
                   <Ionicons
                     name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                    size={20}
-                    color={isSaved ? theme.colors.primary : theme.colors.onSurface}
+                    size={22}
+                    color={isSaved ? theme.colors.primary : theme.colors.onSurfaceVariant}
                   />
                 </TouchableOpacity>
               )}
@@ -676,6 +758,42 @@ const PostScreen = () => {
           );
         }}
       />
+
+      <RNModal
+        visible={shareModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>Share Post</Text>
+              <IconButton icon="close" onPress={() => setShareModalVisible(false)} />
+            </View>
+            <RNTextInput
+              placeholder="What's on your mind?"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={shareContent}
+              onChangeText={setShareContent}
+              style={[
+                styles.shareInput,
+                { color: theme.colors.onSurface, borderColor: theme.colors.outlineVariant },
+              ]}
+              multiline
+            />
+            <TouchableOpacity
+              onPress={handleShare}
+              disabled={isSharing}
+              style={[styles.shareBtn, { backgroundColor: theme.colors.primary }]}>
+              {isSharing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.shareBtnText}>Share Now</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </RNModal>
     </KeyboardAvoidingView>
   );
 };
@@ -704,8 +822,62 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: 'bold' },
   actions: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 8,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  actionCount: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  iconButton: {
+    padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    minHeight: 300,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  shareInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    height: 120,
+    textAlignVertical: 'top',
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  shareBtn: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  shareBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

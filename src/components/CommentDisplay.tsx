@@ -4,6 +4,7 @@ import { useTheme } from 'react-native-paper';
 import moment from 'moment';
 import { CommentType } from '../types/types';
 import InputComment from './InputComment';
+import { Ionicons } from '@expo/vector-icons';
 import { likeCommentAPI, unlikeCommentAPI } from '../api/commentAPI';
 import ReplyDisplay from './ReplyDisplay';
 
@@ -75,7 +76,11 @@ const CommentDisplay: React.FC<Props> = ({
         </View>
         <View style={styles.likeSection}>
           <TouchableOpacity onPress={onLikeToggle}>
-            <Text style={styles.heart}>{liked ? '❤️' : '🤍'}</Text>
+            <Ionicons
+              name={liked ? 'heart' : 'heart-outline'}
+              size={18}
+              color={liked ? theme.colors.error : theme.colors.onSurfaceVariant}
+            />
           </TouchableOpacity>
           <Text style={[styles.likeCount, { color: theme.colors.onSurfaceVariant }]}>
             {likesArray.length}
