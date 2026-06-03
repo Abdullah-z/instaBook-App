@@ -61,4 +61,12 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# JVM crash/error logs
+*.log
+
+# Ignore android build/cache folders in local modules
+modules/*/android/build/
+modules/*/android/.gradle/
+modules/*/android/.idea/
+
 # @end expo-cli
