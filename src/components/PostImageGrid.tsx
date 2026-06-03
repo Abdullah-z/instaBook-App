@@ -48,6 +48,45 @@ const MediaItem = ({ item, style, isVideo, showOverlay, overlayCount, onPress }:
   );
 };
 
+const SingleImageItem = ({ item, isVideo, onPress }: any) => {
+  const [aspectRatio, setAspectRatio] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!isVideo && item?.url) {
+      Image.getSize(
+        item.url,
+        (width, height) => {
+          if (width > 0 && height > 0) {
+            setAspectRatio(width / height);
+          }
+        },
+        (error) => {
+          console.log('Failed to get image size', error);
+        }
+      );
+    }
+  }, [item?.url, isVideo]);
+
+  const computedHeight = aspectRatio ? GRID_WIDTH / aspectRatio : 350;
+  // Ensure we don't collapse on loading/error, but otherwise let it scale to 100% of its proportional height
+  const finalHeight = Math.max(computedHeight, 150);
+
+  return (
+    <MediaItem
+      item={item}
+      isVideo={isVideo}
+      onPress={onPress}
+      style={{
+        width: GRID_WIDTH,
+        height: finalHeight,
+        borderRadius: 12,
+        overflow: 'hidden',
+        alignSelf: 'center',
+      }}
+    />
+  );
+};
+
 const PostImageGrid = ({ images, onImagePress }: PostImageGridProps) => {
   const count = images.length;
   if (count === 0) return null;
@@ -57,11 +96,10 @@ const PostImageGrid = ({ images, onImagePress }: PostImageGridProps) => {
   // Layout for 1 image
   if (count === 1) {
     return (
-      <MediaItem
+      <SingleImageItem
         item={images[0]}
         isVideo={isItemVideo(images[0])}
         onPress={() => onImagePress(0)}
-        style={{ width: GRID_WIDTH, height: 350, borderRadius: 12, overflow: 'hidden' }}
       />
     );
   }
