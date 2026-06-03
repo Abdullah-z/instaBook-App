@@ -1,3 +1,18 @@
+// Workaround for CMake error on Windows: Ensure missing codegen directories exist during configuration phase.
+// This prevents CMake from failing before the build actually starts.
+def nodeModulesPathForWorkaround = "${projectDir}/../../node_modules"
+[
+    "@react-native-vector-icons/material-design-icons/android/build/generated/source/codegen/jni/",
+    "@shopify/flash-list/android/build/generated/source/codegen/jni/",
+    "react-native-reanimated/android/build/generated/source/codegen/jni/",
+    "react-native-webview/android/build/generated/source/codegen/jni/"
+].each { dir ->
+    def d = file("${nodeModulesPathForWorkaround}/${dir}")
+    if (!d.exists()) {
+        d.mkdirs()
+    }
+}
+
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
