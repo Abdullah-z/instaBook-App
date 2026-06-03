@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
@@ -41,6 +41,39 @@ const HomeScreen = () => {
   const theme = useTheme();
 
   const bottomSheetRef = useRef<BottomSheet>(null);
+  
+  const lastScrollY = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const currentScrollY = event.contentOffset.y;
+      const diff = currentScrollY - lastScrollY.value;
+      
+      if (currentScrollY <= 0) {
+        translateY.value = 0;
+      } else {
+        if (diff > 0) {
+          translateY.value = Math.max(translateY.value - diff, -100);
+        } else if (diff < 0) {
+          translateY.value = Math.min(translateY.value - diff, 0);
+        }
+      }
+      lastScrollY.value = currentScrollY;
+    },
+  });
+
+  const shortcutsAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 10,
+    };
+  });
+
   const snapPoints = useMemo(() => ['80%'], []);
   const navigation = useNavigation<any>();
 
@@ -214,7 +247,7 @@ const HomeScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       {/* Screen Specific Shortcuts Row */}
-      <View style={[styles.shortcutsRow, { backgroundColor: theme.colors.surface }]}>
+      <Animated.View style={[styles.shortcutsRow, { backgroundColor: theme.colors.surface }, shortcutsAnimatedStyle]}>
         <TouchableOpacity
           style={styles.shortcutBtn}
           onPress={() => navigation.navigate('Marketplace' as never)}>
@@ -235,10 +268,12 @@ const HomeScreen = () => {
           onPress={() => navigation.navigate('Discover' as never)}>
           <Ionicons name="compass-outline" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <Animated.FlatList
         ref={flatListRef}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         data={visiblePosts}
         ListHeaderComponent={renderHeader}
         renderItem={({ item, index }: { item: any; index: number }) => (
@@ -247,7 +282,7 @@ const HomeScreen = () => {
           </Animated.View>
         )}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingTop: 85 }]}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         refreshing={refreshing}
