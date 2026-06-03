@@ -24,6 +24,7 @@ import CreateEventScreen from '../screens/CreateEventScreen';
 import EventDetailScreen from '../screens/EventDetailScreen';
 import EditEventScreen from '../screens/EditEventScreen';
 import MyEventsScreen from '../screens/MyEventsScreen';
+import NearbyChatScreen from '../screens/NearbyChatScreen';
 
 import { AuthContext } from '../auth/AuthContext';
 import PageScreen from '../screens/PageScreen';
@@ -47,7 +48,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
-  const { token, userType, logout, loading, showOnboarding } = useContext(AuthContext);
+  const { token, user, userType, logout, loading, showOnboarding } = useContext(AuthContext);
   const { notification, showNotification, setShowNotification } = useContext(SocketContext);
   const theme = useTheme();
 
@@ -74,7 +75,7 @@ const AppNavigator = () => {
             component={OnboardingScreen}
             options={{ headerShown: false }}
           />
-        ) : token ? (
+        ) : (token || user) ? (
           <>
             <Stack.Screen
               name="Main"
@@ -190,6 +191,11 @@ const AppNavigator = () => {
               name="FollowRequests"
               component={require('../screens/FollowRequestsScreen').default}
               options={{ title: 'Follow Requests', headerShown: true }}
+            />
+            <Stack.Screen
+              name="NearbyChat"
+              component={NearbyChatScreen}
+              options={{ headerShown: false }}
             />
           </>
         ) : (
