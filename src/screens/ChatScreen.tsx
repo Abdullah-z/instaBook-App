@@ -15,6 +15,7 @@ import {
   Switch,
   Pressable,
   Modal,
+  Animated,
 } from 'react-native';
 import { Avatar, useTheme } from 'react-native-paper';
 import ImageView from 'react-native-image-viewing';
@@ -49,6 +50,34 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ─── Animated typing dot ─────────────────────────────────────────────────────
+const TypingDot = ({ delay, theme }: { delay: number; theme: any }) => {
+  const bounce = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(bounce, { toValue: -6, duration: 300, useNativeDriver: true }),
+        Animated.timing(bounce, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  return (
+    <Animated.View
+      style={{
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: theme.colors.onSurfaceVariant,
+        transform: [{ translateY: bounce }],
+      }}
+    />
+  );
+};
+
 const ChatScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -71,6 +100,9 @@ const ChatScreen = () => {
   const [viewerImages, setViewerImages] = useState<any[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const [isTyping, setIsTyping] = useState(false);      // other user is typing
+  const [typingUser, setTypingUser] = useState('');      // who is typing (for groups)
+  const typingTimeoutRef = useRef<any>(null);
 
   // Use avatar from params, or try to find it from messages later if needed.
   // Ideally it should be passed in navigation.
@@ -372,6 +404,8 @@ const ChatScreen = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
+    setMessages([]);
     loadMessages();
   }, [userId]);
 
@@ -409,8 +443,32 @@ const ChatScreen = () => {
 
     socket.on('addMessageToClient', handleIncomingMessage);
 
+    // ── Typing indicator listeners ──────────────────────────────────────────
+    const handleTyping = (data: any) => {
+      if (!data) return;
+      const typerId = data.senderId || data.userId;
+      const typerName = data.username || data.senderName || '';
+      // Only show if it's from the person we're chatting with
+      const isRelevant = isGroup
+        ? data.conversationId === userId
+        : typerId === userId;
+      if (!isRelevant) return;
+
+      setIsTyping(true);
+      setTypingUser(typerName);
+      // Auto-clear after 3 seconds
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        setTypingUser('');
+      }, 3000);
+    };
+
+    socket.on('typing', handleTyping);
+
     return () => {
       socket.off('addMessageToClient', handleIncomingMessage);
+      socket.off('typing', handleTyping);
     };
   }, [socket, userId, isGroup]);
 
@@ -430,6 +488,18 @@ const ChatScreen = () => {
     const newMedia = [...media];
     newMedia.splice(index, 1);
     setMedia(newMedia);
+  };
+
+  const handleTextChange = (value: string) => {
+    setText(value);
+    if (socket && socket.connected) {
+      socket.emit('typing', {
+        senderId: user?._id,
+        username: user?.username || user?.fullname || '',
+        recipient: isGroup ? null : userId,
+        conversationId: isGroup ? userId : null,
+      });
+    }
   };
 
   const handleSend = async (locationData?: any) => {
@@ -1095,6 +1165,37 @@ const ChatScreen = () => {
         }
       />
 
+      {/* Typing Indicator */}
+      {isTyping && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 6,
+          }}>
+          <View
+            style={{
+              backgroundColor: theme.colors.surfaceVariant,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}>
+            {[0, 1, 2].map((i) => (
+              <TypingDot key={i} delay={i * 180} theme={theme} />
+            ))}
+          </View>
+          {isGroup && typingUser ? (
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 11, marginLeft: 8 }}>
+              {typingUser} is typing...
+            </Text>
+          ) : null}
+        </View>
+      )}
+
       {/* Image Preview */}
       {media.length > 0 && (
         <View
@@ -1159,7 +1260,7 @@ const ChatScreen = () => {
             placeholder="Message..."
             placeholderTextColor={theme.colors.onSurfaceVariant}
             value={text}
-            onChangeText={setText}
+            onChangeText={handleTextChange}
             multiline
           />
 
