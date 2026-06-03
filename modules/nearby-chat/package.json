@@ -1,0 +1,12 @@
+{
+  "name": "nearby-chat",
+  "version": "1.0.0",
+  "description": "Custom Expo Module for Google Nearby Connections Bluetooth messaging",
+  "main": "src/index.ts",
+  "expo": {
+    "name": "NearbyChat",
+    "android": {
+      "package": "modules.nearbychat"
+    }
+  }
+}
