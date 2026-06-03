@@ -77,7 +77,8 @@
     "react-native-webview": "13.13.5",
     "react-native-youtube-iframe": "^2.4.1",
     "socket.io-client": "^4.8.1",
-    "village": "^0.0.2-alpha"
+    "village": "^0.0.2-alpha",
+    "nearby-chat": "file:./modules/nearby-chat"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
