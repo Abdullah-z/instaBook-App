@@ -200,6 +200,11 @@ const MessagesScreen = () => {
             <Ionicons name="people" size={22} color={theme.colors.onSurface} />
           </TouchableOpacity>
           <TouchableOpacity
+            onPress={() => navigation.navigate('NearbyChat' as never)}
+            style={[styles.headerIconBtn, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Ionicons name="radio" size={22} color={theme.colors.onSurface} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('Search', { isChatSearch: true })}
             style={[styles.headerIconBtn, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Ionicons name="search" size={22} color={theme.colors.onSurface} />
@@ -327,7 +332,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: 50,
   },
   headerTitle: {},
   headerIconBtn: {
