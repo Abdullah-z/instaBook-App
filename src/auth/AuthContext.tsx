@@ -64,8 +64,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkOnboarding();
     loadAmbientPref();
     loadGridViewPref();
-    refreshToken();
+    loadCachedUser(); // Restore session instantly before network
+    refreshToken();  // Then try to get a fresh token in background
   }, []);
+
+  // Load previously cached user so app works offline immediately
+  const loadCachedUser = async () => {
+    try {
+      const cached = await AsyncStorage.getItem('cached_user');
+      const cachedType = await AsyncStorage.getItem('cached_user_type');
+      if (cached) {
+        const parsedUser = JSON.parse(cached);
+        setUser(parsedUser);
+        setUserType((cachedType as 'user' | 'admin' | null) || 'user');
+      }
+    } catch (e) {
+      console.log('Failed to load cached user', e);
+    }
+  };
 
   const loadGridViewPref = async () => {
     try {
@@ -137,16 +153,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setGlobalToken(res.data.access_token);
         setUser(res.data.user);
         setUserType(res.data.userType);
+        // Update the cache with fresh data
+        await AsyncStorage.setItem('cached_user', JSON.stringify(res.data.user));
+        await AsyncStorage.setItem('cached_user_type', res.data.userType || 'user');
       } else {
         throw new Error('No access token returned');
       }
-    } catch (err) {
-      console.log('Refresh token failed', err);
-      setToken(null);
-      setGlobalToken(null);
-      setUser(null);
-      setUserType(null);
-      await AsyncStorage.removeItem('refresh_token');
+    } catch (err: any) {
+      const isNetworkError =
+        err?.message === 'Network Error' ||
+        err?.code === 'ECONNABORTED' ||
+        !err?.response;
+
+      if (isNetworkError) {
+        // OFFLINE: keep cached session alive — don't log the user out
+        console.log('[AuthContext] Offline — keeping cached session active');
+        // token stays null (no server calls work) but user stays set from loadCachedUser
+      } else {
+        // Real auth error (expired/invalid refresh token) — clear session
+        console.log('[AuthContext] Auth error — clearing session:', err?.response?.status);
+        setToken(null);
+        setGlobalToken(null);
+        setUser(null);
+        setUserType(null);
+        await AsyncStorage.multiRemove(['refresh_token', 'cached_user', 'cached_user_type']);
+      }
     } finally {
       setLoading(false);
     }
@@ -169,6 +200,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (res.data.refresh_token) {
       await AsyncStorage.setItem('refresh_token', res.data.refresh_token);
     }
+    // Cache user for offline use
+    await AsyncStorage.setItem('cached_user', JSON.stringify(res.data.user));
+    await AsyncStorage.setItem('cached_user_type', res.data.userType || 'user');
   };
 
   const register = async (data: any) => {
@@ -176,10 +210,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(res.data.access_token);
     setGlobalToken(res.data.access_token);
     setUser(res.data.user);
-    setUserType('user'); // Default to user
+    setUserType('user');
     if (res.data.refresh_token) {
       await AsyncStorage.setItem('refresh_token', res.data.refresh_token);
     }
+    // Cache for offline use
+    await AsyncStorage.setItem('cached_user', JSON.stringify(res.data.user));
+    await AsyncStorage.setItem('cached_user_type', 'user');
   };
   const logout = async () => {
     try {
@@ -191,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setGlobalToken(null);
       setUser(null);
       setUserType(null);
-      await AsyncStorage.removeItem('refresh_token');
+      await AsyncStorage.multiRemove(['refresh_token', 'cached_user', 'cached_user_type']);
     }
   };
 
