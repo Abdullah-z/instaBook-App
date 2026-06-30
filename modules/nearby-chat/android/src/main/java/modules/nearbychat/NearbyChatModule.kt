@@ -27,6 +27,7 @@ class NearbyChatModule : Module() {
   // We only process (copy + emit) after SUCCESS because onPayloadReceived(FILE)
   // fires when the download STARTS, not ends.
   private val completedFilePayloadIds = mutableSetOf<Long>()
+  private val outgoingFilePayloadIds = mutableSetOf<Long>()
 
   private val payloadCallback = object : PayloadCallback() {
     override fun onPayloadReceived(endpointId: String, payload: Payload) {
@@ -43,6 +44,15 @@ class NearbyChatModule : Module() {
               incomingFileMeta[payloadId] = Triple(endpointId, parts[1], parts[2])
               Log.d(TAG, "File meta received: payloadId=$payloadId sender=${parts[1]} file=${parts[2]}")
               
+              // Notify receiver frontend that file meta is received, so we can display a progress bubble
+              sendEvent("onFileMetaReceived", mapOf(
+                "payloadId" to payloadId.toString(),
+                "endpointId" to endpointId,
+                "senderName" to parts[1],
+                "fileName" to parts[2],
+                "timestamp" to System.currentTimeMillis()
+              ))
+
               // Only process if the file transfer already completed (SUCCESS fired).
               // If the transfer is still in progress, processFilePayload will be called
               // from the SUCCESS branch of onPayloadTransferUpdate instead.
@@ -76,29 +86,52 @@ class NearbyChatModule : Module() {
     }
 
     override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
+      val isIncoming = incomingFilePayloads.containsKey(update.payloadId)
+      val isOutgoing = outgoingFilePayloadIds.contains(update.payloadId)
+      val isFile = isIncoming || isOutgoing
+
+      if (!isFile) return
+
       when (update.status) {
         PayloadTransferUpdate.Status.IN_PROGRESS -> {
           sendEvent("onImageProgress", mapOf(
-            "payloadId" to update.payloadId,
+            "payloadId" to update.payloadId.toString(),
             "bytesTransferred" to update.bytesTransferred,
             "totalBytes" to update.totalBytes,
-            "status" to "progress"
+            "status" to "progress",
+            "endpointId" to endpointId,
+            "direction" to if (isIncoming) "incoming" else "outgoing"
           ))
         }
         PayloadTransferUpdate.Status.SUCCESS -> {
           Log.d(TAG, "Payload SUCCESS: id=${update.payloadId}")
-          if (incomingFilePayloads.containsKey(update.payloadId)) {
-            // Mark as complete, then process.
-            // If metadata hasn't arrived yet, processFilePayload will return early;
-            // it will be called again from the BYTES handler once meta arrives.
+          sendEvent("onImageProgress", mapOf(
+            "payloadId" to update.payloadId.toString(),
+            "bytesTransferred" to update.totalBytes,
+            "totalBytes" to update.totalBytes,
+            "status" to "success",
+            "endpointId" to endpointId,
+            "direction" to if (isIncoming) "incoming" else "outgoing"
+          ))
+          if (isIncoming) {
             completedFilePayloadIds.add(update.payloadId)
             processFilePayload(update.payloadId)
           }
+          outgoingFilePayloadIds.remove(update.payloadId)
         }
         PayloadTransferUpdate.Status.FAILURE -> {
+          sendEvent("onImageProgress", mapOf(
+            "payloadId" to update.payloadId.toString(),
+            "bytesTransferred" to 0L,
+            "totalBytes" to 0L,
+            "status" to "failed",
+            "endpointId" to endpointId,
+            "direction" to if (isIncoming) "incoming" else "outgoing"
+          ))
           incomingFilePayloads.remove(update.payloadId)
           incomingFileMeta.remove(update.payloadId)
           completedFilePayloadIds.remove(update.payloadId)
+          outgoingFilePayloadIds.remove(update.payloadId)
           Log.e(TAG, "File transfer FAILED for payloadId=${update.payloadId}")
         }
         else -> {}
@@ -123,8 +156,12 @@ class NearbyChatModule : Module() {
         return
       }
 
-      // Create a stable destination in cacheDir
-      val destFile = File(ctx.cacheDir, "nearby_img_${System.currentTimeMillis()}.jpg")
+      // Create a stable destination in cacheDir with the original file extension
+      val rawFilename = meta.third
+      val cleanFilename = rawFilename.removePrefix("/room/")
+      val dotIdx = cleanFilename.lastIndexOf('.')
+      val ext = if (dotIdx != -1) cleanFilename.substring(dotIdx) else ".jpg"
+      val destFile = File(ctx.cacheDir, "nearby_file_${System.currentTimeMillis()}$ext")
       
       Log.d(TAG, "Copying received file from Uri $uri to ${destFile.absolutePath}")
       ctx.contentResolver.openInputStream(uri)?.use { input ->
@@ -140,6 +177,7 @@ class NearbyChatModule : Module() {
       
       Log.d(TAG, "✅ File processed successfully: ${destFile.absolutePath}")
       sendEvent("onImageReceived", mapOf(
+        "payloadId" to payloadId.toString(),
         "endpointId" to meta.first,
         "senderName" to meta.second,
         "filePath" to destFile.absolutePath,
@@ -197,7 +235,7 @@ class NearbyChatModule : Module() {
     Name("NearbyChat")
 
     Events("onPeerFound", "onPeerLost", "onConnected", "onDisconnected",
-           "onMessageReceived", "onConnectionFailed", "onImageReceived", "onImageProgress")
+           "onMessageReceived", "onConnectionFailed", "onImageReceived", "onImageProgress", "onFileMetaReceived")
 
     AsyncFunction("startAdvertising") { name: String ->
       val ctx = appContext.reactContext ?: throw Exception("No Android context available")
@@ -235,6 +273,7 @@ class NearbyChatModule : Module() {
         incomingFilePayloads.clear()
         incomingFileMeta.clear()
         completedFilePayloadIds.clear()
+        outgoingFilePayloadIds.clear()
         Log.d(TAG, "✅ Stopped all Nearby activity")
       } catch (e: Exception) {
         Log.e(TAG, "stopAll error: ${e.message}")
@@ -279,6 +318,7 @@ class NearbyChatModule : Module() {
         // NOTE: Do NOT close pfd here. Payload.fromFile() transfers ownership to the
         // Nearby Connections SDK, which closes it automatically once the transfer completes.
         val filePayload = Payload.fromFile(pfd)
+        outgoingFilePayloadIds.add(filePayload.id)
         // Send metadata BYTES first so receiver knows what's coming
         val meta = "FILE_META:${filePayload.id}:$senderName:${file.name}"
         val metaPayload = Payload.fromBytes(meta.toByteArray(StandardCharsets.UTF_8))
@@ -286,6 +326,7 @@ class NearbyChatModule : Module() {
         Tasks.await(Nearby.getConnectionsClient(ctx).sendPayload(endpointId, metaPayload))
         Tasks.await(Nearby.getConnectionsClient(ctx).sendPayload(endpointId, filePayload))
         Log.d(TAG, "✅ Image file queued for send to $endpointId (payloadId=${filePayload.id})")
+        filePayload.id.toString()
       } catch (e: ExecutionException) {
         throw Exception("Image send failed: ${e.cause?.message ?: e.message}")
       }
@@ -297,22 +338,26 @@ class NearbyChatModule : Module() {
       val file = File(filePath)
       if (!file.exists()) throw Exception("Image file not found: $filePath")
 
+      val results = mutableMapOf<String, String>()
       connectedEndpoints.keys.forEach { endpointId ->
         try {
           // Each endpoint needs its OWN PFD + payload instance.
           // Do NOT close the pfd — the SDK takes ownership and closes it after transfer.
           val pfd = android.os.ParcelFileDescriptor.open(file, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
           val filePayload = Payload.fromFile(pfd)
+          outgoingFilePayloadIds.add(filePayload.id)
           val meta = "FILE_META:${filePayload.id}:$senderName:/room/${file.name}"
           val metaPayload = Payload.fromBytes(meta.toByteArray(StandardCharsets.UTF_8))
           
           Tasks.await(Nearby.getConnectionsClient(ctx).sendPayload(endpointId, metaPayload))
           Tasks.await(Nearby.getConnectionsClient(ctx).sendPayload(endpointId, filePayload))
+          results[endpointId] = filePayload.id.toString()
           Log.d(TAG, "✅ Image file queued for broadcast to $endpointId (payloadId=${filePayload.id})")
         } catch (e: Exception) {
           Log.e(TAG, "Broadcast image to $endpointId failed: ${e.message}")
         }
       }
+      results
     }
   }
 }

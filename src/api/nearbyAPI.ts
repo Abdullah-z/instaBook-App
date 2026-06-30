@@ -11,6 +11,7 @@ import {
   addMessageReceivedListener,
   addImageReceivedListener,
   addImageProgressListener,
+  addFileMetaReceivedListener,
 } from '../../modules/nearby-chat/src';
 
 export interface NearbyPeer {
@@ -22,13 +23,17 @@ export interface NearbyPeer {
 
 export interface NearbyMessage {
   id: string;
+  payloadId?: string;
+  payloadIds?: string[];
   senderId: string;
   senderName: string;
   message: string;
   timestamp: number;
   isOwn: boolean;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'file';
   imageUri?: string;
+  fileUri?: string;
+  fileName?: string;
   /** 'room' for broadcasts, endpointId for DM messages */
   targetId: string;
 }
@@ -39,7 +44,8 @@ export type NearbyEventType =
   | 'connected'
   | 'disconnected'
   | 'message_received'
-  | 'image_progress';
+  | 'image_progress'
+  | 'file_meta_received';
 
 type NearbyListener = (data: any) => void;
 
@@ -137,6 +143,68 @@ class NearbyService {
     }
   }
 
+  async sendFile(endpointId: string, fileUri: string, fileName: string) {
+    const filePath = fileUri.startsWith('file://') ? fileUri.slice(7) : fileUri;
+    const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(fileName);
+    const ownMsg: NearbyMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      senderId: 'me',
+      senderName: this.myName,
+      message: isImg ? '📷 Photo' : `📁 ${fileName}`,
+      timestamp: Date.now(),
+      isOwn: true,
+      type: isImg ? 'image' : 'file',
+      imageUri: isImg ? fileUri : undefined,
+      fileUri: !isImg ? fileUri : undefined,
+      fileName: fileName,
+      targetId: endpointId,
+    };
+    this.messages.push(ownMsg);
+    this._emit('message_received', ownMsg);
+    await this._saveMessages();
+    try {
+      const payloadId = await NearbyChatModule.sendImageFile(endpointId, filePath, this.myName);
+      ownMsg.payloadId = payloadId;
+      await this._saveMessages();
+      this._emit('message_received', ownMsg);
+      return payloadId;
+    } catch (e) {
+      console.error('[NearbyService] Send file error:', e);
+      throw e;
+    }
+  }
+
+  async broadcastFile(fileUri: string, fileName: string) {
+    const filePath = fileUri.startsWith('file://') ? fileUri.slice(7) : fileUri;
+    const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(fileName);
+    const ownMsg: NearbyMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      senderId: 'me',
+      senderName: this.myName,
+      message: isImg ? '📷 Photo' : `📁 ${fileName}`,
+      timestamp: Date.now(),
+      isOwn: true,
+      type: isImg ? 'image' : 'file',
+      imageUri: isImg ? fileUri : undefined,
+      fileUri: !isImg ? fileUri : undefined,
+      fileName: fileName,
+      targetId: 'room',
+    };
+    this.messages.push(ownMsg);
+    this._emit('message_received', ownMsg);
+    await this._saveMessages();
+    try {
+      const results = await NearbyChatModule.broadcastImageFile(filePath, this.myName);
+      ownMsg.payloadIds = Object.values(results);
+      await this._saveMessages();
+      this._emit('message_received', ownMsg);
+      return results;
+    } catch (e) {
+      console.error('[NearbyService] Broadcast file error:', e);
+      throw e;
+    }
+  }
+
   async sendImage(endpointId: string, imageUri: string) {
     // imageUri is a file:// path already copied to cacheDir by the caller
     const filePath = imageUri.startsWith('file://') ? imageUri.slice(7) : imageUri;
@@ -144,7 +212,7 @@ class NearbyService {
       id: `${Date.now()}-${Math.random()}`,
       senderId: 'me',
       senderName: this.myName,
-      message: '\ud83d\udcf7 Photo',
+      message: '📷 Photo',
       timestamp: Date.now(),
       isOwn: true,
       type: 'image',
@@ -155,7 +223,11 @@ class NearbyService {
     this._emit('message_received', ownMsg);
     await this._saveMessages();
     try {
-      await NearbyChatModule.sendImageFile(endpointId, filePath, this.myName);
+      const payloadId = await NearbyChatModule.sendImageFile(endpointId, filePath, this.myName);
+      ownMsg.payloadId = payloadId;
+      await this._saveMessages();
+      this._emit('message_received', ownMsg);
+      return payloadId;
     } catch (e) {
       console.error('[NearbyService] Send image error:', e);
       throw e;
@@ -168,7 +240,7 @@ class NearbyService {
       id: `${Date.now()}-${Math.random()}`,
       senderId: 'me',
       senderName: this.myName,
-      message: '\ud83d\udcf7 Photo',
+      message: '📷 Photo',
       timestamp: Date.now(),
       isOwn: true,
       type: 'image',
@@ -179,7 +251,11 @@ class NearbyService {
     this._emit('message_received', ownMsg);
     await this._saveMessages();
     try {
-      await NearbyChatModule.broadcastImageFile(filePath, this.myName);
+      const results = await NearbyChatModule.broadcastImageFile(filePath, this.myName);
+      ownMsg.payloadIds = Object.values(results);
+      await this._saveMessages();
+      this._emit('message_received', ownMsg);
+      return results;
     } catch (e) {
       console.error('[NearbyService] Broadcast image error:', e);
       throw e;
@@ -287,25 +363,72 @@ class NearbyService {
       })
     );
     this.subscriptions.push(
-      addImageReceivedListener((e) => {
-        console.log('[NearbyService] Image received from:', e.senderName);
+      addFileMetaReceivedListener((e) => {
+        console.log('[NearbyService] File meta received:', e.fileName, 'payloadId:', e.payloadId);
         let targetId = e.endpointId;
         if (e.fileName && e.fileName.startsWith('/room/')) {
           targetId = 'room';
         }
-        const msg: NearbyMessage = {
-          id: `${e.timestamp}-${Math.random()}`,
-          senderId: e.endpointId,
-          senderName: e.senderName,
-          message: '📷 Photo',
-          timestamp: e.timestamp,
-          isOwn: false,
-          type: 'image',
-          imageUri: `file://${e.filePath}`,
-          targetId: targetId,
-        };
-        this.messages.push(msg);
-        this._emit('message_received', msg);
+        const cleanFileName = e.fileName.replace(/^\/room\//, '');
+        const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(cleanFileName);
+        
+        // Check if message with this payloadId already exists
+        const existing = this.messages.find(m => m.payloadId === e.payloadId);
+        if (!existing) {
+          const msg: NearbyMessage = {
+            id: e.payloadId, // Use payloadId as temp message id
+            payloadId: e.payloadId,
+            senderId: e.endpointId,
+            senderName: e.senderName,
+            message: isImg ? '📷 Photo' : `📁 ${cleanFileName}`,
+            timestamp: e.timestamp,
+            isOwn: false,
+            type: isImg ? 'image' : 'file',
+            fileName: cleanFileName,
+            targetId: targetId,
+          };
+          this.messages.push(msg);
+          this._emit('message_received', msg);
+          this._saveMessages();
+        }
+      })
+    );
+    this.subscriptions.push(
+      addImageReceivedListener((e) => {
+        console.log('[NearbyService] File/Image received from:', e.senderName, 'payloadId:', e.payloadId);
+        let targetId = e.endpointId;
+        if (e.fileName && e.fileName.startsWith('/room/')) {
+          targetId = 'room';
+        }
+        const fileName = e.fileName || '';
+        const cleanFileName = fileName.replace(/^\/room\//, '');
+        const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(cleanFileName);
+
+        const existing = this.messages.find(m => m.payloadId === e.payloadId || m.id === e.payloadId);
+        if (existing) {
+          existing.imageUri = isImg ? `file://${e.filePath}` : undefined;
+          existing.fileUri = !isImg ? `file://${e.filePath}` : undefined;
+          existing.fileName = cleanFileName;
+          existing.timestamp = e.timestamp;
+          this._emit('message_received', existing);
+        } else {
+          const msg: NearbyMessage = {
+            id: `${e.timestamp}-${Math.random()}`,
+            payloadId: e.payloadId,
+            senderId: e.endpointId,
+            senderName: e.senderName,
+            message: isImg ? '📷 Photo' : `📁 ${cleanFileName}`,
+            timestamp: e.timestamp,
+            isOwn: false,
+            type: isImg ? 'image' : 'file',
+            imageUri: isImg ? `file://${e.filePath}` : undefined,
+            fileUri: !isImg ? `file://${e.filePath}` : undefined,
+            fileName: cleanFileName,
+            targetId: targetId,
+          };
+          this.messages.push(msg);
+          this._emit('message_received', msg);
+        }
         this._saveMessages();
       })
     );
@@ -315,6 +438,9 @@ class NearbyService {
           payloadId: e.payloadId,
           bytesTransferred: e.bytesTransferred,
           totalBytes: e.totalBytes,
+          status: e.status,
+          endpointId: e.endpointId,
+          direction: e.direction,
         });
       })
     );

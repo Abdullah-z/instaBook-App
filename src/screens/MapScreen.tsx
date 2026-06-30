@@ -1,19 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
-import {
-  View,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  StatusBar,
-  Platform,
-  Dimensions,
-  TouchableOpacity,
-  Image,
-  Modal,
-  TextInput,
-  DeviceEventEmitter,
-  ScrollView,
-} from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator, StatusBar, Platform, Dimensions, TouchableOpacity, Modal, TextInput, DeviceEventEmitter, ScrollView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ExpoLocation from 'expo-location';
 import Constants from 'expo-constants';

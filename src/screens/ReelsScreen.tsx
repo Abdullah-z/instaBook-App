@@ -1,17 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  FlatList,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  StatusBar,
-  ActivityIndicator,
-  Image,
-  Share,
-} from 'react-native';
+import { View, Text, StyleSheet, Dimensions, FlatList, TouchableOpacity, TouchableWithoutFeedback, StatusBar, ActivityIndicator, Share } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +8,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getReelsAPI, likePostAPI, unlikePostAPI } from '../api/postAPI';
 import { Avatar } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { createNotification, removeNotification } from '../api/notificationAPI';
 
 const { width, height } = Dimensions.get('window');
@@ -29,7 +18,7 @@ const LIMIT = 3;
 const ReelsScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+  const { socket } = useSocketStore();
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

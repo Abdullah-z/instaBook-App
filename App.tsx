@@ -1,6 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { AuthProvider } from './src/auth/AuthContext';
-import { SocketProvider } from './src/auth/SocketContext';
+import useSocketStore from './src/store/useSocketStore';
+import { AuthContext } from './src/auth/AuthContext';
 import { VoiceCallProvider, VoiceCallContext } from './src/auth/VoiceCallContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -119,17 +120,36 @@ function MainApp() {
 
   return (
     <AuthProvider>
-      <SocketProvider>
-        <VoiceCallProvider>
+      <StoreInitializer />
+      <VoiceCallProvider>
           <PaperProvider theme={paperTheme}>
             <ThemeProvider theme={theme}>
               <AppContent />
             </ThemeProvider>
           </PaperProvider>
-        </VoiceCallProvider>
-      </SocketProvider>
+      </VoiceCallProvider>
     </AuthProvider>
   );
+}
+
+function StoreInitializer() {
+  const { user, token } = useContext(AuthContext);
+  const connectSocket = useSocketStore(state => state.connectSocket);
+  const disconnectSocket = useSocketStore(state => state.disconnectSocket);
+  const refreshNotifications = useSocketStore(state => state.refreshNotifications);
+
+  useEffect(() => {
+    if (token) {
+      refreshNotifications(token);
+    }
+    if (token && user) {
+      connectSocket(user, token);
+    } else {
+      disconnectSocket();
+    }
+  }, [user, token]);
+
+  return null;
 }
 
 function AppContent() {

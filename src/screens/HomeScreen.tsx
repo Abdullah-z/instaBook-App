@@ -1,19 +1,11 @@
-// src/screens/HomeScreen.tsx
+import { Image } from 'expo-image';
 import React, { useEffect, useState, useContext, useRef, useCallback, useMemo } from 'react';
-import {
-  View,
-  FlatList,
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { View, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { deletePostAPI, getPostsAPI, getSuggestionsAPI, getStoriesAPI } from '../api/postAPI';
 import PostCard from '../components/PostCard';
 import StatusBox from '../components/StatusBox';
@@ -22,12 +14,15 @@ import CommentsScreen from './CommentScreen';
 import { useNavigation } from '@react-navigation/native';
 import HeaderLogo from '../components/HeaderLogo';
 import SuggestedUsers from '../components/SuggestedUsers';
+import WeatherCard from '../components/WeatherCard';
+import NewsCard from '../components/NewsCard';
+import API from '../api/axios';
 
 const LIMIT = 4;
 
 const HomeScreen = () => {
   const { token, user } = useContext(AuthContext);
-  const { unreadCount } = useContext(SocketContext);
+  const { unreadCount } = useSocketStore();
   const [visiblePosts, setVisiblePosts] = useState<any[]>([]);
   const [stories, setStories] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -38,6 +33,8 @@ const HomeScreen = () => {
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'Home' | 'For You'>('Home');
+  const [news, setNews] = useState<any[]>([]);
+  const assignedNews = useRef<Record<string, any>>({});
   const theme = useTheme();
 
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -93,6 +90,13 @@ const HomeScreen = () => {
 
       const storiesRes = await getStoriesAPI();
       setStories(storiesRes.stories || []);
+
+      try {
+        const newsRes = await API.get('/external/news');
+        setNews(newsRes.data.articles || []);
+      } catch (err) {
+        console.log('Error fetching news:', err);
+      }
     } catch (err) {
       console.log('Error loading posts or suggestions:', err);
     } finally {
@@ -165,6 +169,7 @@ const HomeScreen = () => {
   const renderHeader = useCallback(
     () => (
       <View>
+        <WeatherCard />
         {/* Stories Bar */}
         <View style={styles.storiesContainer}>
           <FlatList
@@ -227,8 +232,23 @@ const HomeScreen = () => {
     [user, myStoryData, otherStories, theme, navigation]
   );
 
+  const getNewsForPost = (postId: string, index: number) => {
+    if (news.length === 0 || index === 0) return null;
+    if (assignedNews.current[postId] !== undefined) {
+      return assignedNews.current[postId];
+    }
+    if (Math.random() < 0.25) {
+      const randomNews = news[Math.floor(Math.random() * news.length)];
+      assignedNews.current[postId] = randomNews;
+      return randomNews;
+    }
+    assignedNews.current[postId] = null;
+    return null;
+  };
+
   const renderItem = useCallback(
     ({ item, index }: { item: any; index: number }) => {
+      const assignedNewsCard = getNewsForPost(item._id, index);
       return (
         <View>
           <PostCard
@@ -237,11 +257,14 @@ const HomeScreen = () => {
             onOpenComments={openComments}
             onDelete={handleDeletePost}
           />
+          {assignedNewsCard && (
+            <NewsCard article={assignedNewsCard} />
+          )}
           {index === 4 && <SuggestedUsers users={suggestedUsers} />}
         </View>
       );
     },
-    [handlePostUpdate, openComments, handleDeletePost, suggestedUsers]
+    [handlePostUpdate, openComments, handleDeletePost, suggestedUsers, news]
   );
 
   return (
@@ -265,179 +288,99 @@ const HomeScreen = () => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.shortcutBtn}
-          onPress={() => navigation.navigate('Discover' as never)}>
-          <Ionicons name="compass-outline" size={24} color={theme.colors.onSurface} />
+          onPress={() => navigation.navigate('Friends' as never)}>
+          <Ionicons name="people-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.shortcutBtn}
+          onPress={() => navigation.navigate('Groups' as never)}>
+          <Ionicons name="people-circle-outline" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
       </Animated.View>
 
       <Animated.FlatList
         ref={flatListRef}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         data={visiblePosts}
+        renderItem={renderItem}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item, index }: { item: any; index: number }) => (
-          <Animated.View layout={LinearTransition.springify().duration(400)}>
-            {renderItem({ item, index })}
-          </Animated.View>
-        )}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={[styles.listContent, { paddingTop: 85 }]}
+        keyExtractor={(item: any) => item._id}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         refreshing={refreshing}
         onRefresh={loadInitialPosts}
-        initialNumToRender={4}
-        maxToRenderPerBatch={2}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS === 'android'}
-        ListFooterComponent={
-          loadingMore ? (
-            <View style={styles.loadingMore}>
-              <ActivityIndicator size="small" />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 20 }} /> : null}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
       />
 
-      {/* Comments Bottom Sheet */}
       <BottomSheet
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
-        backgroundStyle={{ backgroundColor: theme.colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
-        onChange={(index) => setIsSheetOpen(index >= 0)}>
-        <BottomSheetScrollView>
-          {isSheetOpen && selectedPost ? (
-            <CommentsScreen post={selectedPost} />
-          ) : (
-            <View style={{ padding: 20 }}>
-              <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
-            </View>
-          )}
-        </BottomSheetScrollView>
+        onChange={(index) => setIsSheetOpen(index >= 0)}
+      >
+        <BottomSheetView style={{ flex: 1 }}>
+          {selectedPost && <CommentsScreen post={selectedPost} />}
+        </BottomSheetView>
       </BottomSheet>
     </View>
   );
 };
-export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 0,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
   shortcutsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.03)',
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
   },
   shortcutBtn: {
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
+    padding: 8,
   },
-
   storiesContainer: {
-    paddingVertical: 20,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+    marginBottom: 8,
   },
   storyItem: {
     alignItems: 'center',
-    marginRight: 20,
-    width: 70,
+    marginRight: 16,
+    width: 72,
   },
   storyRing: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    borderWidth: 2.5,
-    padding: 3,
-    marginBottom: 6,
-    overflow: 'hidden', // Ensure image is masked properly
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   storyAvatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 34,
-    backgroundColor: 'rgba(0,0,0,0.05)', // Fallback background
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   addStoryBadge: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
+    bottom: 0,
+    right: 0,
     width: 20,
     height: 20,
     borderRadius: 10,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
   },
   storyUsername: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-
-  tabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginBottom: 10,
-  },
-  tab: {
-    paddingVertical: 10,
-    flex: 1,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#000',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#888',
-    fontWeight: '600',
-  },
-  activeTabText: {
-    color: '#000',
-  },
-
-  loadingMore: {
-    marginVertical: 16,
-  },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -2,
-    backgroundColor: 'red',
-    borderRadius: 10,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#fff',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
+    fontSize: 11,
+    textAlign: 'center',
   },
 });
+
+export default HomeScreen;

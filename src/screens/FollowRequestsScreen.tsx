@@ -1,13 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useContext } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { getProfileUser, acceptFollowRequestAPI, rejectFollowRequestAPI } from '../api/profileAPI';

@@ -1,27 +1,19 @@
+import { Image } from 'expo-image';
 import React, { useEffect, useState, useContext } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  RefreshControl,
-  Image,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
 import { Avatar, useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getConversations } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import moment from 'moment';
 import { addOpacity } from '../utils/colorUtils';
 
 const MessagesScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
-  const { onlineUsers } = useContext(SocketContext);
+  const { onlineUsers } = useSocketStore();
   const theme = useTheme();
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -12,7 +12,7 @@ import {
 import { useTheme } from 'react-native-paper';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import API from '../api/axios';
 import { addCommentAPI, deleteCommentAPI, updateCommentAPI } from '../api/commentAPI';
 import { createNotification } from '../api/notificationAPI';
@@ -22,7 +22,7 @@ import { CommentType } from '../types/types';
 
 const CommentsScreen = ({ post }: { post: any }) => {
   const { user } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+  const { socket } = useSocketStore();
   const theme = useTheme();
 
   const [comments, setComments] = useState<CommentType[]>([]);
@@ -222,7 +222,7 @@ const CommentsScreen = ({ post }: { post: any }) => {
                 {
                   backgroundColor: theme.colors.surface,
                   borderTopColor: theme.colors.outlineVariant,
-                  bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+                  bottom: keyboardHeight,
                 },
               ]}>
               <InputComment
@@ -232,12 +232,13 @@ const CommentsScreen = ({ post }: { post: any }) => {
                 placeholder={
                   editingID ? 'Editing...' : replyingID ? 'Replying...' : 'Write a comment...'
                 }
-                replyTo={replyingID}
-                onCancelReply={() => {
+                bannerText={editingID ? 'Editing comment...' : replyingID ? 'Replying to comment...' : null}
+                onCancelBanner={() => {
                   setReplyingID(null);
                   setEditingID(null);
                   setCommentText('');
                 }}
+                useBottomSheet={true}
               />
             </View>
           </>

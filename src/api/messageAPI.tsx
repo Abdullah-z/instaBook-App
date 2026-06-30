@@ -42,3 +42,8 @@ export const leaveGroupAPI = async (id: string, newAdminId?: string) => {
   const res = await API.post(`/group/${id}/leave`, { newAdminId });
   return res.data;
 };
+
+export const markMessagesAsSeen = async (id: string) => {
+  const res = await API.patch(`/message/${id}/seen`);
+  return res.data;
+};

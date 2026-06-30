@@ -103,19 +103,6 @@ const ReplyDisplay: React.FC<Props> = ({
         )}
       </View>
 
-      {(editingID === reply._id || replyingID === reply._id) && (
-        <View style={{ marginTop: 10 }}>
-          <InputComment
-            value={commentText}
-            onChange={setCommentText}
-            onSubmit={onSubmit}
-            placeholder={editingID === reply._id ? 'Editing reply...' : 'Replying...'}
-            onCancelReply={() => {
-              setCommentText('');
-            }}
-          />
-        </View>
-      )}
     </View>
   );
 };

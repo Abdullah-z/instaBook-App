@@ -116,16 +116,6 @@ const CommentDisplay: React.FC<Props> = ({
         )}
       </View>
 
-      {(editingID === comment._id || replyingID === comment._id) && (
-        <View style={{ marginTop: 8 }}>
-          <InputComment
-            value={commentText}
-            onChange={setCommentText}
-            onSubmit={onSubmit}
-            placeholder={editingID === comment._id ? 'Edit comment...' : 'Reply...'}
-          />
-        </View>
-      )}
 
       {/* Replies */}
       {visibleReplies.length > 0 && (

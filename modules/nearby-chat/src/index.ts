@@ -29,6 +29,7 @@ export interface MessageReceivedEvent {
 }
 
 export interface ImageReceivedEvent {
+  payloadId: string;
   endpointId: string;
   senderName: string;
   filePath: string;
@@ -37,10 +38,20 @@ export interface ImageReceivedEvent {
 }
 
 export interface ImageProgressEvent {
-  payloadId: number;
+  payloadId: string;
   bytesTransferred: number;
   totalBytes: number;
-  status: 'progress';
+  status: 'progress' | 'success' | 'failed';
+  endpointId?: string;
+  direction?: 'incoming' | 'outgoing';
+}
+
+export interface FileMetaReceivedEvent {
+  payloadId: string;
+  endpointId: string;
+  senderName: string;
+  fileName: string;
+  timestamp: number;
 }
 
 type EventCallback<T> = (event: T) => void;
@@ -52,8 +63,8 @@ interface NativeChatModule {
   connectToEndpoint: (endpointId: string, name: string) => Promise<void>;
   sendMessage: (endpointId: string, message: string, senderName: string) => Promise<void>;
   sendBroadcast: (message: string, senderName: string) => Promise<void>;
-  sendImageFile: (endpointId: string, filePath: string, senderName: string) => Promise<void>;
-  broadcastImageFile: (filePath: string, senderName: string) => Promise<void>;
+  sendImageFile: (endpointId: string, filePath: string, senderName: string) => Promise<string>;
+  broadcastImageFile: (filePath: string, senderName: string) => Promise<Record<string, string>>;
   addListener: (event: string, callback: (data: any) => void) => { remove: () => void };
 }
 
@@ -100,10 +111,12 @@ class NearbyChatSimulator implements NativeChatModule {
 
   async sendImageFile(endpointId: string, filePath: string, senderName: string) {
     console.warn('[NearbyChat] sendImageFile() called in Expo Go — no-op.');
+    return '';
   }
 
   async broadcastImageFile(filePath: string, senderName: string) {
     console.warn('[NearbyChat] broadcastImageFile() called in Expo Go — no-op.');
+    return {};
   }
 }
 
@@ -148,6 +161,10 @@ export function addImageReceivedListener(callback: EventCallback<ImageReceivedEv
 
 export function addImageProgressListener(callback: EventCallback<ImageProgressEvent>) {
   return _module.addListener('onImageProgress', callback);
+}
+
+export function addFileMetaReceivedListener(callback: EventCallback<FileMetaReceivedEvent>) {
+  return _module.addListener('onFileMetaReceived', callback);
 }
 
 export default _module;

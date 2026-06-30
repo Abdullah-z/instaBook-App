@@ -1,19 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-  Modal as RNModal,
-  TextInput as RNTextInput,
-} from 'react-native';
+import { View, Text, ActivityIndicator, FlatList, Keyboard, Platform, Alert, StyleSheet, TouchableOpacity, Dimensions, Modal as RNModal, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import ImageView from 'react-native-image-viewing';
 import { downloadAndSaveImage } from '../utils/MediaUtils';
@@ -31,7 +18,7 @@ import {
 import Toast from 'react-native-toast-message';
 import { addCommentAPI, deleteCommentAPI, updateCommentAPI } from '../api/commentAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import CommentDisplay from '../components/CommentDisplay';
 import InputComment from '../components/InputComment';
 import PollView from '../components/PollView';
@@ -64,7 +51,7 @@ const PostScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { user, isAmbientEnabled } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+  const { socket } = useSocketStore();
   const theme = useTheme();
 
   // RECEIVES ONLY POST ID
@@ -77,6 +64,7 @@ const PostScreen = () => {
   const [replyingID, setReplyingID] = useState<string | null>(null);
   const [editingID, setEditingID] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Like / Save / Menu State
   const [isLiked, setIsLiked] = useState(false);
@@ -316,6 +304,19 @@ const PostScreen = () => {
     ]);
   };
 
+
+  // Keyboard listeners for input positioning
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) =>
+      setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // SHOW LOADING
   if (loading || !post) {
     return (
@@ -327,9 +328,7 @@ const PostScreen = () => {
 
   // AFTER POST LOADED
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={{ paddingTop: 20 }}>
@@ -714,19 +713,34 @@ const PostScreen = () => {
             currentUserId={user?._id || ''}
           />
         )}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
-      <InputComment
-        value={commentText}
-        onChange={setCommentText}
-        onSubmit={handleSend}
-        placeholder={
-          editingID ? 'Update comment...' : replyingID ? 'Reply...' : 'Write a comment...'
-        }
-        replyTo={replyingID}
-        onCancelReply={() => setReplyingID(null)}
-      />
+      {/* Fixed Input Bar at Bottom */}
+      <View
+        style={[
+          styles.fixedInputContainer,
+          {
+            backgroundColor: theme.colors.surface,
+            borderTopColor: theme.colors.outlineVariant,
+            bottom: keyboardHeight,
+          },
+        ]}>
+        <InputComment
+          value={commentText}
+          onChange={setCommentText}
+          onSubmit={handleSend}
+          placeholder={
+            editingID ? 'Editing...' : replyingID ? 'Replying...' : 'Write a comment...'
+          }
+          bannerText={editingID ? 'Editing comment...' : replyingID ? 'Replying to comment...' : null}
+          onCancelBanner={() => {
+            setReplyingID(null);
+            setEditingID(null);
+            setCommentText('');
+          }}
+        />
+      </View>
 
       <ImageView
         images={images.filter((img: any) => img.url).map((img: any) => ({ uri: img.url }))}
@@ -794,7 +808,7 @@ const PostScreen = () => {
           </View>
         </View>
       </RNModal>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -879,5 +893,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  fixedInputContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
 });

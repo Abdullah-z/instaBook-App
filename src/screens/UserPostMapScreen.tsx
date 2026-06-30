@@ -1,13 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
-import {
-  View,
-  StyleSheet,
-  ActivityIndicator,
-  StatusBar,
-  Dimensions,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+import { View, StyleSheet, ActivityIndicator, StatusBar, Dimensions, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as ExpoLocation from 'expo-location';
 import { Text, IconButton } from 'react-native-paper';

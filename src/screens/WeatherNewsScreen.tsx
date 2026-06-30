@@ -1,20 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useContext } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  Dimensions,
-  TouchableOpacity,
-  StatusBar,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Switch,
-  FlatList,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, StatusBar, TextInput, ActivityIndicator, Alert, Modal, Switch, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

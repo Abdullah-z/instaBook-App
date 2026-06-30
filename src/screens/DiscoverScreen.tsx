@@ -1,14 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useEffect, useState, useContext } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { getDiscoverPostsAPI } from '../api/postAPI';
 import { AuthContext } from '../auth/AuthContext';

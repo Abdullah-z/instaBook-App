@@ -1,13 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useContext } from 'react';
-import {
-  View,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
 import { TextInput, Button, Text, useTheme } from 'react-native-paper';
 import { AuthContext } from '../auth/AuthContext';
 import { Ionicons } from '@expo/vector-icons';

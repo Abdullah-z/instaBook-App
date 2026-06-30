@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { View, Image as RNImage, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useTheme } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
@@ -53,7 +54,7 @@ const SingleImageItem = ({ item, isVideo, onPress }: any) => {
 
   React.useEffect(() => {
     if (!isVideo && item?.url) {
-      Image.getSize(
+      RNImage.getSize(
         item.url,
         (width, height) => {
           if (width > 0 && height > 0) {

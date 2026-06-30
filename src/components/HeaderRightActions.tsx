@@ -4,12 +4,12 @@ import { Avatar, useTheme, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { useData } from '../hooks';
 
 const HeaderRightActions = () => {
   const { user } = useContext(AuthContext);
-  const { unreadCount } = useContext(SocketContext);
+  const { unreadCount } = useSocketStore();
   const { isDark, handleIsDark } = useData();
   const navigation = useNavigation<any>();
   const theme = useTheme();

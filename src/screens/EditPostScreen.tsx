@@ -1,19 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  TextInput,
-  Image,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Switch,
-  DeviceEventEmitter,
-} from 'react-native';
+import { View, TextInput, StyleSheet, Alert, ScrollView, TouchableOpacity, Text, ActivityIndicator, Modal, Platform, Switch, DeviceEventEmitter } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { updatePostAPI } from '../api/postAPI';

@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { SocketContext } from './SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { AuthContext } from './AuthContext';
 import { Alert, Platform } from 'react-native';
 // Conditionally import agora only in development builds
@@ -92,7 +92,7 @@ export const VoiceCallContext = createContext<VoiceCallContextType>({
 });
 
 export const VoiceCallProvider = ({ children }: { children: React.ReactNode }) => {
-  const { socket } = useContext(SocketContext);
+  const { socket } = useSocketStore();
   const { user } = useContext(AuthContext);
   const rtcEngineRef = useRef<IRtcEngine | null>(null);
 

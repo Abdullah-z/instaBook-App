@@ -1,24 +1,13 @@
+import { Image } from 'expo-image';
 import React, { useState, useContext, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  Dimensions,
-  TouchableWithoutFeedback,
-  Modal as RNModal,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, TouchableWithoutFeedback, Modal as RNModal, TextInput, ActivityIndicator, Alert } from 'react-native';
 import ImageView from 'react-native-image-viewing';
 import { useNavigation } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { AuthContext } from '../auth/AuthContext';
 import { likePostAPI, unlikePostAPI, savePost, unsavePost, sharePostAPI } from '../api/postAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { Avatar, Menu, IconButton, useTheme } from 'react-native-paper';
 import moment from 'moment';
 import Carousel from 'react-native-reanimated-carousel';
@@ -66,7 +55,7 @@ const PostCard = React.memo(
   }) => {
     const navigation = useNavigation<any>();
     const { user, isAmbientEnabled, isGridViewEnabled } = useContext(AuthContext);
-    const { socket } = useContext(SocketContext);
+    const { socket } = useSocketStore();
 
     const [isLiked, setIsLiked] = useState(false);
     const [likes, setLikes] = useState(post.likes.length);

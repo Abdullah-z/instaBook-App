@@ -1,17 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useEffect, useState, useContext, useMemo } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  ActivityIndicator,
-  Alert,
-  Linking,
-  RefreshControl,
-  Modal as RNModal,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert, Linking, RefreshControl, Modal as RNModal } from 'react-native';
 import ImageView from 'react-native-image-viewing';
 import {
   Text,

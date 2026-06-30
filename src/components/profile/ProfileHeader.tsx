@@ -6,7 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Avatar, useTheme, Switch, Divider } from 'react-native-paper';
 import { followUserAPI, unfollowUserAPI } from '../../api/profileAPI';
 import { AuthContext } from '../../auth/AuthContext';
-import { SocketContext } from '../../auth/SocketContext';
+import useSocketStore from '../../store/useSocketStore';
 import { createNotification } from '../../api/notificationAPI';
 import { Ionicons } from '@expo/vector-icons';
 import EditProfileModal from './EditProfileModal';

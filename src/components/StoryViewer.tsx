@@ -1,15 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Image,
-  Text,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Modal,
-} from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, SafeAreaView, StatusBar, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';

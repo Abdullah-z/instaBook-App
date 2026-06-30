@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { FlatList, View, Text, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { FlatList, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 const Posts = ({ posts, loadingMore, onLoadMore }) => {
   const renderPost = ({ item }) => (

@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { followUserAPI, unfollowUserAPI } from '../api/profileAPI';
 import { createNotification, removeNotification } from '../api/notificationAPI';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { Ionicons } from '@expo/vector-icons';
 import { addOpacity } from '../utils/colorUtils';
 
@@ -20,7 +20,7 @@ const SuggestedUsers = ({ users }: { users: any[] }) => {
   const navigation = useNavigation<any>();
   const [following, setFollowing] = useState<string[]>([]);
   const { user } = useContext(AuthContext);
-  const { socket } = useContext(SocketContext);
+  const { socket } = useSocketStore();
   const theme = useTheme();
 
   const handleFollow = async (item: any) => {

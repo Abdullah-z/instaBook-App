@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import React, {
   useState,
   useEffect,
@@ -5,30 +6,13 @@ import React, {
   useContext,
   useCallback,
 } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Animated,
-  Easing,
-  StatusBar,
-  Dimensions,
-  ActivityIndicator,
-  Alert,
-  PermissionsAndroid,
-  Image,
-  Switch,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Animated, Easing, StatusBar, Dimensions, ActivityIndicator, Alert, PermissionsAndroid, Switch } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
-
+import * as DocumentPicker from 'expo-document-picker';
+import * as Sharing from 'expo-sharing';
 // Detect whether the real native module is loaded or we're in Expo Go
 let isNativeAvailable = false;
 try {
@@ -56,6 +40,7 @@ type ChatView = 'radar' | 'dm' | 'room';
 const RadarRing = ({ delay, size }: { delay: number; size: number }) => {
   const scale = useRef(new Animated.Value(0.3)).current;
   const opacity = useRef(new Animated.Value(0.8)).current;
+  const theme = useTheme();
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -93,7 +78,7 @@ const RadarRing = ({ delay, size }: { delay: number; size: number }) => {
         height: size,
         borderRadius: size / 2,
         borderWidth: 2,
-        borderColor: '#00E5FF',
+        borderColor: theme.colors.primary,
         opacity,
         transform: [{ scale }],
       }}
@@ -118,6 +103,7 @@ const PeerDot = ({
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
   const pulse = useRef(new Animated.Value(1)).current;
+  const theme = useTheme();
 
   useEffect(() => {
     if (peer.status === 'connecting') {
@@ -138,8 +124,8 @@ const PeerDot = ({
     peer.status === 'connected'
       ? '#00E676'
       : peer.status === 'connecting'
-        ? '#FFD740'
-        : '#00E5FF';
+        ? theme.colors.secondary
+        : theme.colors.primary;
 
   return (
     <Animated.View
@@ -150,23 +136,23 @@ const PeerDot = ({
         transform: [{ scale: pulse }],
       }}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        <View style={[styles.peerDot, { borderColor: statusColor, padding: peer.avatar ? 2 : 0 }]}>
+        <View style={[styles.peerDot, { backgroundColor: theme.colors.surfaceVariant, borderColor: statusColor, padding: peer.avatar ? 2 : 0 }]}>
           {peer.avatar ? (
             <Image
               source={{ uri: peer.avatar }}
               style={{ width: '100%', height: '100%', borderRadius: 26 }}
             />
           ) : (
-            <Text style={styles.peerInitial}>
+            <Text style={[styles.peerInitial, { color: theme.colors.primary }]}>
               {peer.name.charAt(0).toUpperCase()}
             </Text>
           )}
         </View>
-        <Text style={styles.peerName} numberOfLines={1}>
+        <Text style={[styles.peerName, { color: theme.colors.onSurface }]} numberOfLines={1}>
           {peer.name.split(' ')[0]}
         </Text>
         {peer.status === 'connected' && (
-          <View style={[styles.connectedBadge, { backgroundColor: statusColor }]} />
+          <View style={[styles.connectedBadge, { backgroundColor: statusColor, borderColor: theme.colors.background }]} />
         )}
       </TouchableOpacity>
     </Animated.View>
@@ -174,7 +160,7 @@ const PeerDot = ({
 };
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
-const MessageBubble = ({ msg }: { msg: NearbyMessage }) => {
+const MessageBubble = ({ msg, activeTransfers = {} }: { msg: NearbyMessage; activeTransfers?: Record<string, any> }) => {
   const theme = useTheme();
   const [imgError, setImgError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -196,6 +182,63 @@ const MessageBubble = ({ msg }: { msg: NearbyMessage }) => {
     }
   };
 
+  let pct = 0;
+  let isTransferring = false;
+  if (msg.payloadId && activeTransfers[msg.payloadId]) {
+    const transfer = activeTransfers[msg.payloadId];
+    pct = transfer.totalBytes > 0 ? Math.round((transfer.bytesTransferred / transfer.totalBytes) * 100) : 0;
+    isTransferring = true;
+  } else if (msg.payloadIds) {
+    const activeList = msg.payloadIds.map(id => activeTransfers[id]).filter(Boolean);
+    if (activeList.length > 0) {
+      const totalBytes = activeList.reduce((acc, t) => acc + t.totalBytes, 0);
+      const bytesTransferred = activeList.reduce((acc, t) => acc + t.bytesTransferred, 0);
+      pct = totalBytes > 0 ? Math.round((bytesTransferred / totalBytes) * 100) : 0;
+      isTransferring = true;
+    }
+  }
+
+  const isIncomingPlaceholder = !msg.isOwn && msg.type !== 'text' && !msg.imageUri && !msg.fileUri;
+
+  if (isTransferring || isIncomingPlaceholder) {
+    return (
+      <View
+        style={[
+          styles.bubble,
+          msg.isOwn ? styles.bubbleOwn : styles.bubbleOther,
+          { minWidth: 160 },
+        ]}>
+        {!msg.isOwn && (
+          <Text style={[styles.bubbleSender, { color: theme.colors.primary, marginBottom: 4 }]}>
+            {msg.senderName}
+          </Text>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+          <ActivityIndicator size="small" color={msg.isOwn ? theme.colors.onPrimary : theme.colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurface }}>
+              {msg.isOwn ? 'Sending' : 'Receiving'} {msg.type === 'image' ? 'photo' : 'file'}...
+            </Text>
+            {msg.fileName && (
+              <Text numberOfLines={1} style={{ fontSize: 11, color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, opacity: 0.8 }}>
+                {msg.fileName}
+              </Text>
+            )}
+            <View style={{ height: 4, backgroundColor: msg.isOwn ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+              <View style={{ width: `${pct}%`, height: '100%', backgroundColor: msg.isOwn ? theme.colors.onPrimary : theme.colors.primary }} />
+            </View>
+          </View>
+          <Text style={{ fontSize: 12, fontWeight: '800', color: msg.isOwn ? theme.colors.onPrimary : theme.colors.primary, minWidth: 35, textAlign: 'right' }}>
+            {pct}%
+          </Text>
+        </View>
+        <Text style={[styles.bubbleTime, { color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, opacity: 0.7, marginTop: 4 }]}>
+          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+      </View>
+    );
+  }
+
   if (msg.type === 'image' && msg.imageUri && !imgError) {
     return (
       <View
@@ -205,7 +248,7 @@ const MessageBubble = ({ msg }: { msg: NearbyMessage }) => {
           { backgroundColor: 'transparent', padding: 4 },
         ]}>
         {!msg.isOwn && (
-          <Text style={[styles.bubbleSender, { color: '#00E5FF', marginBottom: 4 }]}>
+          <Text style={[styles.bubbleSender, { color: theme.colors.primary, marginBottom: 4 }]}>
             {msg.senderName}
           </Text>
         )}
@@ -235,9 +278,97 @@ const MessageBubble = ({ msg }: { msg: NearbyMessage }) => {
             </View>
           )}
         </TouchableOpacity>
-        <Text style={[styles.bubbleTime, { color: msg.isOwn ? 'rgba(255,255,255,0.65)' : '#4A6272', marginTop: 4 }]}>
+        <Text style={[styles.bubbleTime, { color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, opacity: 0.7, marginTop: 4 }]}>
           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          {!msg.isOwn && <Text style={{ color: '#00E5FF55' }}> · hold to save</Text>}
+          {!msg.isOwn && <Text style={{ color: theme.colors.primary, opacity: 0.7 }}> · hold to save</Text>}
+        </Text>
+      </View>
+    );
+  }
+
+  if (msg.type === 'file') {
+    const isOwn = msg.isOwn;
+    const filename = msg.fileName || 'File';
+    const openFile = async () => {
+      const uri = msg.fileUri;
+      if (!uri) {
+        Alert.alert('Error', 'File URI not found');
+        return;
+      }
+      try {
+        await Sharing.shareAsync(uri);
+      } catch (e: any) {
+        Alert.alert('Error opening file', e?.message || String(e));
+      }
+    };
+
+    return (
+      <View
+        style={[
+          styles.bubble,
+          styles.fileBubble,
+          isOwn
+            ? [styles.bubbleOwn, { backgroundColor: theme.colors.primary }]
+            : [styles.bubbleOther, { backgroundColor: theme.colors.surface }],
+        ]}>
+        {!isOwn && (
+          <Text style={[styles.bubbleSender, { color: theme.colors.secondary }]}>
+            {msg.senderName}
+          </Text>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={openFile}
+            activeOpacity={0.85}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, paddingVertical: 4 }}>
+            <Ionicons name="document-text" size={32} color={isOwn ? theme.colors.onPrimary : theme.colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text
+                numberOfLines={2}
+                style={{
+                  color: isOwn ? theme.colors.onPrimary : theme.colors.onSurface,
+                  fontWeight: '700',
+                  fontSize: 14,
+                }}>
+                {filename}
+              </Text>
+              <Text style={{ color: isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+                Tap to open / share
+              </Text>
+            </View>
+          </TouchableOpacity>
+          {!isOwn && (
+            <TouchableOpacity
+              onPress={async () => {
+                const uri = msg.fileUri;
+                if (!uri) { Alert.alert('Error', 'File not available'); return; }
+                try {
+                  if (Platform.OS === 'android') {
+                    const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                    if (permissions.granted) {
+                      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+                      const newUri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, '*/*');
+                      await FileSystem.writeAsStringAsync(newUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+                      Alert.alert('Saved', 'File saved to your device.');
+                    }
+                  } else {
+                    await Sharing.shareAsync(uri);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e?.message || 'Could not save file');
+                }
+              }}
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.08)',
+                borderRadius: 20,
+                padding: 8,
+              }}>
+              <Ionicons name="download-outline" size={20} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={[styles.bubbleTime, { color: isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, opacity: 0.7 }]}>
+          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
     );
@@ -248,18 +379,18 @@ const MessageBubble = ({ msg }: { msg: NearbyMessage }) => {
       style={[
         styles.bubble,
         msg.isOwn
-          ? [styles.bubbleOwn, { backgroundColor: '#00BCD4' }]
+          ? [styles.bubbleOwn, { backgroundColor: theme.colors.primary }]
           : [styles.bubbleOther, { backgroundColor: theme.colors.surface }],
       ]}>
       {!msg.isOwn && (
-        <Text style={[styles.bubbleSender, { color: '#FFD740' }]}>
+        <Text style={[styles.bubbleSender, { color: theme.colors.secondary }]}>
           {msg.senderName}
         </Text>
       )}
-      <Text style={[styles.bubbleText, { color: msg.isOwn ? '#fff' : theme.colors.onSurface }]}>
+      <Text style={[styles.bubbleText, { color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurface }]}>
         {msg.message}
       </Text>
-      <Text style={[styles.bubbleTime, { color: msg.isOwn ? 'rgba(255,255,255,0.65)' : theme.colors.onSurfaceVariant }]}>
+      <Text style={[styles.bubbleTime, { color: msg.isOwn ? theme.colors.onPrimary : theme.colors.onSurfaceVariant, opacity: 0.7 }]}>
         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </Text>
     </View>
@@ -291,6 +422,7 @@ const NearbyChatScreen = () => {
   const [imageSendingIndex, setImageSendingIndex] = useState<number | null>(null);
   const [imageProgress, setImageProgress] = useState(0);
   const [savingAll, setSavingAll] = useState(false);
+  const [activeTransfers, setActiveTransfers] = useState<Record<string, any>>({});
 
   const flatListRef = useRef<FlatList>(null);
   const sweepAnim = useRef(new Animated.Value(0)).current;
@@ -325,16 +457,27 @@ const NearbyChatScreen = () => {
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       }),
       NearbyService.on('image_progress', (data: any) => {
-        if (data.totalBytes > 0) {
-          const pct = Math.round((data.bytesTransferred / data.totalBytes) * 100);
-          setImageProgress(pct);
-          if (pct >= 100) {
-            setTimeout(() => {
+        const { payloadId, bytesTransferred, totalBytes, status, direction } = data;
+        setActiveTransfers((prev) => {
+          const next = { ...prev };
+          if (status === 'success' || status === 'failed') {
+            delete next[payloadId];
+          } else {
+            next[payloadId] = { bytesTransferred, totalBytes, status, direction };
+          }
+          
+          if (direction === 'outgoing') {
+            const hasOutgoing = Object.values(next).some((t: any) => t.direction === 'outgoing');
+            if (!hasOutgoing && (status === 'success' || status === 'failed')) {
               setImageSending(false);
               setImageProgress(0);
-            }, 600);
+            } else if (totalBytes > 0) {
+              const pct = Math.round((bytesTransferred / totalBytes) * 100);
+              setImageProgress(pct);
+            }
           }
-        }
+          return next;
+        });
       }),
     ];
 
@@ -541,6 +684,58 @@ const NearbyChatScreen = () => {
     }
   };
 
+  const pickDocument = async () => {
+    const canSend = (view === 'dm' && activePeer?.status === 'connected') || view === 'room';
+    if (!canSend) {
+      Alert.alert(
+        'Not Connected',
+        'You must be connected to a peer or in the community room to send files.'
+      );
+      return;
+    }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        Alert.alert(
+          'Send File',
+          `Do you want to send "${asset.name}"?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Send',
+              onPress: async () => {
+                setImageSending(true);
+                setImageProgress(0);
+                try {
+                  const filename = asset.name;
+                  const destPath = `${FileSystem.cacheDirectory}${Date.now()}_${filename}`;
+                  await FileSystem.copyAsync({ from: asset.uri, to: destPath });
+
+                  if (view === 'dm' && activePeer) {
+                    await NearbyService.sendFile(activePeer.endpointId, destPath, filename);
+                  } else if (view === 'room') {
+                    await NearbyService.broadcastFile(destPath, filename);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Send Failed', e?.message || 'Failed to send file');
+                  setImageSending(false);
+                  setImageProgress(0);
+                }
+              }
+            }
+          ]
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Error picking document', e?.message || String(e));
+    }
+  };
+
   const saveAllToGallery = async () => {
     const imagesToSave = visibleMessages.filter(
       (m) => m.type === 'image' && !m.isOwn && m.imageUri
@@ -612,7 +807,6 @@ const NearbyChatScreen = () => {
         setIsHD(false);
       } catch (e: any) {
         Alert.alert('Send Failed', e?.message || 'Failed to send one or more images');
-      } finally {
         setImageSending(false);
         setImageSendingIndex(null);
         setImageProgress(0);
@@ -649,7 +843,7 @@ const NearbyChatScreen = () => {
       <StatusBar barStyle={theme.dark ? 'light-content' : 'dark-content'} backgroundColor={theme.colors.background} />
 
       {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.colors.surface, borderBottomColor: '#00E5FF15' }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.outlineVariant }]}>
         <TouchableOpacity
           onPress={() => {
             if (view !== 'radar') {
@@ -659,15 +853,15 @@ const NearbyChatScreen = () => {
               navigation.goBack();
             }
           }}
-          style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color="#00E5FF" />
+          style={[styles.backBtn, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
             {view === 'dm' && activePeer ? activePeer.name : view === 'room' ? 'Community Room' : 'Nearby Chat'}
           </Text>
-          <Text style={styles.headerSub}>
+          <Text style={[styles.headerSub, { color: theme.colors.onSurfaceVariant }]}>
             {view === 'radar'
               ? 'Nearby · P2P Offline Chat'
               : view === 'room'
@@ -682,8 +876,8 @@ const NearbyChatScreen = () => {
           <View style={styles.tabRow}>
             <TouchableOpacity
               onPress={() => setView('radar')}
-              style={[styles.tabBtn]}>
-              <Ionicons name="radio" size={18} color="#00E5FF" />
+              style={[styles.tabBtn, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outline }]}>
+              <Ionicons name="radio" size={18} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
         )}
@@ -712,7 +906,7 @@ const NearbyChatScreen = () => {
                     top: 159,
                     width: 155,
                     height: 2,
-                    backgroundColor: '#00E5FF',
+                    backgroundColor: theme.colors.primary,
                     opacity: 0.8,
                     borderRadius: 1,
                   }}
@@ -720,8 +914,8 @@ const NearbyChatScreen = () => {
               </Animated.View>
             )}
 
-            <View style={styles.centerPulse}>
-              <Ionicons name="radio" size={28} color="#00E5FF" />
+            <View style={[styles.centerPulse, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.primary }]}>
+              <Ionicons name="radio" size={28} color={theme.colors.primary} />
             </View>
           </View>
 
@@ -793,11 +987,11 @@ const NearbyChatScreen = () => {
           <View style={styles.peerList}>
             {isScanning && (
               <TouchableOpacity
-                style={styles.roomBtn}
+                style={[styles.roomBtn, { backgroundColor: theme.colors.secondary }]}
                 activeOpacity={0.8}
                 onPress={() => setView('room')}>
-                <Ionicons name="people" size={20} color="#050A0F" />
-                <Text style={styles.roomBtnText}>Open Community Room</Text>
+                <Ionicons name="people" size={20} color={theme.colors.onSecondary} />
+                <Text style={[styles.roomBtnText, { color: theme.colors.onSecondary }]}>Open Community Room</Text>
               </TouchableOpacity>
             )}
 
@@ -810,9 +1004,9 @@ const NearbyChatScreen = () => {
                     backgroundColor:
                       peer.status === 'connected'
                         ? 'rgba(0,230,118,0.1)'
-                        : 'rgba(0,229,255,0.06)',
+                        : theme.colors.surfaceVariant,
                     borderColor:
-                      peer.status === 'connected' ? '#00E676' : '#00E5FF30',
+                      peer.status === 'connected' ? '#00E676' : theme.colors.outlineVariant,
                   },
                 ]}
                 onPress={() => handlePeerPress(peer)}>
@@ -821,7 +1015,7 @@ const NearbyChatScreen = () => {
                     styles.peerRowAvatar,
                     {
                       backgroundColor:
-                        peer.status === 'connected' ? '#00E676' : '#00E5FF',
+                        peer.status === 'connected' ? '#00E676' : theme.colors.primary,
                       padding: peer.avatar ? 2 : 0,
                     },
                   ]}>
@@ -831,16 +1025,16 @@ const NearbyChatScreen = () => {
                       style={{ width: '100%', height: '100%', borderRadius: 22 }}
                     />
                   ) : (
-                    <Text style={{ color: '#050A0F', fontWeight: '900', fontSize: 16 }}>
+                    <Text style={{ color: theme.colors.onPrimary, fontWeight: '900', fontSize: 16 }}>
                       {peer.name.charAt(0).toUpperCase()}
                     </Text>
                   )}
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                  <Text style={{ color: theme.colors.onSurface, fontWeight: '700', fontSize: 15 }}>
                     {peer.name}
                   </Text>
-                  <Text style={{ color: peer.status === 'connected' ? '#00E676' : '#00E5FF', fontSize: 12, marginTop: 2 }}>
+                  <Text style={{ color: peer.status === 'connected' ? '#00E676' : theme.colors.primary, fontSize: 12, marginTop: 2 }}>
                     {peer.status === 'connected'
                       ? '✓ Connected — tap to chat'
                       : peer.status === 'connecting'
@@ -851,7 +1045,7 @@ const NearbyChatScreen = () => {
                 <Ionicons
                   name={peer.status === 'connected' ? 'chatbubble' : 'add-circle-outline'}
                   size={22}
-                  color={peer.status === 'connected' ? '#00E676' : '#00E5FF'}
+                  color={peer.status === 'connected' ? '#00E676' : theme.colors.primary}
                 />
               </TouchableOpacity>
             ))}
@@ -863,10 +1057,10 @@ const NearbyChatScreen = () => {
               styles.scanBtn,
               {
                 backgroundColor: !isNativeAvailable
-                  ? '#333'
+                  ? theme.colors.surfaceVariant
                   : isScanning
-                    ? '#FF4444'
-                    : '#00E5FF',
+                    ? theme.colors.error
+                    : theme.colors.primary,
               },
               { bottom: insets.bottom + 24 },
             ]}
@@ -879,13 +1073,13 @@ const NearbyChatScreen = () => {
               </>
             ) : !isNativeAvailable ? (
               <>
-                <Ionicons name="warning-outline" size={20} color="#FF9800" style={{ marginRight: 8 }} />
-                <Text style={[styles.scanBtnText, { color: '#FF9800' }]}>Build Required</Text>
+                <Ionicons name="warning-outline" size={20} color={theme.colors.error} style={{ marginRight: 8 }} />
+                <Text style={[styles.scanBtnText, { color: theme.colors.error }]}>Build Required</Text>
               </>
             ) : (
               <>
-                <Ionicons name="radio" size={20} color="#050A0F" style={{ marginRight: 8 }} />
-                <Text style={[styles.scanBtnText, { color: '#050A0F' }]}>Start Scanning</Text>
+                <Ionicons name="radio" size={20} color={theme.colors.onPrimary} style={{ marginRight: 8 }} />
+                <Text style={[styles.scanBtnText, { color: theme.colors.onPrimary }]}>Start Scanning</Text>
               </>
             )}
           </TouchableOpacity>
@@ -904,10 +1098,10 @@ const NearbyChatScreen = () => {
             <View style={styles.roomBanner}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={styles.roomBannerLeft}>
-                  <Ionicons name="people" size={20} color="#FFD740" />
-                  <Text style={styles.roomBannerText}>Community Room</Text>
-                  <View style={styles.roomMemberBadge}>
-                    <Text style={styles.roomMemberBadgeText}>
+                  <Ionicons name="people" size={20} color={theme.colors.secondary} />
+                  <Text style={[styles.roomBannerText, { color: theme.colors.secondary }]}>Community Room</Text>
+                  <View style={[styles.roomMemberBadge, { backgroundColor: theme.colors.secondary }]}>
+                    <Text style={[styles.roomMemberBadgeText, { color: theme.colors.onSecondary }]}>
                       {connectedPeers.length + 1}
                     </Text>
                   </View>
@@ -915,14 +1109,14 @@ const NearbyChatScreen = () => {
                 {visibleMessages.filter(m => m.type === 'image' && !m.isOwn && m.imageUri).length > 0 && (
                   <TouchableOpacity
                     onPress={saveAllToGallery}
-                    style={[styles.saveAllBtn, { borderColor: '#FFD74030', backgroundColor: '#FFD74015' }]}
+                    style={[styles.saveAllBtn, { borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surfaceVariant }]}
                     disabled={savingAll}>
                     {savingAll ? (
-                      <ActivityIndicator size="small" color="#FFD740" />
+                      <ActivityIndicator size="small" color={theme.colors.secondary} />
                     ) : (
                       <>
-                        <Ionicons name="download-outline" size={15} color="#FFD740" />
-                        <Text style={[styles.saveAllText, { color: '#FFD740' }]}>
+                        <Ionicons name="download-outline" size={15} color={theme.colors.secondary} />
+                        <Text style={[styles.saveAllText, { color: theme.colors.secondary }]}>
                           Save All ({visibleMessages.filter(m => m.type === 'image' && !m.isOwn && m.imageUri).length})
                         </Text>
                       </>
@@ -930,14 +1124,14 @@ const NearbyChatScreen = () => {
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={styles.roomBannerSub}>
+              <Text style={[styles.roomBannerSub, { color: theme.colors.onSurfaceVariant }]}>
                 Broadcasts to all connected devices in your offline range
               </Text>
 
               {/* Connected member shortcuts */}
               {connectedPeers.length > 0 && (
-                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#FFD74015' }}>
-                  <Text style={{ color: '#9E8A30', fontSize: 10, fontWeight: '700', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant }}>
+                  <Text style={{ color: theme.colors.secondary, fontSize: 10, fontWeight: '700', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Tap to private chat:
                   </Text>
                   <FlatList
@@ -952,17 +1146,17 @@ const NearbyChatScreen = () => {
                           setActivePeer(item);
                           setView('dm');
                         }}
-                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFD74012', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FFD74020', gap: 6 }}>
-                        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFD740', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surfaceVariant, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.outlineVariant, gap: 6 }}>
+                        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.secondary, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
                           {item.avatar ? (
                             <Image source={{ uri: item.avatar }} style={{ width: '100%', height: '100%' }} />
                           ) : (
-                            <Text style={{ color: '#050A0F', fontSize: 10, fontWeight: '900' }}>
+                            <Text style={{ color: theme.colors.onSecondary, fontSize: 10, fontWeight: '900' }}>
                               {item.name.charAt(0).toUpperCase()}
                             </Text>
                           )}
                         </View>
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{item.name.split(' ')[0]}</Text>
+                        <Text style={{ color: theme.colors.onSurface, fontSize: 11, fontWeight: '700' }}>{item.name.split(' ')[0]}</Text>
                         <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#00E676' }} />
                       </TouchableOpacity>
                     )}
@@ -975,31 +1169,31 @@ const NearbyChatScreen = () => {
           {/* ── DM banner ── */}
           {view === 'dm' && activePeer && (
             <View style={styles.dmBanner}>
-              <View style={[styles.dmAvatarCircle, { padding: activePeer.avatar ? 2 : 0 }]}>
+              <View style={[styles.dmAvatarCircle, { padding: activePeer.avatar ? 2 : 0, borderColor: theme.colors.primary, backgroundColor: theme.colors.surfaceVariant }]}>
                 {activePeer.avatar ? (
                   <Image
                     source={{ uri: activePeer.avatar }}
                     style={{ width: '100%', height: '100%', borderRadius: 18 }}
                   />
                 ) : (
-                  <Text style={styles.dmAvatarInitial}>
+                  <Text style={[styles.dmAvatarInitial, { color: theme.colors.primary }]}>
                     {activePeer.name.charAt(0).toUpperCase()}
                   </Text>
                 )}
               </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.dmBannerName}>{activePeer.name}</Text>
+                <Text style={[styles.dmBannerName, { color: theme.colors.onSurface }]}>{activePeer.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <View
                     style={[
                       styles.dmStatusDot,
                       {
                         backgroundColor:
-                          activePeer.status === 'connected' ? '#00E676' : '#FFD740',
+                          activePeer.status === 'connected' ? '#00E676' : theme.colors.secondary,
                       },
                     ]}
                   />
-                  <Text style={styles.dmStatusText}>
+                  <Text style={[styles.dmStatusText, { color: theme.colors.onSurfaceVariant }]}>
                     {activePeer.status === 'connected'
                       ? 'Connected · Direct Message'
                       : activePeer.status === 'connecting'
@@ -1013,9 +1207,9 @@ const NearbyChatScreen = () => {
               {activePeer.status !== 'connected' && activePeer.status !== 'connecting' && (
                 <TouchableOpacity
                   onPress={() => NearbyService.connectToPeer(activePeer.endpointId)}
-                  style={[styles.saveAllBtn, { borderColor: '#FFD74030', backgroundColor: '#FFD74015', marginRight: 8 }]}>
-                  <Ionicons name="refresh" size={15} color="#FFD740" />
-                  <Text style={[styles.saveAllText, { color: '#FFD740' }]}>Reconnect</Text>
+                  style={[styles.saveAllBtn, { borderColor: theme.colors.outlineVariant, backgroundColor: theme.colors.surfaceVariant, marginRight: 8 }]}>
+                  <Ionicons name="refresh" size={15} color={theme.colors.secondary} />
+                  <Text style={[styles.saveAllText, { color: theme.colors.secondary }]}>Reconnect</Text>
                 </TouchableOpacity>
               )}
 
@@ -1025,11 +1219,11 @@ const NearbyChatScreen = () => {
                   style={styles.saveAllBtn}
                   disabled={savingAll}>
                   {savingAll ? (
-                    <ActivityIndicator size="small" color="#00E5FF" />
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
                   ) : (
                     <>
-                      <Ionicons name="download-outline" size={15} color="#00E5FF" />
-                      <Text style={styles.saveAllText}>
+                      <Ionicons name="download-outline" size={15} color={theme.colors.primary} />
+                      <Text style={[styles.saveAllText, { color: theme.colors.primary }]}>
                         Save All ({visibleMessages.filter(m => m.type === 'image' && !m.isOwn && m.imageUri).length})
                       </Text>
                     </>
@@ -1041,17 +1235,17 @@ const NearbyChatScreen = () => {
 
           {/* Inline Image Transfer Progress Banner */}
           {imageSending && (
-            <View style={{ backgroundColor: '#0D2233', borderBottomWidth: 1, borderBottomColor: '#00E5FF20', paddingVertical: 10, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <ActivityIndicator size="small" color="#00E5FF" />
+            <View style={{ backgroundColor: theme.colors.surfaceVariant, borderBottomWidth: 1, borderBottomColor: theme.colors.outlineVariant, paddingVertical: 10, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                <Text style={{ color: theme.colors.onSurface, fontSize: 13, fontWeight: '700' }}>
                   Sending image {imageSendingIndex! + 1} of {pendingImages.length}
                 </Text>
-                <View style={{ height: 4, backgroundColor: '#0D1B26', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
-                  <View style={{ width: `${imageProgress}%`, height: '100%', backgroundColor: '#00E5FF' }} />
+                <View style={{ height: 4, backgroundColor: theme.colors.background, borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                  <View style={{ width: `${imageProgress}%`, height: '100%', backgroundColor: theme.colors.primary }} />
                 </View>
               </View>
-              <Text style={{ color: '#00E5FF', fontSize: 12, fontWeight: '800', minWidth: 35, textAlign: 'right' }}>
+              <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '800', minWidth: 35, textAlign: 'right' }}>
                 {imageProgress}%
               </Text>
             </View>
@@ -1062,9 +1256,10 @@ const NearbyChatScreen = () => {
               <Ionicons
                 name={view === 'room' ? 'people-outline' : 'chatbubbles-outline'}
                 size={60}
-                color={view === 'room' ? '#FFD74030' : '#00E5FF30'}
+                color={view === 'room' ? theme.colors.secondary : theme.colors.primary}
+                style={{ opacity: 0.3 }}
               />
-              <Text style={styles.emptyChatText}>
+              <Text style={[styles.emptyChatText, { color: theme.colors.onSurfaceVariant }]}>
                 {view === 'room' 
                   ? 'Send a broadcast to everyone connected!'
                   : `Say hi to ${activePeer?.name}!`}
@@ -1075,7 +1270,7 @@ const NearbyChatScreen = () => {
               ref={flatListRef}
               data={visibleMessages}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <MessageBubble msg={item} />}
+              renderItem={({ item }) => <MessageBubble msg={item} activeTransfers={activeTransfers} />}
               contentContainerStyle={styles.messageList}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             />
@@ -1085,7 +1280,7 @@ const NearbyChatScreen = () => {
           {pendingImages.length > 0 && (
             <View style={[
               styles.imagePreviewStrip,
-              { backgroundColor: theme.colors.surface, borderTopColor: '#00E5FF20' },
+              { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
             ]}>
               <FlatList
                 horizontal
@@ -1119,14 +1314,14 @@ const NearbyChatScreen = () => {
                       )}
                       {imageSending && !isSendingActive && imageSendingIndex !== null && index > imageSendingIndex && (
                         <View style={[styles.imagePreviewOverlay, { backgroundColor: '#00000070' }]}>
-                          <Ionicons name="time" size={20} color="#FFD740" />
+                          <Ionicons name="time" size={20} color={theme.colors.secondary} />
                         </View>
                       )}
                       {!imageSending && (
                         <TouchableOpacity
                           style={styles.imagePreviewRemove}
                           onPress={() => setPendingImages(prev => prev.filter((_, i) => i !== index))}>
-                          <Ionicons name="close-circle" size={20} color="#FF4444" />
+                          <Ionicons name="close-circle" size={20} color={theme.colors.error} />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1149,20 +1344,21 @@ const NearbyChatScreen = () => {
               styles.inputBar,
               {
                 backgroundColor: theme.colors.surface,
-                borderTopColor: '#00E5FF20',
+                borderTopColor: theme.colors.outlineVariant,
                 paddingBottom: insets.bottom || 12,
               },
             ]}>
+            <View style={styles.actionRow}>
             {/* Camera snap button */}
             {(() => {
               const canSend = (view === 'dm' && activePeer?.status === 'connected') || view === 'room';
-              const accentColor = '#00BCD4';
+              const accentColor = theme.colors.primary;
               return (
                 <TouchableOpacity
                   style={[
                     styles.sendBtn,
                     {
-                      backgroundColor: canSend ? '#0D2233' : '#0D1B26',
+                      backgroundColor: canSend ? theme.colors.surfaceVariant : theme.colors.background,
                       marginRight: 2,
                       opacity: canSend ? 1 : 0.38,
                     },
@@ -1172,7 +1368,32 @@ const NearbyChatScreen = () => {
                   <Ionicons
                     name="camera-outline"
                     size={20}
-                    color={canSend ? accentColor : '#4A6272'}
+                    color={canSend ? accentColor : theme.colors.outline}
+                  />
+                </TouchableOpacity>
+              );
+            })()}
+
+            {/* Document pick button */}
+            {(() => {
+              const canSend = (view === 'dm' && activePeer?.status === 'connected') || view === 'room';
+              const accentColor = theme.colors.primary;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.sendBtn,
+                    {
+                      backgroundColor: canSend ? theme.colors.surfaceVariant : theme.colors.background,
+                      marginRight: 2,
+                      opacity: canSend ? 1 : 0.38,
+                    },
+                  ]}
+                  onPress={pickDocument}
+                  disabled={imageSending}>
+                  <Ionicons
+                    name="attach-outline"
+                    size={20}
+                    color={canSend ? accentColor : theme.colors.outline}
                   />
                 </TouchableOpacity>
               );
@@ -1181,13 +1402,13 @@ const NearbyChatScreen = () => {
             {/* Image pick button */}
             {(() => {
               const canSend = (view === 'dm' && activePeer?.status === 'connected') || view === 'room';
-              const accentColor = '#00BCD4';
+              const accentColor = theme.colors.primary;
               return (
                 <TouchableOpacity
                   style={[
                     styles.sendBtn,
                     {
-                      backgroundColor: canSend ? '#0D2233' : '#0D1B26',
+                      backgroundColor: canSend ? theme.colors.surfaceVariant : theme.colors.background,
                       marginRight: 2,
                       opacity: canSend ? 1 : 0.38,
                     },
@@ -1197,7 +1418,7 @@ const NearbyChatScreen = () => {
                   <Ionicons
                     name={pendingImages.length > 0 ? 'image' : 'image-outline'}
                     size={20}
-                    color={pendingImages.length > 0 ? accentColor : canSend ? accentColor : '#4A6272'}
+                    color={pendingImages.length > 0 ? accentColor : canSend ? accentColor : theme.colors.outline}
                   />
                 </TouchableOpacity>
               );
@@ -1207,31 +1428,32 @@ const NearbyChatScreen = () => {
             {(() => {
               const canSend = (view === 'dm' && activePeer?.status === 'connected') || view === 'room';
               if (!canSend) return null;
-              const accentColor = '#00BCD4';
+              const accentColor = theme.colors.primary;
               return (
-                <View style={[styles.hdToggleContainer, { marginRight: 2 }]}>
-                  <Text style={[styles.hdToggleText, { color: isHD ? accentColor : '#4A6272', marginRight: 4 }]}>
+                <View style={[styles.hdToggleContainer, { backgroundColor: theme.colors.surfaceVariant, marginRight: 2 }]}>
+                  <Text style={[styles.hdToggleText, { color: isHD ? accentColor : theme.colors.outline, marginRight: 4 }]}>
                     HD
                   </Text>
                   <Switch
                     value={isHD}
                     onValueChange={setIsHD}
                     disabled={imageSending}
-                    trackColor={{ false: '#0D1B26', true: accentColor }}
-                    thumbColor={isHD ? '#050A0F' : '#4A6272'}
+                    trackColor={{ false: theme.colors.background, true: accentColor }}
+                    thumbColor={isHD ? theme.colors.onPrimary : theme.colors.outline}
                     style={{ transform: [{ scaleX: 0.65 }, { scaleY: 0.65 }] }}
                   />
                 </View>
               );
             })()}
-
+            </View>
+            <View style={styles.textInputRow}>
             <TextInput
               style={[
                 styles.input,
                 { color: theme.colors.onSurface, backgroundColor: theme.colors.background },
               ]}
               placeholder={view === 'room' ? 'Message Community Room...' : `Message ${activePeer?.name ?? ''}...`}
-              placeholderTextColor="#4A6272"
+              placeholderTextColor={theme.colors.outline}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -1242,12 +1464,12 @@ const NearbyChatScreen = () => {
             {/* Send button */}
             {(() => {
               const hasContent = inputText.trim().length > 0 || pendingImages.length > 0;
-              const accentColor = '#00E5FF';
+              const accentColor = theme.colors.primary;
               return (
                 <TouchableOpacity
                   style={[
                     styles.sendBtn,
-                    { backgroundColor: hasContent && !imageSending ? accentColor : '#0D2233' },
+                    { backgroundColor: hasContent && !imageSending ? accentColor : theme.colors.surfaceVariant },
                   ]}
                   onPress={handleSend}
                   disabled={!hasContent || imageSending}>
@@ -1257,12 +1479,13 @@ const NearbyChatScreen = () => {
                     <Ionicons
                       name="send"
                       size={20}
-                      color={hasContent ? '#050A0F' : '#4A6272'}
+                      color={hasContent ? theme.colors.onPrimary : theme.colors.outline}
                     />
                   )}
                 </TouchableOpacity>
               );
             })()}
+            </View>
           </View>
         </KeyboardAvoidingView>
       )}
@@ -1601,10 +1824,14 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '78%',
+    minWidth: 180,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 18,
     marginBottom: 8,
+  },
+  fileBubble: {
+    minWidth: 220,
   },
   bubbleOwn: {
     alignSelf: 'flex-end',
@@ -1629,11 +1856,20 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: 'column',
     paddingHorizontal: 12,
     paddingTop: 12,
     borderTopWidth: 1,
+    gap: 8,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  textInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 8,
   },
   input: {

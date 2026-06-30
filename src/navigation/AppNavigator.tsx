@@ -37,7 +37,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import EditPostScreen from '../screens/EditPostScreen';
 import PostScreen from '../screens/PostScreen';
 import NotificationToast from '../components/NotificationToast';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import HeaderLogo from '../components/HeaderLogo';
 import HeaderRightActions from '../components/HeaderRightActions';
 import DiscoverScreen from '../screens/DiscoverScreen';
@@ -49,7 +49,7 @@ const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const { token, user, userType, logout, loading, showOnboarding } = useContext(AuthContext);
-  const { notification, showNotification, setShowNotification } = useContext(SocketContext);
+  const { notification, showNotification, setShowNotification } = useSocketStore();
   const theme = useTheme();
 
   if (loading || showOnboarding === null) {

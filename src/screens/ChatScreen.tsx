@@ -25,9 +25,9 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getMessages, sendMessage, deleteConversation } from '../api/messageAPI';
+import { getMessages, sendMessage, deleteConversation, markMessagesAsSeen } from '../api/messageAPI';
 import { AuthContext } from '../auth/AuthContext';
-import { SocketContext } from '../auth/SocketContext';
+import useSocketStore from '../store/useSocketStore';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { imageUpload } from '../utils/imageUpload';
 import moment from 'moment';
@@ -82,7 +82,7 @@ const ChatScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
-  const { socket, onlineUsers } = useContext(SocketContext);
+  const { socket, onlineUsers } = useSocketStore();
   const { initiateCall } = useContext(VoiceCallContext);
   const theme = useTheme();
   const { userId, username, avatar, isGroup } = route.params;
@@ -389,6 +389,17 @@ const ChatScreen = () => {
       const res = await getMessages(userId);
       setMessages((res.messages || []).reverse());
 
+      // Mark messages as seen in DB and notify sender
+      await markMessagesAsSeen(userId);
+      if (socket && socket.connected) {
+        socket.emit('seenMessages', {
+          senderId: userId,
+          readerId: user?._id,
+          isGroup: isGroup,
+          conversationId: isGroup ? userId : undefined
+        });
+      }
+
       // For 1-on-1, try to find avatar from messages if not provided
       if (!isGroup && !recipientAvatar && res.messages && res.messages.length > 0) {
         const otherUserMsg = res.messages.find((m: any) => (m.sender?._id || m.sender) === userId);
@@ -432,6 +443,19 @@ const ChatScreen = () => {
             handleAICommands(msg.text, msg.aiCommand);
           }
 
+          // Mark message seen immediately if it's from the other user
+          if (msgSenderId !== user?._id) {
+            markMessagesAsSeen(userId).catch(err => console.error(err));
+            if (socket && socket.connected) {
+              socket.emit('seenMessages', {
+                senderId: userId,
+                readerId: user?._id,
+                isGroup: isGroup,
+                conversationId: isGroup ? userId : undefined
+              });
+            }
+          }
+
           setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
           }, 100);
@@ -442,6 +466,19 @@ const ChatScreen = () => {
     };
 
     socket.on('addMessageToClient', handleIncomingMessage);
+
+    const handleSeenMessages = (data: any) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          // If the message is from me, mark it as seen
+          if ((m.sender?._id || m.sender) === user?._id) {
+            return { ...m, isSeenByRecipient: true };
+          }
+          return m;
+        })
+      );
+    };
+    socket.on('seenMessagesToClient', handleSeenMessages);
 
     // ── Typing indicator listeners ──────────────────────────────────────────
     const handleTyping = (data: any) => {
@@ -1119,10 +1156,20 @@ const ChatScreen = () => {
                   )}
               </>
             )}
-            <Text
-              style={[styles.timestamp, isSent ? styles.sentTimestamp : styles.receivedTimestamp]}>
-              {moment(item.createdAt).format('HH:mm')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: isSent ? 'flex-end' : 'flex-start' }}>
+              <Text
+                style={[styles.timestamp, isSent ? styles.sentTimestamp : styles.receivedTimestamp, { marginBottom: 0 }]}>
+                {moment(item.createdAt).format('HH:mm')}
+              </Text>
+              {isSent && (
+                <Ionicons
+                  name={(item.seenUsers && item.seenUsers.length > 0) || item.isSeenByRecipient ? "checkmark-done" : "checkmark"}
+                  size={14}
+                  color={(item.seenUsers && item.seenUsers.length > 0) || item.isSeenByRecipient ? "#34B7F1" : "#888"}
+                  style={{ marginLeft: 4, marginTop: 1 }}
+                />
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -1249,34 +1296,36 @@ const ChatScreen = () => {
             </View>
           </View>
 
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: addOpacity(theme.colors.onSurface, 0.05),
-                color: theme.colors.onSurface,
-              },
-            ]}
-            placeholder="Message..."
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            value={text}
-            onChangeText={handleTextChange}
-            multiline
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: addOpacity(theme.colors.onSurface, 0.05),
+                  color: theme.colors.onSurface,
+                },
+              ]}
+              placeholder="Message..."
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={text}
+              onChangeText={handleTextChange}
+              multiline
+            />
 
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: theme.colors.primary },
-              (!text.trim() && media.length === 0) || sending ? styles.sendButtonDisabled : null,
-            ]}
-            onPress={() => handleSend()}>
-            {sending ? (
-              <ActivityIndicator color={theme.colors.onPrimary} size="small" />
-            ) : (
-              <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: theme.colors.primary },
+                (!text.trim() && media.length === 0) || sending ? styles.sendButtonDisabled : null,
+              ]}
+              onPress={() => handleSend()}>
+              {sending ? (
+                <ActivityIndicator color={theme.colors.onPrimary} size="small" />
+              ) : (
+                <Ionicons name="send" size={20} color={theme.colors.onPrimary} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -1465,11 +1514,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
+    flexDirection: 'column',
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 36,
+    borderRadius: 24,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -1496,12 +1544,17 @@ const styles = StyleSheet.create({
   iconBtn: {
     padding: 8,
   },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
   input: {
     flex: 1,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginHorizontal: 4,
+    marginRight: 8,
     maxHeight: 120,
     fontSize: 16,
     fontWeight: '500',

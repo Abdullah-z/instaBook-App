@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { Text, Image, View, FlatList } from 'react-native';
+import { Text, View, FlatList } from 'react-native';
 import Radar from '../components/Radar';
 import PerformanceChart from '../components/PerformanceChart';
 import TreeMap from '../components/TreeMap';

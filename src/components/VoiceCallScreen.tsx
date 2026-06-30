@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { VoiceCallContext } from '../auth/VoiceCallContext';
 import { AuthContext } from '../auth/AuthContext';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';

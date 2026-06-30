@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { Text, Image, View, FlatList } from 'react-native';
+import { Text, View, FlatList } from 'react-native';
 import Donut from '../components/Donut';
 import HeatmapChart from '../components/HeatmapChart';
 import SparklineDots from '../components/SparklineDots';

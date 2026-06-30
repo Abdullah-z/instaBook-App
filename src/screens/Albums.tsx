@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { Text, Image, View, FlatList, Button } from 'react-native';
+import { Text, View, FlatList, Button } from 'react-native';
 import Chart from '../components/Chart';
 import SankeyChart from '../components/SankeyChart';
 import Guage from '../components/Guage';
