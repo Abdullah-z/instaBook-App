@@ -4,12 +4,14 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLocation from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import API from '../api/axios';
 
 const WeatherCard = () => {
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigation = useNavigation<any>();
 
   const fetchWeather = async () => {
     setLoading(true);
@@ -22,7 +24,16 @@ const WeatherCard = () => {
         return;
       }
 
-      let location = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
+      // Add a timeout so the spinner doesn't hang indefinitely on devices
+      // where GPS is slow or unavailable (common on Android emulators / low-signal devices).
+      const locationPromise = ExpoLocation.getCurrentPositionAsync({
+        accuracy: ExpoLocation.Accuracy.Balanced,
+        timeInterval: 0,
+      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Location request timed out. Try again.')), 10000)
+      );
+      let location = await Promise.race([locationPromise, timeoutPromise]);
       
       const res = await API.get(`/external/weather?lat=${location.coords.latitude}&lon=${location.coords.longitude}`);
       setWeather(res.data.data);
@@ -43,60 +54,63 @@ const WeatherCard = () => {
   }, []);
 
   return (
-    <LinearGradient
-      colors={['#3b82f6', '#22d3ee']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Ionicons name="cloud" size={24} color="white" />
-          <Text style={styles.title}>Local Weather</Text>
-        </View>
-        {!weather && !loading && (
-          <TouchableOpacity style={styles.button} onPress={fetchWeather}>
-            <Ionicons name="location" size={16} color="white" />
-            <Text style={styles.buttonText}>Get GPS</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {loading && (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="white" />
-        </View>
-      )}
-
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {weather && (
-        <View style={styles.weatherInfo}>
-          <View>
-            <Text style={styles.temp}>{Math.round(weather.main.temp)}°C</Text>
-            <Text style={styles.city}>{weather.name}</Text>
-            <Text style={styles.desc}>{weather.weather[0]?.description}</Text>
+    <TouchableOpacity onPress={() => navigation.navigate('WeatherNews')} activeOpacity={0.9}>
+      <LinearGradient
+        colors={['#3b82f6', '#22d3ee']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.card}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Ionicons name="cloud" size={24} color="white" />
+            <Text style={styles.title}>Local Weather</Text>
           </View>
-          {weather.weather[0]?.icon && (
-            <Image 
-              source={{ uri: `https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png` }} 
-              style={styles.icon} 
-              contentFit="contain"
-            />
+          {!weather && !loading && (
+            <TouchableOpacity style={styles.button} onPress={fetchWeather}>
+              <Ionicons name="location" size={16} color="white" />
+              <Text style={styles.buttonText}>Get GPS</Text>
+            </TouchableOpacity>
           )}
         </View>
-      )}
-    </LinearGradient>
+
+        {loading && (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color="white" />
+          </View>
+        )}
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {weather && (
+          <View style={styles.weatherInfo}>
+            <View>
+              <Text style={styles.temp}>{Math.round(weather.main.temp)}°C</Text>
+              <Text style={styles.city}>{weather.name}</Text>
+              <Text style={styles.desc}>{weather.weather[0]?.description}</Text>
+            </View>
+            {weather.weather[0]?.icon && (
+              <Image 
+                source={{ uri: `https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png` }} 
+                style={styles.icon} 
+                contentFit="contain"
+              />
+            )}
+          </View>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 8,
+    marginHorizontal: 10,
+    marginVertical: 6,
     borderRadius: 24,
     padding: 20,
     elevation: 4,

@@ -16,7 +16,12 @@ import HeaderLogo from '../components/HeaderLogo';
 import SuggestedUsers from '../components/SuggestedUsers';
 import WeatherCard from '../components/WeatherCard';
 import NewsCard from '../components/NewsCard';
+import CryptoCard from '../components/CryptoCard';
+import CricketCard from '../components/CricketCard';
+import FactCard from '../components/FactCard';
 import API from '../api/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const LIMIT = 4;
 
@@ -35,7 +40,38 @@ const HomeScreen = () => {
   const [activeTab, setActiveTab] = useState<'Home' | 'For You'>('Home');
   const [news, setNews] = useState<any[]>([]);
   const assignedNews = useRef<Record<string, any>>({});
+  const [showWeatherInFeed, setShowWeatherInFeed] = useState(true);
+  const [showNewsInFeed, setShowNewsInFeed] = useState(true);
+  const [showCryptoInFeed, setShowCryptoInFeed] = useState(false);
+  const [showCricketInFeed, setShowCricketInFeed] = useState(false);
+  const [showFactInFeed, setShowFactInFeed] = useState(false);
+
+  const [cryptoData, setCryptoData] = useState<any[]>([]);
+  const [cricketData, setCricketData] = useState<any[]>([]);
+  const [factData, setFactData] = useState<any>(null);
+
   const theme = useTheme();
+
+  // Load preferences from storage each time the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.multiGet([
+        'weatherInFeedEnabled',
+        'newsInFeedEnabled',
+        'cryptoInFeedEnabled',
+        'cricketInFeedEnabled',
+        'factInFeedEnabled',
+      ]).then((stores) => {
+        stores.forEach(([key, val]) => {
+          if (key === 'weatherInFeedEnabled') setShowWeatherInFeed(val === null ? true : val === 'true');
+          if (key === 'newsInFeedEnabled') setShowNewsInFeed(val === null ? true : val === 'true');
+          if (key === 'cryptoInFeedEnabled') setShowCryptoInFeed(val === 'true');
+          if (key === 'cricketInFeedEnabled') setShowCricketInFeed(val === 'true');
+          if (key === 'factInFeedEnabled') setShowFactInFeed(val === 'true');
+        });
+      });
+    }, [])
+  );
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   
@@ -92,10 +128,19 @@ const HomeScreen = () => {
       setStories(storiesRes.stories || []);
 
       try {
-        const newsRes = await API.get('/external/news');
-        setNews(newsRes.data.articles || []);
+        const [newsRes, cryptoRes, cricketRes, factRes] = await Promise.allSettled([
+          API.get('/external/news'),
+          API.get('/external/crypto'),
+          API.get('/external/cricket'),
+          API.get('/external/fact'),
+        ]);
+
+        if (newsRes.status === 'fulfilled') setNews(newsRes.value.data.articles || []);
+        if (cryptoRes.status === 'fulfilled') setCryptoData(cryptoRes.value.data.coins || []);
+        if (cricketRes.status === 'fulfilled') setCricketData(cricketRes.value.data.matches || []);
+        if (factRes.status === 'fulfilled') setFactData(factRes.value.data.fact || null);
       } catch (err) {
-        console.log('Error fetching news:', err);
+        console.log('Error fetching external data:', err);
       }
     } catch (err) {
       console.log('Error loading posts or suggestions:', err);
@@ -169,7 +214,6 @@ const HomeScreen = () => {
   const renderHeader = useCallback(
     () => (
       <View>
-        <WeatherCard />
         {/* Stories Bar */}
         <View style={styles.storiesContainer}>
           <FlatList
@@ -227,9 +271,26 @@ const HomeScreen = () => {
             }}
           />
         </View>
+        {showWeatherInFeed && <WeatherCard />}
+        {showCryptoInFeed && <CryptoCard data={cryptoData} />}
+        {showCricketInFeed && <CricketCard data={cricketData} />}
+        {showFactInFeed && <FactCard data={factData} />}
       </View>
     ),
-    [user, myStoryData, otherStories, theme, navigation]
+    [
+      user,
+      myStoryData,
+      otherStories,
+      theme,
+      navigation,
+      showWeatherInFeed,
+      showCryptoInFeed,
+      showCricketInFeed,
+      showFactInFeed,
+      cryptoData,
+      cricketData,
+      factData,
+    ]
   );
 
   const getNewsForPost = (postId: string, index: number) => {
@@ -257,14 +318,14 @@ const HomeScreen = () => {
             onOpenComments={openComments}
             onDelete={handleDeletePost}
           />
-          {assignedNewsCard && (
+          {showNewsInFeed && assignedNewsCard && (
             <NewsCard article={assignedNewsCard} />
           )}
           {index === 4 && <SuggestedUsers users={suggestedUsers} />}
         </View>
       );
     },
-    [handlePostUpdate, openComments, handleDeletePost, suggestedUsers, news]
+    [handlePostUpdate, openComments, handleDeletePost, suggestedUsers, news, showNewsInFeed]
   );
 
   return (
@@ -285,16 +346,6 @@ const HomeScreen = () => {
           style={styles.shortcutBtn}
           onPress={() => navigation.navigate('Map' as never)}>
           <Ionicons name="map-outline" size={24} color={theme.colors.onSurface} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shortcutBtn}
-          onPress={() => navigation.navigate('Friends' as never)}>
-          <Ionicons name="people-outline" size={24} color={theme.colors.onSurface} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.shortcutBtn}
-          onPress={() => navigation.navigate('Groups' as never)}>
-          <Ionicons name="people-circle-outline" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
       </Animated.View>
 

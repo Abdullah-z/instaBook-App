@@ -32,6 +32,7 @@ const NewsCard = ({ article }: { article: any }) => {
 
 const styles = StyleSheet.create({
   card: {
+    marginHorizontal: 10,
     marginVertical: 8,
     borderRadius: 16,
     borderWidth: 1,

@@ -44,6 +44,7 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import MapScreen from '../screens/MapScreen';
 import UserPostMapScreen from '../screens/UserPostMapScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import InterestsScreen from '../screens/InterestsScreen';
 
 const Stack = createStackNavigator();
 
@@ -196,6 +197,11 @@ const AppNavigator = () => {
               name="NearbyChat"
               component={NearbyChatScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Interests"
+              component={InterestsScreen}
+              options={{ title: 'Feed Interests' }}
             />
           </>
         ) : (

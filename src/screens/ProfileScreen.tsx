@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { Image } from 'expo-image';
 import ImageView from 'react-native-image-viewing';

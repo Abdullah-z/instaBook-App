@@ -22,6 +22,12 @@ const HeaderRightActions = () => {
         <Ionicons name="search-outline" size={24} color={theme.colors.onSurface} />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.iconBtn}
+        onPress={() => navigation.navigate('Interests' as never)}>
+        <Ionicons name="options-outline" size={24} color={theme.colors.onSurface} />
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.iconBtn} onPress={() => handleIsDark()}>
         <Ionicons
           name={isDark ? 'sunny-outline' : 'moon-outline'}
