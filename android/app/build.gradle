@@ -1,18 +1,3 @@
-// Workaround for CMake error on Windows: Ensure missing codegen directories exist during configuration phase.
-// This prevents CMake from failing before the build actually starts.
-def nodeModulesPathForWorkaround = "${projectDir}/../../node_modules"
-[
-    "@react-native-vector-icons/material-design-icons/android/build/generated/source/codegen/jni/",
-    "@shopify/flash-list/android/build/generated/source/codegen/jni/",
-    "react-native-reanimated/android/build/generated/source/codegen/jni/",
-    "react-native-webview/android/build/generated/source/codegen/jni/"
-].each { dir ->
-    def d = file("${nodeModulesPathForWorkaround}/${dir}")
-    if (!d.exists()) {
-        d.mkdirs()
-    }
-}
-
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -189,12 +174,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-    // Firebase BOM - manages consistent versions across all Firebase libraries
-    // This prevents duplicate class conflicts (e.g., firebase-iid vs firebase-messaging)
-    implementation platform('com.google.firebase:firebase-bom:33.7.0')
-    implementation 'com.google.firebase:firebase-analytics'
-    // add SDKs for any other desired Firebase products
-    // https://firebase.google.com/docs/android/setup#available-libraries
 }
 
 apply plugin: 'com.google.gms.google-services'

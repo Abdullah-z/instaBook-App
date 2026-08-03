@@ -22,6 +22,25 @@ import FactCard from '../components/FactCard';
 import API from '../api/axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import NetInfo from '@react-native-community/netinfo';
+import OfflineBanner from '../components/OfflineBanner';
+import DraftsModal from '../components/DraftsModal';
+import {
+  saveCachedFeed,
+  getCachedFeed,
+  saveCachedStories,
+  getCachedStories,
+  getOutbox,
+  getDrafts,
+  removeFromOutbox,
+  deleteDraft,
+  syncOutbox,
+  OutboxPost,
+  DraftPost,
+} from '../utils/offlineSyncManager';
+import { createPostAPI } from '../api/postAPI';
+import { getActiveStreamsAPI } from '../api/liveAPI';
+import type { LiveStream } from '../api/liveAPI';
 
 const LIMIT = 4;
 
@@ -50,7 +69,64 @@ const HomeScreen = () => {
   const [cricketData, setCricketData] = useState<any[]>([]);
   const [factData, setFactData] = useState<any>(null);
 
+  // Offline & Outbox State
+  const [isOffline, setIsOffline] = useState(false);
+  const [outboxItems, setOutboxItems] = useState<OutboxPost[]>([]);
+  const [draftItems, setDraftItems] = useState<DraftPost[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
+
   const theme = useTheme();
+
+  // Load drafts and outbox on focus
+  const refreshOfflineItems = useCallback(async () => {
+    const ob = await getOutbox();
+    const dr = await getDrafts();
+    setOutboxItems(ob);
+    setDraftItems(dr);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshOfflineItems();
+    }, [refreshOfflineItems])
+  );
+
+  // Monitor Network Connectivity & trigger sync on reconnect
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const offline = !(state.isConnected && state.isInternetReachable !== false);
+      setIsOffline(offline);
+
+      if (!offline) {
+        // Connected to internet -> trigger sync if outbox items exist
+        handleSyncOutbox();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSyncOutbox = async () => {
+    const ob = await getOutbox();
+    if (ob.length === 0 || isSyncing) return;
+
+    setIsSyncing(true);
+    try {
+      const result = await syncOutbox(async (item) => {
+        await createPostAPI(item.formData);
+      });
+      if (result.successCount > 0) {
+        loadInitialPosts();
+      }
+    } catch (err) {
+      console.error('[HomeScreen] Error syncing outbox:', err);
+    } finally {
+      setIsSyncing(false);
+      refreshOfflineItems();
+    }
+  };
 
   // Load preferences from storage each time the screen is focused
   useFocusEffect(
@@ -72,6 +148,7 @@ const HomeScreen = () => {
       });
     }, [])
   );
+
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   
@@ -115,17 +192,22 @@ const HomeScreen = () => {
       if (!token) return;
       setRefreshing(true);
       const res = await getPostsAPI(1, LIMIT);
-      const posts = res.posts;
+      const posts = res.posts || [];
 
       setVisiblePosts(posts);
       setPage(1);
       setHasMore(posts.length >= LIMIT);
 
+      // Save to offline cache
+      await saveCachedFeed(posts);
+
       const suggestRes = await getSuggestionsAPI();
       setSuggestedUsers(suggestRes.users || []);
 
       const storiesRes = await getStoriesAPI();
-      setStories(storiesRes.stories || []);
+      const loadedStories = storiesRes.stories || [];
+      setStories(loadedStories);
+      await saveCachedStories(loadedStories);
 
       try {
         const [newsRes, cryptoRes, cricketRes, factRes] = await Promise.allSettled([
@@ -143,11 +225,21 @@ const HomeScreen = () => {
         console.log('Error fetching external data:', err);
       }
     } catch (err) {
-      console.log('Error loading posts or suggestions:', err);
+      console.log('Error loading posts online, loading cached offline feed:', err);
+      const cachedPosts = await getCachedFeed();
+      const cachedStories = await getCachedStories();
+      if (cachedPosts.length > 0) {
+        setVisiblePosts(cachedPosts);
+        setHasMore(false);
+      }
+      if (cachedStories.length > 0) {
+        setStories(cachedStories);
+      }
     } finally {
       setRefreshing(false);
     }
   }, [token]);
+
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -207,6 +299,17 @@ const HomeScreen = () => {
     return () => subscription.remove();
   }, [loadInitialPosts]);
 
+  // Fetch active live streams
+  useFocusEffect(
+    useCallback(() => {
+      getActiveStreamsAPI().then(setLiveStreams).catch(() => {});
+      const interval = setInterval(() => {
+        getActiveStreamsAPI().then(setLiveStreams).catch(() => {});
+      }, 15000);
+      return () => clearInterval(interval);
+    }, [])
+  );
+
   // Construct story list: First item is always "Me"
   const myStoryData = stories.find((s) => s.user._id === user?._id);
   const otherStories = stories.filter((s) => s.user._id !== user?._id);
@@ -229,13 +332,16 @@ const HomeScreen = () => {
               const hasStory = item.stories && item.stories.length > 0;
               const avatarUrl = item.isMe ? user?.avatar : item.user.avatar;
               const username = item.isMe ? 'Your story' : item.user.username;
+              const isUserLive = !item.isMe && liveStreams.some((s) => s.hostId === item.user._id);
+              const liveStream = isUserLive ? liveStreams.find((s) => s.hostId === item.user._id) : null;
 
               return (
                 <TouchableOpacity
                   style={styles.storyItem}
                   onPress={() => {
-                    // Navigate to story viewer
-                    if (hasStory) {
+                    if (isUserLive && liveStream) {
+                      navigation.navigate('LiveViewer', { stream: liveStream });
+                    } else if (hasStory) {
                       navigation.navigate('StoryViewer', { userStories: item });
                     } else if (item.isMe) {
                       navigation.navigate('CreatePostScreen', { initialPostType: 'story' });
@@ -246,6 +352,7 @@ const HomeScreen = () => {
                       styles.storyRing,
                       hasStory && { borderColor: theme.colors.primary },
                       !hasStory && { borderColor: theme.colors.outlineVariant },
+                      isUserLive && { borderColor: '#E53935', borderWidth: 2.5 },
                     ]}>
                     <Image source={{ uri: avatarUrl }} style={styles.storyAvatar} />
                     {item.isMe && !hasStory && (
@@ -258,6 +365,11 @@ const HomeScreen = () => {
                           },
                         ]}>
                         <Text style={{ color: theme.colors.onPrimary, fontSize: 10 }}>+</Text>
+                      </View>
+                    )}
+                    {isUserLive && (
+                      <View style={styles.liveBadge}>
+                        <Text style={styles.liveBadgeText}>LIVE</Text>
                       </View>
                     )}
                   </View>
@@ -330,6 +442,16 @@ const HomeScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Offline Status & Outbox Sync Banner */}
+      <OfflineBanner
+        isOffline={isOffline}
+        outboxCount={outboxItems.length}
+        draftCount={draftItems.length}
+        isSyncing={isSyncing}
+        onPressDrafts={() => setShowDraftsModal(true)}
+        onPressSync={handleSyncOutbox}
+      />
+
       {/* Screen Specific Shortcuts Row */}
       <Animated.View style={[styles.shortcutsRow, { backgroundColor: theme.colors.surface }, shortcutsAnimatedStyle]}>
         <TouchableOpacity
@@ -376,9 +498,29 @@ const HomeScreen = () => {
           {selectedPost && <CommentsScreen post={selectedPost} />}
         </BottomSheetView>
       </BottomSheet>
+
+      {/* Outbox & Drafts Management Modal */}
+      <DraftsModal
+        visible={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        outboxItems={outboxItems}
+        draftItems={draftItems}
+        isOffline={isOffline}
+        isSyncing={isSyncing}
+        onDeleteOutbox={async (id) => {
+          await removeFromOutbox(id);
+          refreshOfflineItems();
+        }}
+        onDeleteDraft={async (id) => {
+          await deleteDraft(id);
+          refreshOfflineItems();
+        }}
+        onSyncNow={handleSyncOutbox}
+      />
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   shortcutsRow: {
@@ -431,6 +573,24 @@ const styles = StyleSheet.create({
   storyUsername: {
     fontSize: 11,
     textAlign: 'center',
+  },
+  liveBadge: {
+    position: 'absolute',
+    bottom: -2,
+    left: '50%',
+    transform: [{ translateX: -16 }],
+    backgroundColor: '#E53935',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  liveBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });
 

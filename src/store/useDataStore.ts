@@ -29,6 +29,12 @@ import { NothingDark } from '../constants/themes/NothingDark';
 import { NothingLight } from '../constants/themes/NothingLight';
 import { MonochromeDark } from '../constants/themes/MonochromeDark';
 import { MonochromeLight } from '../constants/themes/MonochromeLight';
+import { OledDark } from '../constants/themes/OledDark';
+import { OledLight } from '../constants/themes/OledLight';
+import { GenZDark } from '../constants/themes/GenZDark';
+import { GenZLight } from '../constants/themes/GenZLight';
+import { SpectrumDark } from '../constants/themes/SpectrumDark';
+import { SpectrumLight } from '../constants/themes/SpectrumLight';
 
 const getThemesMap = (themeColor: string) => {
   switch (themeColor) {
@@ -45,9 +51,14 @@ const getThemesMap = (themeColor: string) => {
     case 'po': return { light: PastelOrangeLight, dark: PastelOrangeDark };
     case 'n': return { light: NothingLight, dark: NothingDark };
     case 'm': return { light: MonochromeLight, dark: MonochromeDark };
+    case 'oled': return { light: OledLight, dark: OledDark };
+    case 'genz': return { light: GenZLight, dark: GenZDark };
+    case 'spectrum': return { light: SpectrumLight, dark: SpectrumDark };
     default: return { light: GreenLight, dark: GreenDark };
   }
 };
+
+
 
 const buildFullTheme = (isDark: boolean, themeColor: string): ITheme => {
   const themes = getThemesMap(themeColor);

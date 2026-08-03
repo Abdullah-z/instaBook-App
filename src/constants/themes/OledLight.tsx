@@ -1,0 +1,41 @@
+import { MD3LightTheme } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
+
+export const OledLight = {
+  ...MD3LightTheme,
+  roundness: 24,
+  ...fontConfig,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#00838F',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#E0F7FA',
+    onPrimaryContainer: '#00272B',
+    secondary: '#304FFE',
+    onSecondary: '#FFFFFF',
+    secondaryContainer: '#E8EAF6',
+    onSecondaryContainer: '#0A1240',
+    tertiary: '#D50000',
+    onTertiary: '#FFFFFF',
+    tertiaryContainer: '#FFEBEE',
+    onTertiaryContainer: '#400000',
+    background: '#FFFFFF',
+    onBackground: '#000000',
+    surface: '#F5F7FA',
+    onSurface: '#000000',
+    surfaceVariant: '#E1E5EC',
+    onSurfaceVariant: '#42474E',
+    outline: '#72777F',
+    outlineVariant: '#C2C7CF',
+    shadow: '#000000',
+    scrim: '#000000',
+    elevation: {
+      level0: 'transparent',
+      level1: '#F0F4F8',
+      level2: '#E8EEF5',
+      level3: '#E0E8F2',
+      level4: '#D8E2EF',
+      level5: '#D0DCEC',
+    },
+  },
+};

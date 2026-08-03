@@ -1,0 +1,41 @@
+import { MD3LightTheme } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
+
+export const GenZLight = {
+  ...MD3LightTheme,
+  roundness: 24,
+  ...fontConfig,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#E6006C',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#FFE5F1',
+    onPrimaryContainer: '#4D0024',
+    secondary: '#7928CA',
+    onSecondary: '#FFFFFF',
+    secondaryContainer: '#F1E5FF',
+    onSecondaryContainer: '#2D0059',
+    tertiary: '#709900',
+    onTertiary: '#FFFFFF',
+    tertiaryContainer: '#F2FFCC',
+    onTertiaryContainer: '#263300',
+    background: '#FAF7FF',
+    onBackground: '#1F172B',
+    surface: '#F0EAFF',
+    onSurface: '#1F172B',
+    surfaceVariant: '#E2D7F7',
+    onSurfaceVariant: '#4B425E',
+    outline: '#7E7394',
+    outlineVariant: '#C7BDDE',
+    shadow: '#000000',
+    scrim: '#000000',
+    elevation: {
+      level0: 'transparent',
+      level1: '#F6F0FF',
+      level2: '#EFE5FF',
+      level3: '#E8DCFF',
+      level4: '#E1D2FF',
+      level5: '#DAC8FF',
+    },
+  },
+};

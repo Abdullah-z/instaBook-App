@@ -1,0 +1,41 @@
+import { MD3LightTheme } from 'react-native-paper';
+import { fontConfig } from './fontConfig';
+
+export const SpectrumLight = {
+  ...MD3LightTheme,
+  roundness: 24,
+  ...fontConfig,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#E6006B',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#FFE6F1',
+    onPrimaryContainer: '#470020',
+    secondary: '#00838F',
+    onSecondary: '#FFFFFF',
+    secondaryContainer: '#E0F7FA',
+    onSecondaryContainer: '#00272B',
+    tertiary: '#8C6D00',
+    onTertiary: '#FFFFFF',
+    tertiaryContainer: '#FFF2C2',
+    onTertiaryContainer: '#2B2100',
+    background: '#FAF5FF',
+    onBackground: '#1C0B36',
+    surface: '#F2E6FF',
+    onSurface: '#1C0B36',
+    surfaceVariant: '#E6D4FC',
+    onSurfaceVariant: '#4E3A6E',
+    outline: '#8269AA',
+    outlineVariant: '#CFBEEB',
+    shadow: '#000000',
+    scrim: '#000000',
+    elevation: {
+      level0: 'transparent',
+      level1: '#F7EDFF',
+      level2: '#F1E2FF',
+      level3: '#EBD6FF',
+      level4: '#E5CBFF',
+      level5: '#DFC0FF',
+    },
+  },
+};

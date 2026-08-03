@@ -3,17 +3,31 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
-const HeaderLogo = () => {
+interface HeaderLogoProps {
+  size?: number;
+  showText?: boolean;
+}
+
+const HeaderLogo: React.FC<HeaderLogoProps> = ({ size = 34, showText = true }) => {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/circles.png')}
-        style={styles.logoImage}
-        resizeMode="contain"
+        source={require('../../assets/new_logo.png')}
+        style={{ width: size, height: size }}
+        contentFit="contain"
       />
-      <Text style={[styles.logoText, { color: theme.colors.onSurface }]}>Circles</Text>
+      {showText && (
+        <Text
+          style={[
+            styles.logoText,
+            { color: theme.colors.onSurface, fontSize: Math.round(size * 0.84) },
+          ]}
+        >
+          Circles
+        </Text>
+      )}
     </View>
   );
 };
@@ -25,15 +39,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 10,
-  },
-  logoImage: {
-    width: 50,
-    height: 50,
-    marginRight: 0,
+    gap: 8,
   },
   logoText: {
     fontWeight: '900',
-    fontSize: 28,
-    letterSpacing: -1.5,
+    letterSpacing: -1.2,
   },
 });

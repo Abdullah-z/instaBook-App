@@ -60,9 +60,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/circles.png",
-        "backgroundColor": "#000"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
+
       "package": "com.circles.social",
       "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json",

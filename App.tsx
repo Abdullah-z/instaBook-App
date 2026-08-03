@@ -35,6 +35,12 @@ import { NothingDark } from './src/constants/themes/NothingDark';
 import { NothingLight } from './src/constants/themes/NothingLight';
 import { MonochromeDark } from './src/constants/themes/MonochromeDark';
 import { MonochromeLight } from './src/constants/themes/MonochromeLight';
+import { OledDark } from './src/constants/themes/OledDark';
+import { OledLight } from './src/constants/themes/OledLight';
+import { GenZDark } from './src/constants/themes/GenZDark';
+import { GenZLight } from './src/constants/themes/GenZLight';
+import { SpectrumDark } from './src/constants/themes/SpectrumDark';
+import { SpectrumLight } from './src/constants/themes/SpectrumLight';
 import { DataProvider, useData, usePushNotifications, ThemeProvider } from './src/hooks';
 import * as Notifications from 'expo-notifications';
 import { light } from './src/constants';
@@ -91,19 +97,22 @@ function MainApp() {
   if (!themeLoaded) return null; // Or a splash screen
 
   const themeMap = {
-    g: isDark ? GreenDark : GreenLight,
-    b: isDark ? BlueDark : BlueLight,
-    p: isDark ? PurpleDark : PurpleLight,
-    r: isDark ? RedDark : RedLight,
-    o: isDark ? OrangeDark : OrangeLight,
-    y: isDark ? YellowDark : YellowLight,
-    np: isDark ? NeonPinkDark : NeonPinkLight,
-    nc: isDark ? NeonCyanDark : NeonCyanLight,
-    nl: isDark ? NeonLimeDark : NeonLimeLight,
-    eb: isDark ? ElectricBlueDark : ElectricBlueLight,
-    po: isDark ? PastelOrangeDark : PastelOrangeLight,
-    n: isDark ? NothingDark : NothingLight,
-    m: isDark ? MonochromeDark : MonochromeLight,
+    g:        isDark ? GreenDark        : GreenLight,
+    b:        isDark ? BlueDark         : BlueLight,
+    p:        isDark ? PurpleDark       : PurpleLight,
+    r:        isDark ? RedDark          : RedLight,
+    o:        isDark ? OrangeDark       : OrangeLight,
+    y:        isDark ? YellowDark       : YellowLight,
+    np:       isDark ? NeonPinkDark     : NeonPinkLight,
+    nc:       isDark ? NeonCyanDark     : NeonCyanLight,
+    nl:       isDark ? NeonLimeDark     : NeonLimeLight,
+    eb:       isDark ? ElectricBlueDark : ElectricBlueLight,
+    po:       isDark ? PastelOrangeDark : PastelOrangeLight,
+    n:        isDark ? NothingDark      : NothingLight,
+    m:        isDark ? MonochromeDark   : MonochromeLight,
+    oled:     isDark ? OledDark         : OledLight,
+    genz:     isDark ? GenZDark         : GenZLight,
+    spectrum: isDark ? SpectrumDark     : SpectrumLight,
   };
 
   const paperTheme = themeMap[themeColor as keyof typeof themeMap] || themeMap['g'];

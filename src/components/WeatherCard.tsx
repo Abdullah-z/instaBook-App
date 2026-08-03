@@ -1,60 +1,122 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLocation from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../api/axios';
 
-const WeatherCard = () => {
-  const [weather, setWeather] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigation = useNavigation<any>();
+const WEATHER_CACHE_KEY = '@cached_weather_data';
 
-  const fetchWeather = async () => {
-    setLoading(true);
-    setError(null);
+interface WeatherState {
+  data: any | null;
+  loading: boolean;
+  error: string | null;
+}
+
+const WeatherCard: React.FC = () => {
+  // Single state object eliminates multiple re-renders from sequential setState calls
+  const [state, setState] = useState<WeatherState>({ data: null, loading: false, error: null });
+  const navigation = useNavigation<any>();
+  const isMounted = useRef(true);
+
+  // Helper: only update state if still mounted
+  const safeSet = useCallback((patch: Partial<WeatherState>) => {
+    if (isMounted.current) setState(prev => ({ ...prev, ...patch }));
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+
+    // 1. Load cache first — instant, no flicker
+    AsyncStorage.getItem(WEATHER_CACHE_KEY)
+      .then(cached => {
+        if (cached && isMounted.current) {
+          try { safeSet({ data: JSON.parse(cached) }); } catch { /* ignore corrupt cache */ }
+        }
+      })
+      .catch(() => {/* ignore */})
+      .finally(() => {
+        // 2. Only attempt live fetch if permission already granted
+        ExpoLocation.getForegroundPermissionsAsync()
+          .then(({ status }) => {
+            if (status === 'granted' && isMounted.current) {
+              fetchWeather(false); // silent background update — no spinner
+            }
+          })
+          .catch(() => {/* ignore */});
+      });
+
+    return () => { isMounted.current = false; };
+  }, []);
+
+  const fetchWeather = useCallback(async (showLoading = true) => {
+    // Show spinner only when explicitly requested AND we have no data
+    if (showLoading && !state.data) {
+      safeSet({ loading: true, error: null });
+    } else {
+      // Clear error silently without triggering spinner flash
+      if (isMounted.current) setState(prev => ({ ...prev, error: null }));
+    }
+
     try {
-      let { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      let { status } = await ExpoLocation.getForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Permission to access location was denied');
-        setLoading(false);
+        const req = await ExpoLocation.requestForegroundPermissionsAsync();
+        status = req.status;
+      }
+      if (status !== 'granted') {
+        safeSet({ loading: false, error: 'Location permission denied' });
         return;
       }
 
-      // Add a timeout so the spinner doesn't hang indefinitely on devices
-      // where GPS is slow or unavailable (common on Android emulators / low-signal devices).
-      const locationPromise = ExpoLocation.getCurrentPositionAsync({
-        accuracy: ExpoLocation.Accuracy.Balanced,
-        timeInterval: 0,
-      });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Location request timed out. Try again.')), 10000)
+      // Prefer last-known location for speed (no GPS warm-up)
+      let location = await ExpoLocation.getLastKnownPositionAsync({});
+      if (!location) {
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Location timed out')), 10000)
+        );
+        location = await Promise.race([
+          ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced }),
+          timeout,
+        ]);
+      }
+
+      const res = await API.get(
+        `/external/weather?lat=${location.coords.latitude}&lon=${location.coords.longitude}`
       );
-      let location = await Promise.race([locationPromise, timeoutPromise]);
-      
-      const res = await API.get(`/external/weather?lat=${location.coords.latitude}&lon=${location.coords.longitude}`);
-      setWeather(res.data.data);
+      const data = res.data?.data;
+      if (data && isMounted.current) {
+        // Single atomic update — no intermediate renders
+        setState(prev => ({ ...prev, data, loading: false, error: null }));
+        AsyncStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(data)).catch(() => {});
+      } else {
+        safeSet({ loading: false });
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch weather');
-    } finally {
-      setLoading(false);
+      // If we already have cached data, swallow the error silently (no UI change)
+      if (isMounted.current) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          // Only show error if we have nothing to display
+          error: prev.data ? null : (err.message || 'Failed to fetch weather'),
+        }));
+      }
     }
+  }, [state.data, safeSet]);
+
+  const handlePress = () => {
+    if (!navigation) return;
+    try { navigation.navigate('WeatherNews' as never); } catch { /* ignore */ }
   };
 
-  // Auto-fetch on mount if location permission was already granted before
-  useEffect(() => {
-    ExpoLocation.getForegroundPermissionsAsync().then(({ status }) => {
-      if (status === 'granted') {
-        fetchWeather();
-      }
-    });
-  }, []);
+  const { data: weather, loading, error } = state;
 
   return (
-    <TouchableOpacity onPress={() => navigation.navigate('WeatherNews')} activeOpacity={0.9}>
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.88}>
       <LinearGradient
         colors={['#3b82f6', '#22d3ee']}
         start={{ x: 0, y: 0 }}
@@ -67,37 +129,42 @@ const WeatherCard = () => {
             <Text style={styles.title}>Local Weather</Text>
           </View>
           {!weather && !loading && (
-            <TouchableOpacity style={styles.button} onPress={fetchWeather}>
+            <TouchableOpacity style={styles.button} onPress={() => fetchWeather(true)}>
               <Ionicons name="location" size={16} color="white" />
               <Text style={styles.buttonText}>Get GPS</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {loading && (
+        {/* Spinner only when we truly have nothing to show */}
+        {loading && !weather && (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color="white" />
           </View>
         )}
 
-        {error && (
+        {/* Error only when we have nothing to show */}
+        {error && !weather && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
+        {/* Weather data — stable once loaded, no flicker */}
         {weather && (
           <View style={styles.weatherInfo}>
             <View>
-              <Text style={styles.temp}>{Math.round(weather.main.temp)}°C</Text>
+              <Text style={styles.temp}>{Math.round(weather.main?.temp ?? 0)}°C</Text>
               <Text style={styles.city}>{weather.name}</Text>
-              <Text style={styles.desc}>{weather.weather[0]?.description}</Text>
+              <Text style={styles.desc}>{weather.weather?.[0]?.description}</Text>
             </View>
-            {weather.weather[0]?.icon && (
-              <Image 
-                source={{ uri: `https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png` }} 
-                style={styles.icon} 
+            {weather.weather?.[0]?.icon && (
+              <Image
+                source={{ uri: `https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png` }}
+                style={styles.icon}
                 contentFit="contain"
+                // expo-image caches aggressively — use 'memory-disk' so it never flickers on re-render
+                cachePolicy="memory-disk"
               />
             )}
           </View>
@@ -106,6 +173,8 @@ const WeatherCard = () => {
     </TouchableOpacity>
   );
 };
+
+export default memo(WeatherCard);
 
 const styles = StyleSheet.create({
   card: {
@@ -130,63 +199,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  title: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+  title: { color: 'white', fontSize: 18, fontWeight: 'bold' },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 4,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  loader: {
-    paddingVertical: 20,
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: 10,
-    borderRadius: 12,
-  },
-  errorText: {
-    color: 'white',
-    fontSize: 14,
-  },
+  buttonText: { color: 'white', fontSize: 14, fontWeight: '600' },
+  loader: { paddingVertical: 20, alignItems: 'center' },
+  errorContainer: { backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 12 },
+  errorText: { color: 'white', fontSize: 14 },
   weatherInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  temp: {
-    color: 'white',
-    fontSize: 48,
-    fontWeight: '900',
-  },
-  city: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  desc: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    textTransform: 'capitalize',
-    marginTop: 2,
-  },
-  icon: {
-    width: 100,
-    height: 100,
-  },
+  temp: { color: 'white', fontSize: 48, fontWeight: '900' },
+  city: { color: 'rgba(255,255,255,0.9)', fontSize: 18, fontWeight: 'bold', marginTop: 4 },
+  desc: { color: 'rgba(255,255,255,0.8)', fontSize: 14, textTransform: 'capitalize', marginTop: 2 },
+  icon: { width: 100, height: 100 },
 });
-
-export default WeatherCard;

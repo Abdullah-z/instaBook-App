@@ -3,6 +3,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import * as RootNavigation from '../navigation/RootNavigation';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -25,6 +26,9 @@ import EventDetailScreen from '../screens/EventDetailScreen';
 import EditEventScreen from '../screens/EditEventScreen';
 import MyEventsScreen from '../screens/MyEventsScreen';
 import NearbyChatScreen from '../screens/NearbyChatScreen';
+import LiveBroadcastScreen from '../screens/LiveBroadcastScreen';
+import LiveViewerScreen from '../screens/LiveViewerScreen';
+import LiveDiscoveryScreen from '../screens/LiveDiscoveryScreen';
 
 import { AuthContext } from '../auth/AuthContext';
 import PageScreen from '../screens/PageScreen';
@@ -45,12 +49,34 @@ import MapScreen from '../screens/MapScreen';
 import UserPostMapScreen from '../screens/UserPostMapScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import InterestsScreen from '../screens/InterestsScreen';
+import WeatherNewsScreen from '../screens/WeatherNewsScreen';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const { token, user, userType, logout, loading, showOnboarding } = useContext(AuthContext);
   const { notification, showNotification, setShowNotification } = useSocketStore();
+
+  // Handle push notification deep-links (including LIVE_STREAM)
+  useEffect(() => {
+    const { Notifications } = require('expo-notifications');
+    const sub = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'LIVE_STREAM' && data?.channelName) {
+        RootNavigation.navigate('LiveViewer' as never, {
+          stream: {
+            channelName: data.channelName,
+            hostId: data.hostId,
+            hostName: data.hostName,
+            hostAvatar: data.hostAvatar,
+            viewerCount: 0,
+            startedAt: new Date().toISOString(),
+          },
+        } as never);
+      }
+    });
+    return () => sub.remove();
+  }, []);
   const theme = useTheme();
 
   if (loading || showOnboarding === null) {
@@ -76,7 +102,7 @@ const AppNavigator = () => {
             component={OnboardingScreen}
             options={{ headerShown: false }}
           />
-        ) : (token || user) ? (
+        ) : token || user ? (
           <>
             <Stack.Screen
               name="Main"
@@ -163,6 +189,11 @@ const AppNavigator = () => {
               options={{ title: 'Create Group', headerShown: false }}
             />
             <Stack.Screen
+              name="WeatherNews"
+              component={WeatherNewsScreen}
+              options={{ title: '', headerShown: true }}
+            />
+            <Stack.Screen
               name="GroupDetailsScreen"
               component={GroupDetailsScreen}
               options={{ title: 'Group Details' }}
@@ -202,6 +233,21 @@ const AppNavigator = () => {
               name="Interests"
               component={InterestsScreen}
               options={{ title: 'Feed Interests' }}
+            />
+            <Stack.Screen
+              name="LiveBroadcast"
+              component={LiveBroadcastScreen}
+              options={{ headerShown: false, presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
+              name="LiveViewer"
+              component={LiveViewerScreen}
+              options={{ headerShown: false, presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
+              name="LiveDiscovery"
+              component={LiveDiscoveryScreen}
+              options={{ title: '🔴 Live Now', headerShown: true }}
             />
           </>
         ) : (

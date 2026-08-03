@@ -156,7 +156,31 @@ const useSocketStore = create<SocketState>((set, get) => ({
       set({ onlineUsers: new Set(userIds) });
     });
 
+    // ── Live Streaming listeners ─────────────────────────────────────────────
+    newSocket.on('liveStartedToClient', (data: any) => {
+      // Show a tappable toast: "🔴 username is live!"
+      try {
+        Toast.show({
+          type: 'error', // red style
+          text1: `🔴 ${data.hostName} is live!`,
+          text2: 'Tap to join the stream',
+          visibilityTime: 6000,
+          onPress: () => {
+            RootNavigation.navigate('LiveViewer' as never, { stream: data } as never);
+            Toast.hide();
+          },
+        });
+      } catch (e) {}
+    });
+
+    newSocket.on('liveEndedToClient', (data: any) => {
+      // useLiveStore handles its own state; nothing extra needed here
+      console.log(`⬛ Live stream ended: ${data.channelName}`);
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     set({ socket: newSocket });
+
   },
 
   disconnectSocket: () => {

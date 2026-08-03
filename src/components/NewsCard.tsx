@@ -11,10 +11,12 @@ const NewsCard = ({ article }: { article: any }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}
+      style={[
+        styles.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+      ]}
       onPress={() => WebBrowser.openBrowserAsync(article.url)}
-      activeOpacity={0.8}
-    >
+      activeOpacity={0.8}>
       {article.urlToImage && (
         <Image source={{ uri: article.urlToImage }} style={styles.image} contentFit="cover" />
       )}
@@ -40,7 +42,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 180,
+    height: 250,
   },
   content: {
     padding: 16,

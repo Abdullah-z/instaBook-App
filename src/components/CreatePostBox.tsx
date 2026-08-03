@@ -17,6 +17,7 @@ import LocationAutocomplete from './LocationAutocomplete';
 import { POST_BACKGROUNDS, TEXT_COLORS, FONT_SIZES } from '../constants/postTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { addOpacity } from '../utils/colorUtils';
+import { saveDraft, addToOutbox } from '../utils/offlineSyncManager';
 
 const SUGGESTION_COLOR_KEYS = ['primary', 'secondary', 'tertiary', 'error'] as const;
 
@@ -47,6 +48,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
   const [textColor, setTextColor] = useState(theme.colors.onSurface);
   const [fontSize, setFontSize] = useState(16);
   const [showStyleControls, setShowStyleControls] = useState(false);
+
 
   // Poll State
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -414,7 +416,7 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         media = await imageUpload(images, isHD);
       }
 
-      const res = await createPostAPI({
+      const postPayload = {
         content: content.trim(),
         images: media,
         postType,
@@ -432,17 +434,77 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
         poll_options: showPollCreator
           ? pollOptions.filter((opt) => opt.trim().length > 0).map((opt) => ({ text: opt.trim() }))
           : undefined,
-      });
+      };
+
+      const res = await createPostAPI(postPayload);
       onPostCreated(res.newPost);
+      setContent('');
+      setImages([]);
+      setVideoUri(null);
+      setLocationAddress('');
+      setLocationCoords(null);
       setPostType('feed');
       setPollQuestion('');
       setPollOptions(['', '']);
       setShowPollCreator(false);
     } catch (err: any) {
       console.error('❌ Error creating post:', err);
-      Alert.alert('Failed to post', err?.response?.data?.msg || 'Unknown error');
+      // Check if network error / offline
+      const isNetworkError =
+        !err?.response || err?.code === 'ERR_NETWORK' || err?.message?.includes('Network Error');
+
+      if (isNetworkError) {
+        try {
+          await addToOutbox({
+            text: content.trim(),
+            images: images.length > 0 ? images : videoUri ? [videoUri] : [],
+            privacy: postType,
+            postPayload: {
+              content: content.trim(),
+              postType,
+              address: locationAddress,
+              location: locationCoords ? { type: 'Point', coordinates: locationCoords } : undefined,
+              background: selectedBgId !== 'default' ? selectedBgId : undefined,
+              textStyle: { fontSize, color: textColor, fontWeight: 'bold' },
+            },
+          });
+          Alert.alert(
+            'Saved to Outbox',
+            'You appear to be offline or network failed. Your post has been saved to the Outbox and will automatically upload once internet is restored.'
+          );
+          setContent('');
+          setImages([]);
+          setVideoUri(null);
+          setLocationAddress('');
+          setLocationCoords(null);
+        } catch (outboxErr) {
+          Alert.alert('Error', 'Failed to save post to outbox.');
+        }
+      } else {
+        Alert.alert('Failed to post', err?.response?.data?.msg || 'Unknown error');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!content.trim() && images.length === 0 && !videoUri) {
+      Alert.alert('Empty Draft', 'Add some text or media before saving a draft.');
+      return;
+    }
+    try {
+      await saveDraft({
+        text: content.trim(),
+        images: images.length > 0 ? images : videoUri ? [videoUri] : [],
+        privacy: postType,
+      });
+      Alert.alert('Draft Saved', 'Your post has been saved as a draft.');
+      setContent('');
+      setImages([]);
+      setVideoUri(null);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save draft.');
     }
   };
 
@@ -543,6 +605,15 @@ const CreatePostBox: React.FC<Props> = ({ onPostCreated, initialPostType = 'feed
           { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outlineVariant },
         ]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          
+          {/* 🔴 Go Live Button — always first */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('LiveBroadcast' as never)}
+            style={[styles.toolbarIcon, styles.goLiveBtn]}>
+            <Ionicons name="radio-outline" size={20} color="#fff" />
+            <Text style={styles.goLiveBtnText}>Go Live</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={pickImages} style={styles.toolbarIcon} disabled={!isDefaultBg}>
             <Ionicons name="image-outline" size={26} color={!isDefaultBg ? '#ccc' : '#4CAF50'} />
           </TouchableOpacity>
@@ -1326,5 +1397,21 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     marginRight: 6,
+  },
+  goLiveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E53935',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginRight: 4,
+    gap: 5,
+  },
+  goLiveBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.3,
   },
 });
